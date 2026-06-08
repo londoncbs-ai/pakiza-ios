@@ -30,6 +30,8 @@ export type SmokingDrinking = 'never' | 'occasionally' | 'regularly' | 'prefer_n
 
 export type RelocationWillingness = 'yes' | 'no' | 'maybe';
 
+export type BodyType = 'slim' | 'athletic' | 'average' | 'curvy' | 'heavy_set' | 'prefer_not_to_say';
+
 export interface TokenResponse {
   access_token: string;
   refresh_token: string;
@@ -65,23 +67,55 @@ export interface PublicProfile {
   religiosity: number | null;
   caste: string | null;
   height_cm: number | null;
+  body_type: BodyType | null;
   education_level: EducationLevel | null;
   occupation: string | null;
-  marital_status: string | null;
-  wants_children: string | null;
+  marital_status: MaritalStatus | null;
+  has_children: boolean | null;
+  wants_children: WantsChildren | null;
   languages_spoken: string | null;
   bio: string | null;
   photos: Photo[];
   profile_complete_pct: number;
 }
 
-/** Own full profile — ProfileResponse. */
+/** Own full profile — ProfileResponse (includes private fields). */
 export interface MyProfile extends PublicProfile {
   user_id: string;
   date_of_birth: string;
   gender: Gender;
+  country_code: string | null;
   caste_is_visible: boolean;
+  weight_kg: number | null;
+  body_type: BodyType | null;
+  education_field: string | null;
+  has_children: boolean | null;
+  smoking: SmokingDrinking | null;
+  drinking: SmokingDrinking | null;
+  willing_to_relocate: RelocationWillingness | null;
   photos_blurred: boolean;
+  hide_from_contacts: boolean;
+  incognito_mode: boolean;
+}
+
+/** Partner preferences — drives the matching algorithm. CSV fields hold comma-separated enum values. */
+export interface PartnerPreferences {
+  pref_min_age: number | null;
+  pref_max_age: number | null;
+  pref_min_height_cm: number | null;
+  pref_max_height_cm: number | null;
+  pref_religion: string | null; // csv of Religion
+  pref_denomination: string | null;
+  pref_caste: string | null;
+  pref_ethnicity: string | null;
+  pref_education_min: EducationLevel | null;
+  pref_marital_status: string | null; // csv of MaritalStatus
+  pref_has_children: boolean | null;
+  pref_wants_children: string | null; // csv of WantsChildren
+  pref_country_codes: string | null;
+  pref_max_distance_km: number | null;
+  pref_religiosity_min: number | null;
+  pref_religiosity_max: number | null;
 }
 
 export interface SwipeResult {
@@ -113,11 +147,21 @@ export interface CreateProfileInput {
   caste_is_visible?: boolean; // hidden from others unless true
   occupation?: string;
   education_level?: EducationLevel;
+  education_field?: string;
   height_cm?: number;
+  weight_kg?: number;
+  body_type?: BodyType;
   marital_status?: MaritalStatus;
+  has_children?: boolean;
   wants_children?: WantsChildren;
   languages_spoken?: string;
+  smoking?: SmokingDrinking;
+  drinking?: SmokingDrinking;
   willing_to_relocate?: RelocationWillingness;
+  // privacy
+  photos_blurred?: boolean;
+  hide_from_contacts?: boolean;
+  incognito_mode?: boolean;
 }
 
 export type UpdateProfileInput = Partial<CreateProfileInput>;

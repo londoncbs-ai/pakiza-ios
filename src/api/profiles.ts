@@ -2,6 +2,7 @@ import { api } from './client';
 import type {
   CreateProfileInput,
   MyProfile,
+  PartnerPreferences,
   Photo,
   PublicProfile,
   UpdateProfileInput,
@@ -25,6 +26,14 @@ export const profilesApi = {
 
   update(patch: UpdateProfileInput) {
     return api.patch<MyProfile>('/profiles/me', patch).then((r) => r.data);
+  },
+
+  getPreferences() {
+    return api.get<PartnerPreferences>('/profiles/me/preferences').then((r) => r.data);
+  },
+
+  updatePreferences(patch: Partial<PartnerPreferences>) {
+    return api.patch<PartnerPreferences>('/profiles/me/preferences', patch).then((r) => r.data);
   },
 
   discover(page = 1, pageSize = 15) {

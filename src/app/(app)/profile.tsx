@@ -11,6 +11,7 @@ import { profilesApi } from '@/api/profiles';
 import type { MyProfile } from '@/api/types';
 import { DetailRow } from '@/components/DetailRow';
 import { EditProfileSheet } from '@/components/EditProfileSheet';
+import { PreferencesSheet } from '@/components/PreferencesSheet';
 import { label, titleCase } from '@/lib/format';
 import { useAuth } from '@/store/auth';
 import { colors, fonts, palette, radii, shadow, spacing } from '@/theme';
@@ -25,6 +26,7 @@ export default function ProfileTab() {
   const [profile, setProfile] = useState<MyProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
+  const [prefsOpen, setPrefsOpen] = useState(false);
   // Locally-managed photo URIs (dev placeholder for picture management).
   const [photos, setPhotos] = useState<string[]>([]);
 
@@ -153,10 +155,15 @@ export default function ProfileTab() {
               <DetailRow icon="briefcase-outline" label="Profession" value={profile.occupation} />
               <DetailRow icon="school-outline" label="Education" value={label.education(profile.education_level)} />
               <DetailRow icon="resize-outline" label="Height" value={label.height(profile.height_cm)} />
+              <DetailRow icon="body-outline" label="Body type" value={label.bodyType(profile.body_type)} />
               <DetailRow icon="globe-outline" label="Ethnicity" value={titleCase(profile.ethnicity)} />
               <DetailRow icon="language-outline" label="Languages" value={label.languages(profile.languages_spoken)} />
               <DetailRow icon="heart-outline" label="Marital status" value={label.marital(profile.marital_status)} />
-              <DetailRow icon="people-outline" label="Children" value={label.wantsChildren(profile.wants_children)} />
+              <DetailRow icon="happy-outline" label="Has children" value={label.hasChildren(profile.has_children)} />
+              <DetailRow icon="people-outline" label="Wants children" value={label.wantsChildren(profile.wants_children)} />
+              <DetailRow icon="flame-outline" label="Smoking" value={label.smokeDrink(profile.smoking)} />
+              <DetailRow icon="wine-outline" label="Drinking" value={label.smokeDrink(profile.drinking)} />
+              <DetailRow icon="airplane-outline" label="Relocation" value={label.relocate(profile.willing_to_relocate)} />
             </View>
           </Section>
         ) : null}
@@ -164,6 +171,8 @@ export default function ProfileTab() {
         {/* Settings */}
         <Section title="Account">
           <View style={styles.card}>
+            <SettingRow icon="options-outline" label="Partner preferences" onPress={() => setPrefsOpen(true)} />
+            <View style={styles.divider} />
             <SettingRow icon="shield-checkmark-outline" label="Verify identity" onPress={() => router.push('/(onboarding)/id-verify')} />
             <View style={styles.divider} />
             <SettingRow icon="log-out-outline" label="Sign out" danger onPress={confirmSignOut} />
@@ -182,6 +191,8 @@ export default function ProfileTab() {
           }}
         />
       ) : null}
+
+      <PreferencesSheet visible={prefsOpen} onClose={() => setPrefsOpen(false)} />
     </View>
   );
 }

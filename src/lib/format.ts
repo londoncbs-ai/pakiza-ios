@@ -43,12 +43,30 @@ const RELIGIOSITY: Record<number, string> = {
   5: 'Very devout',
 };
 
+const SMOKE_DRINK: Record<string, string> = {
+  never: 'Never',
+  occasionally: 'Occasionally',
+  regularly: 'Regularly',
+  prefer_not_to_say: 'Prefer not to say',
+};
+
+const RELOCATE: Record<string, string> = {
+  yes: 'Willing to relocate',
+  maybe: 'Open to relocating',
+  no: 'Not willing to relocate',
+};
+
 export const label = {
   education: (v?: string | null) => (v ? EDUCATION[v] ?? titleCase(v) : null),
   marital: (v?: string | null) => (v ? MARITAL[v] ?? titleCase(v) : null),
   wantsChildren: (v?: string | null) => (v ? WANTS_CHILDREN[v] ?? titleCase(v) : null),
   religiosity: (v?: number | null) => (v ? RELIGIOSITY[v] ?? null : null),
   religion: (v?: string | null) => titleCase(v),
+  bodyType: (v?: string | null) => titleCase(v),
+  smokeDrink: (v?: string | null) => (v ? SMOKE_DRINK[v] ?? titleCase(v) : null),
+  relocate: (v?: string | null) => (v ? RELOCATE[v] ?? null : null),
+  hasChildren: (v?: boolean | null) => (v == null ? null : v ? 'Has children' : 'No children'),
+  weight: (kg?: number | null) => (kg ? `${kg} kg` : null),
   height: (cm?: number | null) => {
     if (!cm) return null;
     const totalIn = Math.round(cm / 2.54);

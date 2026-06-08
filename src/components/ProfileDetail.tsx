@@ -101,10 +101,12 @@ export function ProfileDetail({
               <DetailRow icon="briefcase-outline" label="Profession" value={profile.occupation} />
               <DetailRow icon="school-outline" label="Education" value={label.education(profile.education_level)} />
               <DetailRow icon="resize-outline" label="Height" value={label.height(profile.height_cm)} />
+              <DetailRow icon="body-outline" label="Body type" value={label.bodyType(profile.body_type)} />
               <DetailRow icon="globe-outline" label="Ethnicity" value={titleCase(profile.ethnicity)} />
               <DetailRow icon="language-outline" label="Languages" value={label.languages(profile.languages_spoken)} />
               <DetailRow icon="heart-outline" label="Marital status" value={label.marital(profile.marital_status)} />
-              <DetailRow icon="people-outline" label="Children" value={label.wantsChildren(profile.wants_children)} />
+              <DetailRow icon="happy-outline" label="Has children" value={label.hasChildren(profile.has_children)} />
+              <DetailRow icon="people-outline" label="Wants children" value={label.wantsChildren(profile.wants_children)} />
             </View>
           </View>
         </View>
