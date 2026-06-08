@@ -1,15 +1,46 @@
 /**
  * API configuration.
  *
- * The dev backend runs on your Mac at port 8000. We default to the Mac's
- * LAN IP so the same URL works from the iOS simulator, Android emulator,
- * AND a physical phone on the same Wi-Fi (Expo Go).
+ * In development the backend runs on your Mac at port 8000. Rather than hard-code
+ * the Mac's LAN IP (which changes whenever you switch network / DHCP renews), we
+ * derive it from the host Expo is already serving the app from — that host IS your
+ * Mac on the LAN, so the API and Metro always share the same address.
  *
- * Override at runtime with EXPO_PUBLIC_API_URL if your IP changes.
+ * Resolution order:
+ *   1. EXPO_PUBLIC_API_URL (explicit override, e.g. a deployed backend)
+ *   2. the Expo dev host (Metro) → http://<that-ip>:8000   ← normal dev case
+ *   3. LAN_API fallback constant
  */
-const LAN_API = 'http://192.168.168.244:8000';
+import Constants from 'expo-constants';
 
-export const API_BASE_URL =
-  process.env.EXPO_PUBLIC_API_URL?.replace(/\/$/, '') ?? LAN_API;
+const BACKEND_PORT = 8000;
+const LAN_API = 'http://192.168.3.125:8000'; // last-resort fallback
 
+function hostFromExpo(): string | null {
+  // Covers Expo Go (debuggerHost) and dev-client (hostUri) across SDK versions.
+  const C = Constants as any;
+  const candidates: unknown[] = [
+    C.expoConfig?.hostUri,
+    C.expoGoConfig?.debuggerHost,
+    C.manifest2?.extra?.expoGo?.debuggerHost,
+    C.manifest?.debuggerHost,
+  ];
+  for (const c of candidates) {
+    const host = typeof c === 'string' ? c.split(':')[0] : null;
+    if (host && host !== 'localhost' && host !== '127.0.0.1') return host;
+  }
+  return null;
+}
+
+function resolveBaseUrl(): string {
+  const override = process.env.EXPO_PUBLIC_API_URL;
+  if (override) return override.replace(/\/$/, '');
+
+  const host = hostFromExpo();
+  if (host) return `http://${host}:${BACKEND_PORT}`;
+
+  return LAN_API;
+}
+
+export const API_BASE_URL = resolveBaseUrl();
 export const API_V1 = `${API_BASE_URL}/v1`;
