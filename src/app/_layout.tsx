@@ -28,21 +28,24 @@ function RootNavigator() {
   useEffect(() => {
     if (status === 'loading') return;
 
-    const root = segments[0]; // '(auth)' | '(app)' | undefined (index)
+    const root = segments[0]; // '(auth)' | '(app)' | '(onboarding)' | undefined (index)
     const onPublic = root === undefined || root === '(auth)';
 
     if (status === 'signedOut' && !onPublic) {
       router.replace('/');
     } else if (status === 'signedIn' && onPublic) {
-      // The (app) gate forwards to profile-setup if no profile exists yet.
+      // The (app) gate forwards to onboarding/profile-setup if no profile exists yet.
       router.replace('/(app)/discover');
     }
+    // When signed-in and inside (onboarding), leave the user there — the
+    // onboarding flow itself advances to (app) when complete.
   }, [status, segments, router]);
 
   return (
     <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: palette.cream } }}>
       <Stack.Screen name="index" />
       <Stack.Screen name="(auth)" />
+      <Stack.Screen name="(onboarding)" />
       <Stack.Screen name="(app)" />
     </Stack>
   );

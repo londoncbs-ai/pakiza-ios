@@ -12,6 +12,24 @@ export type Religion =
   | 'other'
   | 'prefer_not_to_say';
 
+export type EducationLevel =
+  | 'no_formal_education'
+  | 'high_school'
+  | 'some_college'
+  | 'bachelors'
+  | 'masters'
+  | 'phd'
+  | 'professional'
+  | 'vocational';
+
+export type MaritalStatus = 'single' | 'divorced' | 'widowed' | 'separated' | 'annulled';
+
+export type WantsChildren = 'yes' | 'no' | 'open' | 'has_and_wants_more' | 'has_does_not_want_more';
+
+export type SmokingDrinking = 'never' | 'occasionally' | 'regularly' | 'prefer_not_to_say';
+
+export type RelocationWillingness = 'yes' | 'no' | 'maybe';
+
 export interface TokenResponse {
   access_token: string;
   refresh_token: string;
@@ -47,6 +65,7 @@ export interface PublicProfile {
   religiosity: number | null;
   caste: string | null;
   height_cm: number | null;
+  education_level: EducationLevel | null;
   occupation: string | null;
   marital_status: string | null;
   wants_children: string | null;
@@ -83,7 +102,19 @@ export interface CreateProfileInput {
   date_of_birth: string; // YYYY-MM-DD
   gender: Gender;
   city?: string;
+  country_name?: string;
+  ethnicity?: string;
   bio?: string;
   religion?: Religion;
+  denomination?: string;
+  religiosity?: number; // 1–5
   occupation?: string;
+  education_level?: EducationLevel;
+  height_cm?: number;
+  marital_status?: MaritalStatus;
+  wants_children?: WantsChildren;
+  languages_spoken?: string;
+  willing_to_relocate?: RelocationWillingness;
 }
+
+export type UpdateProfileInput = Partial<CreateProfileInput>;

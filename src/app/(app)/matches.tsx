@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useState } from 'react';
+import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
-import { useRouter } from 'expo-router';
+import { useFocusEffect } from 'expo-router';
 
 import { errorMessage } from '@/api/client';
 import { matchesApi } from '@/api/matches';
@@ -10,7 +10,6 @@ import type { MatchSummary } from '@/api/types';
 import { fonts, palette, shadow, spacing } from '@/theme';
 
 export default function Matches() {
-  const router = useRouter();
   const insets = useSafeAreaInsets();
   const [matches, setMatches] = useState<MatchSummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -28,18 +27,18 @@ export default function Matches() {
     }
   }, []);
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  // Refresh whenever the tab gains focus (e.g. after a new match in Discover).
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [load])
+  );
 
   return (
     <View style={[styles.root, { paddingTop: insets.top + spacing.sm }]}>
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} hitSlop={10}>
-          <Text style={styles.back}>‹  Discover</Text>
-        </Pressable>
         <Text style={styles.title}>Matches</Text>
-        <View style={{ width: 70 }} />
+        <Text style={styles.subtitle}>People you’ve both said yes to</Text>
       </View>
 
       {loading ? (
@@ -89,14 +88,11 @@ export default function Matches() {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: palette.cream },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.md,
   },
-  back: { fontFamily: fonts.bodyMedium, color: palette.muted, fontSize: 15, width: 90 },
-  title: { fontFamily: fonts.display, fontSize: 30, color: palette.burgundy },
+  title: { fontFamily: fonts.display, fontSize: 32, color: palette.burgundy },
+  subtitle: { fontFamily: fonts.body, fontSize: 13.5, color: palette.muted, marginTop: -2 },
   empty: {
     fontFamily: fonts.body,
     color: palette.muted,

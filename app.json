@@ -34,7 +34,15 @@
           "resizeMode": "contain"
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      "@react-native-community/datetimepicker",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Pakiza needs access to your photos so you can add profile pictures.",
+          "cameraPermission": "Pakiza needs camera access to take a verification selfie."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

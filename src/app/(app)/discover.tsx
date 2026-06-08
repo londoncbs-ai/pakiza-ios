@@ -1,41 +1,39 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 
 import { errorMessage } from '@/api/client';
 import { matchesApi } from '@/api/matches';
 import { profilesApi } from '@/api/profiles';
 import type { PublicProfile } from '@/api/types';
 import { MatchModal } from '@/components/MatchModal';
+import { ProfileDetail } from '@/components/ProfileDetail';
 import { SwipeDeck, type SwipeAction } from '@/components/SwipeDeck';
 import { Wordmark } from '@/components/Wordmark';
-import { useAuth } from '@/store/auth';
-import { colors, fonts, palette, spacing } from '@/theme';
+import { fonts, palette, spacing } from '@/theme';
 
 export default function Discover() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { signOut } = useAuth();
 
   const [profiles, setProfiles] = useState<PublicProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [matched, setMatched] = useState<PublicProfile | null>(null);
+  const [opened, setOpened] = useState<PublicProfile | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      // Gate: must have a profile before browsing.
       const mine = await profilesApi.getMine();
       if (!mine) {
-        router.replace('/(app)/profile-setup');
+        router.replace('/(onboarding)/profile-setup');
         return;
       }
-      const feed = await profilesApi.discover(1, 20);
-      setProfiles(feed);
+      setProfiles(await profilesApi.discover(1, 20));
     } catch (err) {
       setError(errorMessage(err, 'Could not load your feed'));
     } finally {
@@ -46,13 +44,6 @@ export default function Discover() {
   useEffect(() => {
     load();
   }, [load]);
-
-  // Refresh the feed when returning from the matches screen.
-  useFocusEffect(
-    useCallback(() => {
-      return () => setNotice(null);
-    }, [])
-  );
 
   const onDecision = useCallback(async (profile: PublicProfile, action: SwipeAction) => {
     try {
@@ -72,13 +63,8 @@ export default function Discover() {
   return (
     <View style={[styles.root, { paddingTop: insets.top + spacing.sm }]}>
       <View style={styles.header}>
-        <Pressable onPress={signOut} hitSlop={10}>
-          <Text style={styles.headerAction}>Sign out</Text>
-        </Pressable>
-        <Wordmark size={28} color={palette.burgundy} />
-        <Pressable onPress={() => router.push('/(app)/matches')} hitSlop={10}>
-          <Text style={[styles.headerAction, { color: palette.gold }]}>Matches</Text>
-        </Pressable>
+        <Wordmark size={30} color={palette.burgundy} />
+        <Text style={styles.tagline}>where love finds purpose</Text>
       </View>
 
       {notice ? (
@@ -87,7 +73,7 @@ export default function Discover() {
         </Pressable>
       ) : null}
 
-      <View style={[styles.body, { paddingBottom: insets.bottom + spacing.lg }]}>
+      <View style={[styles.body, { paddingBottom: spacing.md }]}>
         {loading ? (
           <View style={styles.center}>
             <ActivityIndicator color={palette.burgundy} size="large" />
@@ -100,9 +86,13 @@ export default function Discover() {
             </Pressable>
           </View>
         ) : (
-          <SwipeDeck profiles={profiles} onDecision={onDecision} />
+          <SwipeDeck profiles={profiles} onDecision={onDecision} onOpen={setOpened} />
         )}
       </View>
+
+      <Modal visible={!!opened} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setOpened(null)}>
+        {opened ? <ProfileDetail profile={opened} onClose={() => setOpened(null)} /> : null}
+      </Modal>
 
       <MatchModal profile={matched} onClose={() => setMatched(null)} />
     </View>
@@ -111,14 +101,8 @@ export default function Discover() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: palette.cream },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.sm,
-  },
-  headerAction: { fontFamily: fonts.bodyMedium, fontSize: 14, color: palette.muted },
+  header: { alignItems: 'center', paddingBottom: spacing.sm },
+  tagline: { fontFamily: fonts.body, fontSize: 12, color: palette.muted, letterSpacing: 1, marginTop: -2 },
   body: { flex: 1, paddingHorizontal: spacing.lg, paddingTop: spacing.sm },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   errorText: {
@@ -128,18 +112,8 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
     paddingHorizontal: spacing.xl,
   },
-  retry: {
-    backgroundColor: palette.burgundy,
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 999,
-  },
+  retry: { backgroundColor: palette.burgundy, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 999 },
   retryText: { fontFamily: fonts.bodySemibold, color: palette.cream },
-  notice: {
-    backgroundColor: palette.sand,
-    marginHorizontal: spacing.lg,
-    padding: spacing.md,
-    borderRadius: 12,
-  },
+  notice: { backgroundColor: palette.sand, marginHorizontal: spacing.lg, padding: spacing.md, borderRadius: 12 },
   noticeText: { fontFamily: fonts.bodyMedium, color: palette.ink, textAlign: 'center', fontSize: 13 },
 });

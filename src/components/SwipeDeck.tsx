@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Dimensions, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   Extrapolation,
@@ -25,9 +26,10 @@ interface Props {
   profiles: PublicProfile[];
   onDecision: (profile: PublicProfile, action: SwipeAction) => void;
   onExhausted?: () => void;
+  onOpen?: (profile: PublicProfile) => void;
 }
 
-export function SwipeDeck({ profiles, onDecision, onExhausted }: Props) {
+export function SwipeDeck({ profiles, onDecision, onExhausted, onOpen }: Props) {
   const [index, setIndex] = useState(0);
   const tx = useSharedValue(0);
   const ty = useSharedValue(0);
@@ -121,6 +123,17 @@ export function SwipeDeck({ profiles, onDecision, onExhausted }: Props) {
           <Animated.View style={[styles.cardWrap, topStyle]}>
             <SwipeCard profile={profiles[index]} />
 
+            {onOpen ? (
+              <Pressable
+                onPress={() => onOpen(profiles[index])}
+                hitSlop={8}
+                style={styles.infoBtn}
+              >
+                <Ionicons name="chevron-up" size={18} color={palette.cream} />
+                <Text style={styles.infoText}>View profile</Text>
+              </Pressable>
+            ) : null}
+
             <Animated.View style={[styles.stamp, styles.stampLike, likeStamp]}>
               <Text style={[styles.stampText, { color: colors.like }]}>LIKE</Text>
             </Animated.View>
@@ -201,6 +214,19 @@ const styles = StyleSheet.create({
   stampLike: { left: 24, transform: [{ rotate: '-14deg' }], borderColor: colors.like },
   stampPass: { right: 24, transform: [{ rotate: '14deg' }], borderColor: palette.muted },
   stampText: { fontFamily: fonts.bodySemibold, fontSize: 26, letterSpacing: 2 },
+  infoBtn: {
+    position: 'absolute',
+    bottom: 16,
+    right: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: 'rgba(26,16,18,0.45)',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 999,
+  },
+  infoText: { fontFamily: fonts.bodyMedium, color: palette.cream, fontSize: 12.5 },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40 },
   emptyTitle: { fontFamily: fonts.display, fontSize: 30, color: palette.burgundy, marginBottom: 10 },
   emptyBody: {
