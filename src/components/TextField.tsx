@@ -1,0 +1,76 @@
+import React, { useState } from 'react';
+import { StyleSheet, Text, TextInput, TextInputProps, View } from 'react-native';
+
+import { fonts, palette, radii } from '@/theme';
+
+interface Props extends TextInputProps {
+  label?: string;
+  /** Render the field on a dark (burgundy) background. */
+  onDark?: boolean;
+  error?: string | null;
+}
+
+export function TextField({ label, onDark, error, style, ...rest }: Props) {
+  const [focused, setFocused] = useState(false);
+  const labelColor = onDark ? 'rgba(245,240,230,0.85)' : palette.muted;
+
+  return (
+    <View style={styles.wrap}>
+      {label ? <Text style={[styles.label, { color: labelColor }]}>{label}</Text> : null}
+      <TextInput
+        placeholderTextColor={onDark ? 'rgba(245,240,230,0.45)' : palette.muted}
+        style={[
+          styles.input,
+          {
+            backgroundColor: onDark ? 'rgba(245,240,230,0.08)' : palette.white,
+            color: onDark ? palette.cream : palette.ink,
+            borderColor: error
+              ? palette.sienna
+              : focused
+                ? palette.gold
+                : onDark
+                  ? 'rgba(245,240,230,0.18)'
+                  : palette.line,
+          },
+          style,
+        ]}
+        onFocus={(e) => {
+          setFocused(true);
+          rest.onFocus?.(e);
+        }}
+        onBlur={(e) => {
+          setFocused(false);
+          rest.onBlur?.(e);
+        }}
+        {...rest}
+      />
+      {error ? <Text style={styles.error}>{error}</Text> : null}
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  wrap: { marginBottom: 16 },
+  label: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: 13,
+    marginBottom: 7,
+    marginLeft: 4,
+    letterSpacing: 0.2,
+  },
+  input: {
+    height: 54,
+    borderRadius: radii.sm + 4,
+    borderWidth: 1.5,
+    paddingHorizontal: 16,
+    fontFamily: fonts.body,
+    fontSize: 16,
+  },
+  error: {
+    fontFamily: fonts.body,
+    color: palette.sienna,
+    fontSize: 12.5,
+    marginTop: 5,
+    marginLeft: 4,
+  },
+});

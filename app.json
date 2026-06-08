@@ -1,20 +1,20 @@
 {
   "expo": {
-    "name": "pakiza-frontend",
+    "name": "Pakiza",
     "slug": "pakiza-frontend",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "pakizafrontend",
-    "userInterfaceStyle": "automatic",
+    "scheme": "pakiza",
+    "userInterfaceStyle": "light",
+    "backgroundColor": "#800020",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "supportsTablet": true
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#800020",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false
@@ -28,13 +28,13 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#208AEF",
-          "android": {
-            "image": "./assets/images/splash-icon.png",
-            "imageWidth": 76
-          }
+          "backgroundColor": "#800020",
+          "image": "./assets/brand/splash.png",
+          "imageWidth": 320,
+          "resizeMode": "contain"
         }
-      ]
+      ],
+      "expo-secure-store"
     ],
     "experiments": {
       "typedRoutes": true,
