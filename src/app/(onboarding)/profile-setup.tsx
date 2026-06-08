@@ -25,6 +25,7 @@ import { Button } from '@/components/Button';
 import { DatePickerField } from '@/components/DatePickerField';
 import { OptionGroup } from '@/components/OptionGroup';
 import { TextField } from '@/components/TextField';
+import { ToggleRow } from '@/components/ToggleRow';
 import { fonts, palette, spacing } from '@/theme';
 
 const GENDERS = [
@@ -88,6 +89,8 @@ export default function ProfileSetup() {
   const [religion, setReligion] = useState<Religion | null>(null);
   const [denomination, setDenomination] = useState('');
   const [religiosity, setReligiosity] = useState<number | null>(null);
+  const [caste, setCaste] = useState('');
+  const [casteVisible, setCasteVisible] = useState(false);
   const [education, setEducation] = useState<EducationLevel | null>(null);
   const [occupation, setOccupation] = useState('');
   const [height, setHeight] = useState('');
@@ -131,6 +134,8 @@ export default function ProfileSetup() {
         religion: religion ?? undefined,
         denomination: denomination.trim() || undefined,
         religiosity: religiosity ?? undefined,
+        caste: caste.trim() || undefined,
+        caste_is_visible: caste.trim() ? casteVisible : undefined,
         education_level: education ?? undefined,
         occupation: occupation.trim() || undefined,
         height_cm: height ? Number(height) : undefined,
@@ -187,6 +192,21 @@ export default function ProfileSetup() {
                 placeholder="e.g. Sunni, Catholic, Reform"
               />
               <OptionGroup label="How religious are you?" options={RELIGIOSITY} value={religiosity} onChange={setReligiosity} />
+              <TextField
+                label="Caste / biradari (optional)"
+                onDark
+                value={caste}
+                onChangeText={setCaste}
+                placeholder="e.g. Jat, Rajput, Syed, Gotra…"
+              />
+              {caste.trim() ? (
+                <ToggleRow
+                  label="Show caste on my profile"
+                  hint="Off by default. When off, your caste stays private and is used only for matching."
+                  value={casteVisible}
+                  onValueChange={setCasteVisible}
+                />
+              ) : null}
             </>
           )}
 

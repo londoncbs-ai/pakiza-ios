@@ -97,6 +97,7 @@ export function ProfileDetail({
             <View style={styles.card}>
               <DetailRow icon="moon-outline" label="Faith" value={faith || null} />
               <DetailRow icon="sparkles-outline" label="Religiosity" value={label.religiosity(profile.religiosity)} />
+              <DetailRow icon="people-circle-outline" label="Caste / biradari" value={titleCase(profile.caste)} />
               <DetailRow icon="briefcase-outline" label="Profession" value={profile.occupation} />
               <DetailRow icon="school-outline" label="Education" value={label.education(profile.education_level)} />
               <DetailRow icon="resize-outline" label="Height" value={label.height(profile.height_cm)} />

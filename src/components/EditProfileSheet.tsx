@@ -23,6 +23,7 @@ import type {
 import { Button } from './Button';
 import { OptionGroup } from './OptionGroup';
 import { TextField } from './TextField';
+import { ToggleRow } from './ToggleRow';
 import { colors, fonts, palette, spacing } from '@/theme';
 
 const EDUCATION = [
@@ -69,6 +70,8 @@ export function EditProfileSheet({
   const [occupation, setOccupation] = useState(profile.occupation ?? '');
   const [height, setHeight] = useState(profile.height_cm ? String(profile.height_cm) : '');
   const [denomination, setDenomination] = useState(profile.denomination ?? '');
+  const [caste, setCaste] = useState(profile.caste ?? '');
+  const [casteVisible, setCasteVisible] = useState(profile.caste_is_visible ?? false);
   const [languages, setLanguages] = useState(profile.languages_spoken ?? '');
   const [education, setEducation] = useState<EducationLevel | null>((profile.education_level as EducationLevel) ?? null);
   const [marital, setMarital] = useState<MaritalStatus | null>((profile.marital_status as MaritalStatus) ?? null);
@@ -87,6 +90,8 @@ export function EditProfileSheet({
         occupation: occupation.trim() || undefined,
         height_cm: height ? Number(height) : undefined,
         denomination: denomination.trim() || undefined,
+        caste: caste.trim() || undefined,
+        caste_is_visible: casteVisible,
         languages_spoken: languages.trim() || undefined,
         education_level: education ?? undefined,
         marital_status: marital ?? undefined,
@@ -122,6 +127,14 @@ export function EditProfileSheet({
           <TextField label="Profession" value={occupation} onChangeText={setOccupation} placeholder="e.g. Pharmacist" />
           <TextField label="Height (cm)" value={height} onChangeText={setHeight} keyboardType="number-pad" placeholder="e.g. 170" />
           <TextField label="Denomination" value={denomination} onChangeText={setDenomination} placeholder="e.g. Sunni" />
+          <TextField label="Caste / biradari" value={caste} onChangeText={setCaste} placeholder="e.g. Jat, Rajput, Syed…" />
+          <ToggleRow
+            label="Show caste on my profile"
+            hint="When off, your caste stays private and is used only for matching."
+            value={casteVisible}
+            onValueChange={setCasteVisible}
+            onDark={false}
+          />
           <TextField label="Languages (comma separated)" value={languages} onChangeText={setLanguages} placeholder="e.g. en, ar, ur" />
           <OptionGroup label="Religiosity" options={RELIGIOSITY} value={religiosity} onChange={setReligiosity} onDark={false} />
           <OptionGroup label="Education" options={EDUCATION} value={education} onChange={setEducation} onDark={false} />

@@ -80,6 +80,7 @@ export interface MyProfile extends PublicProfile {
   user_id: string;
   date_of_birth: string;
   gender: Gender;
+  caste_is_visible: boolean;
   photos_blurred: boolean;
 }
 
@@ -108,6 +109,8 @@ export interface CreateProfileInput {
   religion?: Religion;
   denomination?: string;
   religiosity?: number; // 1–5
+  caste?: string; // caste / biradari / jati / gotra
+  caste_is_visible?: boolean; // hidden from others unless true
   occupation?: string;
   education_level?: EducationLevel;
   height_cm?: number;
