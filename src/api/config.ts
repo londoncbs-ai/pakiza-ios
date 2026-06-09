@@ -14,7 +14,7 @@
 import Constants from 'expo-constants';
 
 const BACKEND_PORT = 8000;
-const LAN_API = 'http://192.168.3.125:8000'; // last-resort fallback
+const LAN_API = 'http://192.168.168.245:8000'; // last-resort fallback only
 
 const IPV4 = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/;
 
