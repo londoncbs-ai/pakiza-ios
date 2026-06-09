@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useState } from 'react';
 import { Dimensions, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -22,32 +22,58 @@ const { width: W, height: H } = Dimensions.get('window');
 const THRESHOLD = W * 0.28;
 const OUT = W * 1.4;
 
+export type SwipeDeckHandle = { rewind: (profile: PublicProfile) => void };
+
 interface Props {
   profiles: PublicProfile[];
   onDecision: (profile: PublicProfile, action: SwipeAction) => void;
   onExhausted?: () => void;
   onOpen?: (profile: PublicProfile) => void;
   onBoost?: () => void;
+  onRewind?: () => void;
 }
 
-export function SwipeDeck({ profiles, onDecision, onExhausted, onOpen, onBoost }: Props) {
+export const SwipeDeck = forwardRef<SwipeDeckHandle, Props>(function SwipeDeck(
+  { profiles, onDecision, onExhausted, onOpen, onBoost, onRewind },
+  ref
+) {
+  const [cards, setCards] = useState<PublicProfile[]>(profiles);
   const [index, setIndex] = useState(0);
   const tx = useSharedValue(0);
   const ty = useSharedValue(0);
 
+  // Reset when a fresh feed is loaded.
   useEffect(() => {
-    if (index >= profiles.length && profiles.length > 0) onExhausted?.();
-  }, [index, profiles.length, onExhausted]);
+    setCards(profiles);
+    setIndex(0);
+  }, [profiles]);
+
+  useEffect(() => {
+    if (index >= cards.length && cards.length > 0) onExhausted?.();
+  }, [index, cards.length, onExhausted]);
+
+  // Bring a rewound profile back as the current card.
+  useImperativeHandle(ref, () => ({
+    rewind: (profile: PublicProfile) => {
+      tx.value = 0;
+      ty.value = 0;
+      setCards((prev) => {
+        const nextCards = [...prev];
+        nextCards.splice(index, 0, profile);
+        return nextCards;
+      });
+    },
+  }));
 
   const commit = useCallback(
     (action: SwipeAction) => {
-      const profile = profiles[index];
+      const profile = cards[index];
       tx.value = 0;
       ty.value = 0;
       setIndex((i) => i + 1);
       if (profile) onDecision(profile, action);
     },
-    [index, profiles, onDecision, tx, ty]
+    [index, cards, onDecision, tx, ty]
   );
 
   const pan = Gesture.Pan()
@@ -98,7 +124,7 @@ export function SwipeDeck({ profiles, onDecision, onExhausted, onOpen, onBoost }
     opacity: interpolate(tx.value, [-THRESHOLD, 0], [1, 0], Extrapolation.CLAMP),
   }));
 
-  if (index >= profiles.length) {
+  if (index >= cards.length) {
     return (
       <View style={styles.empty}>
         <Text style={styles.emptyTitle}>You’re all caught up</Text>
@@ -109,7 +135,7 @@ export function SwipeDeck({ profiles, onDecision, onExhausted, onOpen, onBoost }
     );
   }
 
-  const next = profiles[index + 1];
+  const next = cards[index + 1];
 
   return (
     <View style={styles.root}>
@@ -122,11 +148,11 @@ export function SwipeDeck({ profiles, onDecision, onExhausted, onOpen, onBoost }
 
         <GestureDetector gesture={pan}>
           <Animated.View style={[styles.cardWrap, topStyle]}>
-            <SwipeCard profile={profiles[index]} />
+            <SwipeCard profile={cards[index]} />
 
             {onOpen ? (
               <Pressable
-                onPress={() => onOpen(profiles[index])}
+                onPress={() => onOpen(cards[index])}
                 hitSlop={8}
                 style={styles.infoBtn}
               >
@@ -146,14 +172,15 @@ export function SwipeDeck({ profiles, onDecision, onExhausted, onOpen, onBoost }
       </View>
 
       <View style={styles.actions}>
-        {onBoost ? <CircleButton glyph="⚡" color={palette.navy} small onPress={onBoost} /> : null}
+        {onRewind ? <CircleButton glyph="↺" color={palette.gold} small onPress={onRewind} /> : null}
         <CircleButton glyph="✕" color={palette.sienna} onPress={() => fling('pass')} />
+        {onBoost ? <CircleButton glyph="⚡" color={palette.navy} small onPress={onBoost} /> : null}
         <CircleButton glyph="★" color={palette.gold} small onPress={() => fling('superlike')} />
         <CircleButton glyph="♥" color={palette.burgundy} onPress={() => fling('like')} />
       </View>
     </View>
   );
-}
+});
 
 function CircleButton({
   glyph,

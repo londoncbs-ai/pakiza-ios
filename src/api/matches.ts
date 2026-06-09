@@ -31,4 +31,9 @@ export const matchesApi = {
   boost() {
     return api.post('/matches/boost').then((r) => r.data);
   },
+
+  /** Premium feature — undo last swipe; returns the profile to show again. 402 if free. */
+  rewind() {
+    return api.post<PublicProfile>('/matches/rewind').then((r) => r.data);
+  },
 };

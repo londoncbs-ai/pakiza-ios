@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
+import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 
 import { chatApi } from '@/api/chat';
@@ -70,11 +71,13 @@ export default function Messages() {
               <Pressable
                 style={styles.row}
                 onPress={() =>
-                  router.push({ pathname: '/chat/[id]', params: { id: item.id, name: item.other_profile.display_name } })
+                  item.locked
+                    ? router.push('/premium')
+                    : router.push({ pathname: '/chat/[id]', params: { id: item.id, name: item.other_profile.display_name } })
                 }
               >
                 {photo ? (
-                  <Image source={{ uri: photo }} style={styles.avatar} contentFit="cover" />
+                  <Image source={{ uri: photo }} style={[styles.avatar, item.locked && styles.dim]} contentFit="cover" />
                 ) : (
                   <View style={[styles.avatar, styles.placeholder]}>
                     <Text style={styles.initial}>{item.other_profile.display_name[0]}</Text>
@@ -83,16 +86,26 @@ export default function Messages() {
                 <View style={styles.body}>
                   <Text style={styles.name}>{item.other_profile.display_name}</Text>
                   <Text style={styles.preview} numberOfLines={1}>
-                    {item.last_message_at ? 'Tap to continue your conversation' : 'New match. Say salaam 👋'}
+                    {item.locked
+                      ? 'Locked — upgrade to keep this chat open'
+                      : item.last_message_at
+                        ? 'Tap to continue your conversation'
+                        : 'New match. Say salaam 👋'}
                   </Text>
                 </View>
                 <View style={styles.meta}>
-                  <Text style={styles.time}>{relativeTime(item.last_message_at)}</Text>
-                  {item.unread_count > 0 ? (
-                    <View style={styles.badge}>
-                      <Text style={styles.badgeText}>{item.unread_count}</Text>
-                    </View>
-                  ) : null}
+                  {item.locked ? (
+                    <Ionicons name="lock-closed" size={18} color={palette.gold} />
+                  ) : (
+                    <>
+                      <Text style={styles.time}>{relativeTime(item.last_message_at)}</Text>
+                      {item.unread_count > 0 ? (
+                        <View style={styles.badge}>
+                          <Text style={styles.badgeText}>{item.unread_count}</Text>
+                        </View>
+                      ) : null}
+                    </>
+                  )}
                 </View>
               </Pressable>
             );
@@ -111,6 +124,7 @@ const styles = StyleSheet.create({
   empty: { fontFamily: fonts.body, color: palette.muted, textAlign: 'center', marginTop: 70, paddingHorizontal: spacing.xxl, lineHeight: 22 },
   row: { flexDirection: 'row', alignItems: 'center', backgroundColor: palette.white, borderRadius: 16, padding: spacing.md, marginBottom: spacing.md, ...shadow.soft },
   avatar: { width: 58, height: 58, borderRadius: 29 },
+  dim: { opacity: 0.5 },
   placeholder: { backgroundColor: palette.sand, alignItems: 'center', justifyContent: 'center' },
   initial: { fontFamily: fonts.display, fontSize: 24, color: palette.burgundy },
   body: { flex: 1, marginLeft: spacing.md },

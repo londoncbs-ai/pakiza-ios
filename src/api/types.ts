@@ -192,6 +192,7 @@ export interface Conversation {
   other_profile: PublicProfile;
   unread_count: number;
   wali_id: string | null;
+  locked: boolean; // free-tier: beyond the open-chat limit
 }
 
 export interface CreateProfileInput {

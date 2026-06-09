@@ -38,6 +38,7 @@ export default function ChatThread() {
   const [peerTyping, setPeerTyping] = useState(false);
   const [conv, setConv] = useState<Conversation | null>(null);
   const [safetyOpen, setSafetyOpen] = useState(false);
+  const [locked, setLocked] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
   const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -54,18 +55,25 @@ export default function ChatThread() {
     let active = true;
     (async () => {
       chatApi.getConversation(String(id)).then((c) => active && setConv(c)).catch(() => {});
+      let isLocked = false;
       try {
         const history = await chatApi.getMessages(String(id));
         if (active) setMessages(history); // already newest-first
         chatApi.markRead(String(id)).catch(() => {});
-      } catch (err) {
-        if (active) setError(errorMessage(err, 'Could not load messages'));
+      } catch (err: any) {
+        if (err?.response?.status === 402) {
+          isLocked = true;
+          if (active) setLocked(true);
+        } else if (active) {
+          setError(errorMessage(err, 'Could not load messages'));
+        }
       } finally {
         if (active) setLoading(false);
       }
 
+      // No realtime socket for a locked chat.
       const token = await tokenStore.getAccess();
-      if (!token || !active) return;
+      if (!token || !active || isLocked) return;
       const ws = new WebSocket(chatSocketUrl(String(id), token));
       wsRef.current = ws;
       ws.onmessage = (ev) => {
@@ -178,6 +186,17 @@ export default function ChatThread() {
       >
         {loading ? (
           <View style={styles.center}><ActivityIndicator color={palette.burgundy} size="large" /></View>
+        ) : locked ? (
+          <View style={styles.lockedWrap}>
+            <Ionicons name="lock-closed" size={44} color={palette.gold} />
+            <Text style={styles.lockedTitle}>This chat is locked</Text>
+            <Text style={styles.lockedBody}>
+              On the free plan you can keep a few chats open at once. Upgrade to message all your matches, or unmatch someone to free up a slot.
+            </Text>
+            <Pressable style={styles.upgradeBtn} onPress={() => router.replace('/premium')}>
+              <Text style={styles.upgradeText}>Upgrade to Premium</Text>
+            </Pressable>
+          </View>
         ) : (
           <FlatList
             data={messages}
@@ -205,6 +224,7 @@ export default function ChatThread() {
         {peerTyping ? <Text style={styles.typing}>typing…</Text> : null}
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
+        {!locked ? (
         <View style={[styles.composer, { paddingBottom: insets.bottom + spacing.sm }]}>
           <TextInput
             style={styles.input}
@@ -222,6 +242,7 @@ export default function ChatThread() {
             <Ionicons name="send" size={20} color={palette.cream} />
           </Pressable>
         </View>
+        ) : null}
       </KeyboardAvoidingView>
 
       {conv ? (
@@ -241,6 +262,11 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: palette.cream },
   flex: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  lockedWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.xl, gap: spacing.sm },
+  lockedTitle: { fontFamily: fonts.display, fontSize: 26, color: palette.burgundy, marginTop: spacing.sm },
+  lockedBody: { fontFamily: fonts.body, fontSize: 14.5, color: palette.muted, textAlign: 'center', lineHeight: 21 },
+  upgradeBtn: { backgroundColor: palette.gold, paddingHorizontal: 28, paddingVertical: 13, borderRadius: 999, marginTop: spacing.md },
+  upgradeText: { fontFamily: fonts.bodySemibold, color: palette.ink, fontSize: 15 },
   header: {
     flexDirection: 'row',
     alignItems: 'center',

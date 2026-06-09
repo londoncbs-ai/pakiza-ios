@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,7 +10,7 @@ import { profilesApi } from '@/api/profiles';
 import type { PublicProfile } from '@/api/types';
 import { MatchModal } from '@/components/MatchModal';
 import { ProfileDetail } from '@/components/ProfileDetail';
-import { SwipeDeck, type SwipeAction } from '@/components/SwipeDeck';
+import { SwipeDeck, type SwipeAction, type SwipeDeckHandle } from '@/components/SwipeDeck';
 import { Wordmark } from '@/components/Wordmark';
 import { fonts, palette, spacing } from '@/theme';
 
@@ -24,6 +24,7 @@ export default function Discover() {
   const [matched, setMatched] = useState<PublicProfile | null>(null);
   const [opened, setOpened] = useState<PublicProfile | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const deckRef = useRef<SwipeDeckHandle>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -46,6 +47,16 @@ export default function Discover() {
     load();
   }, [load]);
 
+  const onRewind = useCallback(async () => {
+    try {
+      const profile = await matchesApi.rewind();
+      deckRef.current?.rewind(profile);
+    } catch (err: any) {
+      if (err?.response?.status === 402) router.push('/premium');
+      else if (err?.response?.status === 404) Alert.alert('Nothing to rewind', 'Swipe on someone first.');
+    }
+  }, [router]);
+
   const onBoost = useCallback(async () => {
     try {
       await matchesApi.boost();
@@ -66,7 +77,7 @@ export default function Discover() {
       }
     } catch (err: any) {
       if (err?.response?.status === 429) {
-        setNotice('Daily like limit reached on the free tier. Upgrade to keep going.');
+        setNotice(err?.response?.data?.detail ?? 'You have reached your like limit for now.');
       }
     }
   }, []);
@@ -100,7 +111,7 @@ export default function Discover() {
             </Pressable>
           </View>
         ) : (
-          <SwipeDeck profiles={profiles} onDecision={onDecision} onOpen={setOpened} onBoost={onBoost} />
+          <SwipeDeck ref={deckRef} profiles={profiles} onDecision={onDecision} onOpen={setOpened} onBoost={onBoost} onRewind={onRewind} />
         )}
       </View>
 
