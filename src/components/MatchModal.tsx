@@ -10,9 +10,11 @@ import { fonts, palette, spacing } from '@/theme';
 export function MatchModal({
   profile,
   onClose,
+  onMessage,
 }: {
   profile: PublicProfile | null;
   onClose: () => void;
+  onMessage?: () => void;
 }) {
   const photo = profile?.photos?.find((p) => p.is_primary)?.cdn_url ?? profile?.photos?.[0]?.cdn_url;
 
@@ -28,7 +30,7 @@ export function MatchModal({
         {photo ? <Image source={{ uri: photo }} style={styles.avatar} contentFit="cover" /> : null}
 
         <View style={styles.actions}>
-          <Button label="Send a hello" variant="secondary" onPress={onClose} />
+          <Button label="Send a hello" variant="secondary" onPress={onMessage ?? onClose} />
           <Button label="Keep browsing" variant="outline" onPress={onClose} style={{ marginTop: spacing.md }} />
         </View>
 

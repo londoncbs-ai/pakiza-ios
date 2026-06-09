@@ -3,12 +3,14 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useS
 import { authApi } from '@/api/auth';
 import { setUnauthorizedHandler } from '@/api/client';
 import { tokenStore } from '@/lib/storage';
+import { jwtSub } from '@/lib/jwt';
 import type { TokenResponse } from '@/api/types';
 
 type Status = 'loading' | 'signedOut' | 'signedIn';
 
 interface AuthContextValue {
   status: Status;
+  userId: string | null;
   signIn: (tokens: TokenResponse) => Promise<void>;
   signOut: () => Promise<void>;
 }
@@ -17,17 +19,20 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [status, setStatus] = useState<Status>('loading');
+  const [userId, setUserId] = useState<string | null>(null);
 
   // Restore session on cold start.
   useEffect(() => {
     (async () => {
       const token = await tokenStore.getAccess();
+      setUserId(jwtSub(token));
       setStatus(token ? 'signedIn' : 'signedOut');
     })();
   }, []);
 
   const signIn = useCallback(async (tokens: TokenResponse) => {
     await tokenStore.save(tokens.access_token, tokens.refresh_token);
+    setUserId(jwtSub(tokens.access_token));
     setStatus('signedIn');
   }, []);
 
@@ -41,6 +46,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     }
     await tokenStore.clear();
+    setUserId(null);
     setStatus('signedOut');
   }, []);
 
@@ -50,7 +56,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => setUnauthorizedHandler(null);
   }, []);
 
-  const value = useMemo(() => ({ status, signIn, signOut }), [status, signIn, signOut]);
+  const value = useMemo(() => ({ status, userId, signIn, signOut }), [status, userId, signIn, signOut]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 

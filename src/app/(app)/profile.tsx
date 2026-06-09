@@ -173,7 +173,11 @@ export default function ProfileTab() {
           <View style={styles.card}>
             <SettingRow icon="options-outline" label="Partner preferences" onPress={() => setPrefsOpen(true)} />
             <View style={styles.divider} />
+            <SettingRow icon="diamond-outline" label="Pakiza Premium" onPress={() => router.push('/premium')} />
+            <View style={styles.divider} />
             <SettingRow icon="shield-checkmark-outline" label="Verify identity" onPress={() => router.push('/(onboarding)/id-verify')} />
+            <View style={styles.divider} />
+            <SettingRow icon="lock-closed-outline" label="Change password" onPress={() => router.push('/change-password')} />
             <View style={styles.divider} />
             <SettingRow icon="log-out-outline" label="Sign out" danger onPress={confirmSignOut} />
           </View>

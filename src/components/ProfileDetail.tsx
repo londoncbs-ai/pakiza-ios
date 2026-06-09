@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import type { PublicProfile } from '@/api/types';
 import { DetailRow } from './DetailRow';
+import { SafetySheet } from './SafetySheet';
 import { label, titleCase } from '@/lib/format';
 import { colors, fonts, palette, radii, shadow, spacing } from '@/theme';
 
@@ -29,6 +30,7 @@ export function ProfileDetail({
     (a, b) => Number(b.is_primary) - Number(a.is_primary) || a.order_index - b.order_index
   );
   const [active, setActive] = useState(0);
+  const [safetyOpen, setSafetyOpen] = useState(false);
   const hero = photos[active]?.cdn_url;
 
   const faith = [label.religion(profile.religion), profile.denomination].filter(Boolean).join(' · ');
@@ -54,8 +56,17 @@ export function ProfileDetail({
           <Pressable onPress={onClose} hitSlop={12} style={[styles.close, { top: insets.top + 8 }]}>
             <Ionicons name="chevron-down" size={26} color={palette.cream} />
           </Pressable>
+          <Pressable onPress={() => setSafetyOpen(true)} hitSlop={12} style={[styles.kebab, { top: insets.top + 8 }]}>
+            <Ionicons name="ellipsis-horizontal" size={22} color={palette.cream} />
+          </Pressable>
 
           <View style={styles.heroInfo}>
+            {profile.compatibility != null ? (
+              <View style={styles.matchPill}>
+                <Ionicons name="sparkles" size={13} color={palette.ink} />
+                <Text style={styles.matchPillText}>{profile.compatibility}% match</Text>
+              </View>
+            ) : null}
             <Text style={styles.name}>
               {profile.display_name}
               {profile.age ? <Text style={styles.age}>, {profile.age}</Text> : null}
@@ -123,6 +134,14 @@ export function ProfileDetail({
           </Pressable>
         </View>
       ) : null}
+
+      <SafetySheet
+        userId={profile.user_id}
+        name={profile.display_name}
+        visible={safetyOpen}
+        onClose={() => setSafetyOpen(false)}
+        onActioned={onClose}
+      />
     </View>
   );
 }
@@ -142,7 +161,29 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  kebab: {
+    position: 'absolute',
+    right: spacing.lg + 46,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(26,16,18,0.4)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   heroInfo: { padding: spacing.xl },
+  matchPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    alignSelf: 'flex-start',
+    backgroundColor: palette.gold,
+    paddingHorizontal: 11,
+    paddingVertical: 5,
+    borderRadius: 999,
+    marginBottom: 10,
+  },
+  matchPillText: { fontFamily: fonts.bodySemibold, fontSize: 12.5, color: palette.ink },
   name: { fontFamily: fonts.display, fontSize: 42, color: palette.white },
   age: { fontFamily: fonts.display, fontSize: 36, color: palette.cream },
   locRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 4 },

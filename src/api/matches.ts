@@ -17,4 +17,8 @@ export const matchesApi = {
       .get<MatchSummary[]>('/matches', { params: { page, page_size: pageSize } })
       .then((r) => r.data);
   },
+
+  unmatch(matchId: string) {
+    return api.delete(`/matches/${matchId}`).then((r) => r.data);
+  },
 };

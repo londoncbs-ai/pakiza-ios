@@ -77,6 +77,7 @@ export interface PublicProfile {
   bio: string | null;
   photos: Photo[];
   profile_complete_pct: number;
+  compatibility: number | null; // 0–100, set by the discovery feed (matching algorithm)
 }
 
 /** Own full profile — ProfileResponse (includes private fields). */
@@ -130,6 +131,67 @@ export interface MatchSummary {
   compatibility_score: number | null;
   profile: PublicProfile;
   conversation_id: string | null;
+}
+
+export type SubscriptionPlan = 'free' | 'premium' | 'gold';
+export type SubscriptionStore = 'app_store' | 'play_store' | 'stripe' | 'promo';
+
+export interface Subscription {
+  id: string;
+  plan: SubscriptionPlan;
+  status: string;
+  starts_at: string;
+  expires_at: string | null;
+  auto_renews: boolean;
+  daily_like_limit: number | null;
+  boosts_remaining: number;
+  can_see_who_liked: boolean;
+}
+
+export type NotificationType =
+  | 'match'
+  | 'new_message'
+  | 'like'
+  | 'superlike'
+  | 'profile_view'
+  | 'wali_request'
+  | 'system'
+  | 'moderation';
+
+export interface AppNotification {
+  id: string;
+  type: NotificationType;
+  title: string;
+  body: string;
+  payload: Record<string, any> | null;
+  is_read: boolean;
+  created_at: string;
+}
+
+export type MessageType = 'text' | 'voice' | 'image' | 'system' | 'wali';
+
+export interface ChatMessage {
+  id: string;
+  conversation_id: string;
+  sender_id: string;
+  type: MessageType;
+  content: string | null;
+  media_url: string | null;
+  media_duration_secs: number | null;
+  is_read: boolean;
+  is_delivered: boolean;
+  sent_at: string;
+  deleted_at: string | null;
+}
+
+export interface Conversation {
+  id: string;
+  match_id: string;
+  is_active: boolean;
+  last_message_at: string | null;
+  other_profile: PublicProfile;
+  unread_count: number;
+  wali_id: string | null;
 }
 
 export interface CreateProfileInput {

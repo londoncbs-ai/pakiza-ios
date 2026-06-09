@@ -1,8 +1,8 @@
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 
 import { errorMessage } from '@/api/client';
 import { matchesApi } from '@/api/matches';
@@ -11,6 +11,7 @@ import { fonts, palette, shadow, spacing } from '@/theme';
 
 export default function Matches() {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const [matches, setMatches] = useState<MatchSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -57,8 +58,16 @@ export default function Matches() {
           renderItem={({ item }) => {
             const photo =
               item.profile.photos?.find((p) => p.is_primary)?.cdn_url ?? item.profile.photos?.[0]?.cdn_url;
+            const openChat = () => {
+              if (item.conversation_id) {
+                router.push({
+                  pathname: '/chat/[id]',
+                  params: { id: item.conversation_id, name: item.profile.display_name },
+                });
+              }
+            };
             return (
-              <View style={styles.card}>
+              <Pressable style={styles.card} onPress={openChat}>
                 {photo ? (
                   <Image source={{ uri: photo }} style={styles.avatar} contentFit="cover" />
                 ) : (
@@ -76,7 +85,7 @@ export default function Matches() {
                   </Text>
                 </View>
                 <Text style={styles.hello}>Say hello →</Text>
-              </View>
+              </Pressable>
             );
           }}
         />

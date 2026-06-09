@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 
 import { errorMessage } from '@/api/client';
@@ -65,6 +66,9 @@ export default function Discover() {
       <View style={styles.header}>
         <Wordmark size={30} color={palette.burgundy} />
         <Text style={styles.tagline}>where love finds purpose</Text>
+        <Pressable onPress={() => router.push('/notifications')} hitSlop={10} style={styles.bell}>
+          <Ionicons name="notifications-outline" size={24} color={palette.burgundy} />
+        </Pressable>
       </View>
 
       {notice ? (
@@ -94,7 +98,14 @@ export default function Discover() {
         {opened ? <ProfileDetail profile={opened} onClose={() => setOpened(null)} /> : null}
       </Modal>
 
-      <MatchModal profile={matched} onClose={() => setMatched(null)} />
+      <MatchModal
+        profile={matched}
+        onClose={() => setMatched(null)}
+        onMessage={() => {
+          setMatched(null);
+          router.push('/(app)/messages');
+        }}
+      />
     </View>
   );
 }
@@ -103,6 +114,7 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: palette.cream },
   header: { alignItems: 'center', paddingBottom: spacing.sm },
   tagline: { fontFamily: fonts.body, fontSize: 12, color: palette.muted, letterSpacing: 1, marginTop: -2 },
+  bell: { position: 'absolute', right: spacing.lg, top: 0 },
   body: { flex: 1, paddingHorizontal: spacing.lg, paddingTop: spacing.sm },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   errorText: {

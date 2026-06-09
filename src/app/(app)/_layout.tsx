@@ -41,6 +41,15 @@ export default function AppTabsLayout() {
         }}
       />
       <Tabs.Screen
+        name="messages"
+        options={{
+          title: 'Messages',
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? 'chatbubble' : 'chatbubble-outline'} size={21} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="profile"
         options={{
           title: 'Profile',

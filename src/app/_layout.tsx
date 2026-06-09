@@ -47,6 +47,10 @@ function RootNavigator() {
       <Stack.Screen name="(auth)" />
       <Stack.Screen name="(onboarding)" />
       <Stack.Screen name="(app)" />
+      <Stack.Screen name="chat/[id]" />
+      <Stack.Screen name="notifications" />
+      <Stack.Screen name="premium" />
+      <Stack.Screen name="change-password" />
     </Stack>
   );
 }

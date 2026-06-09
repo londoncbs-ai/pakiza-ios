@@ -38,6 +38,13 @@ export function SwipeCard({ profile }: { profile: PublicProfile }) {
         </View>
       ) : null}
 
+      {profile.compatibility != null ? (
+        <View style={styles.matchChip}>
+          <Text style={styles.matchPct}>{profile.compatibility}%</Text>
+          <Text style={styles.matchLabel}>match</Text>
+        </View>
+      ) : null}
+
       <View style={styles.info}>
         <Text style={styles.name}>
           {profile.display_name}
@@ -74,6 +81,20 @@ const styles = StyleSheet.create({
     borderRadius: radii.pill,
   },
   faithText: { fontFamily: fonts.bodySemibold, fontSize: 12.5, color: palette.ink, letterSpacing: 0.3 },
+  matchChip: {
+    position: 'absolute',
+    top: 14,
+    right: 14,
+    alignItems: 'center',
+    backgroundColor: 'rgba(61,0,16,0.55)',
+    borderColor: palette.gold,
+    borderWidth: 1.5,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: radii.pill,
+  },
+  matchPct: { fontFamily: fonts.bodySemibold, fontSize: 15, color: palette.goldSoft, lineHeight: 17 },
+  matchLabel: { fontFamily: fonts.body, fontSize: 9.5, color: 'rgba(245,240,230,0.8)', letterSpacing: 1, textTransform: 'uppercase' },
   info: { position: 'absolute', left: 20, right: 20, bottom: 22 },
   name: { fontFamily: fonts.display, fontSize: 38, color: palette.white, lineHeight: 42 },
   age: { fontFamily: fonts.display, fontSize: 32, color: palette.cream },
