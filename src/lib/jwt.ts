@@ -1,4 +1,4 @@
-/** Minimal, unverified JWT payload decode — only used to read `sub` (user id). */
+/** Minimal, unverified JWT payload decode - only used to read `sub` (user id). */
 export function jwtSub(token: string | null): string | null {
   if (!token) return null;
   try {

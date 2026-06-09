@@ -53,10 +53,10 @@ export interface Photo {
   order_index: number;
 }
 
-/** Discover feed / match card — PublicProfileResponse. */
+/** Discover feed / match card - PublicProfileResponse. */
 export interface PublicProfile {
   id: string; // profile id
-  user_id: string; // the person's user id — used to like/pass
+  user_id: string; // the person's user id - used to like/pass
   display_name: string;
   age: number | null;
   city: string | null;
@@ -77,10 +77,10 @@ export interface PublicProfile {
   bio: string | null;
   photos: Photo[];
   profile_complete_pct: number;
-  compatibility: number | null; // 0–100, set by the discovery feed (matching algorithm)
+  compatibility: number | null; // 0-100, set by the discovery feed (matching algorithm)
 }
 
-/** Own full profile — ProfileResponse (includes private fields). */
+/** Own full profile - ProfileResponse (includes private fields). */
 export interface MyProfile extends PublicProfile {
   user_id: string;
   date_of_birth: string;
@@ -99,7 +99,7 @@ export interface MyProfile extends PublicProfile {
   incognito_mode: boolean;
 }
 
-/** Partner preferences — drives the matching algorithm. CSV fields hold comma-separated enum values. */
+/** Partner preferences - drives the matching algorithm. CSV fields hold comma-separated enum values. */
 export interface PartnerPreferences {
   pref_min_age: number | null;
   pref_max_age: number | null;
@@ -204,7 +204,7 @@ export interface CreateProfileInput {
   bio?: string;
   religion?: Religion;
   denomination?: string;
-  religiosity?: number; // 1–5
+  religiosity?: number; // 1-5
   caste?: string; // caste / biradari / jati / gotra
   caste_is_visible?: boolean; // hidden from others unless true
   occupation?: string;

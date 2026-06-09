@@ -52,7 +52,7 @@ export default function IdVerify() {
           <Text style={styles.title}>Verify your identity</Text>
           <Text style={styles.subtitle}>
             A quick selfie keeps Pakiza safe and authentic. Your photo is used only to confirm
-            it’s really you — it’s never shown on your profile.
+            it’s really you. It’s never shown on your profile.
           </Text>
 
           <Pressable onPress={takeSelfie} style={styles.captureRow}>
@@ -62,7 +62,7 @@ export default function IdVerify() {
 
           <View style={styles.devNote}>
             <Ionicons name="construct-outline" size={14} color={palette.goldSoft} />
-            <Text style={styles.devText}>Dev mode — verification is optional and can be skipped.</Text>
+            <Text style={styles.devText}>Dev mode: verification is optional and can be skipped.</Text>
           </View>
         </View>
 

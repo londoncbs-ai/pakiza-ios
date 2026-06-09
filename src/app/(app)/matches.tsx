@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
+import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 
 import { errorMessage } from '@/api/client';
@@ -42,13 +43,22 @@ export default function Matches() {
         <Text style={styles.subtitle}>People you’ve both said yes to</Text>
       </View>
 
+      <Pressable style={styles.likesBanner} onPress={() => router.push('/likes')}>
+        <Ionicons name="heart-circle" size={26} color={palette.gold} />
+        <View style={{ flex: 1 }}>
+          <Text style={styles.likesTitle}>See who likes you</Text>
+          <Text style={styles.likesSub}>Skip ahead to people already interested</Text>
+        </View>
+        <Ionicons name="chevron-forward" size={20} color={palette.muted} />
+      </Pressable>
+
       {loading ? (
         <ActivityIndicator color={palette.burgundy} size="large" style={{ marginTop: 60 }} />
       ) : error ? (
         <Text style={styles.empty}>{error}</Text>
       ) : matches.length === 0 ? (
         <Text style={styles.empty}>
-          No matches yet. Keep exploring — when you and someone both say yes, they’ll appear here.
+          No matches yet. Keep exploring. When you and someone both say yes, they’ll appear here.
         </Text>
       ) : (
         <FlatList
@@ -102,6 +112,20 @@ const styles = StyleSheet.create({
   },
   title: { fontFamily: fonts.display, fontSize: 32, color: palette.burgundy },
   subtitle: { fontFamily: fonts.body, fontSize: 13.5, color: palette.muted, marginTop: -2 },
+  likesBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    backgroundColor: palette.white,
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.sm,
+    padding: spacing.md,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(199,159,94,0.5)',
+  },
+  likesTitle: { fontFamily: fonts.bodySemibold, fontSize: 15, color: palette.ink },
+  likesSub: { fontFamily: fonts.body, fontSize: 12.5, color: palette.muted, marginTop: 1 },
   empty: {
     fontFamily: fonts.body,
     color: palette.muted,

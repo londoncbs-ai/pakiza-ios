@@ -27,9 +27,10 @@ interface Props {
   onDecision: (profile: PublicProfile, action: SwipeAction) => void;
   onExhausted?: () => void;
   onOpen?: (profile: PublicProfile) => void;
+  onBoost?: () => void;
 }
 
-export function SwipeDeck({ profiles, onDecision, onExhausted, onOpen }: Props) {
+export function SwipeDeck({ profiles, onDecision, onExhausted, onOpen, onBoost }: Props) {
   const [index, setIndex] = useState(0);
   const tx = useSharedValue(0);
   const ty = useSharedValue(0);
@@ -145,6 +146,7 @@ export function SwipeDeck({ profiles, onDecision, onExhausted, onOpen }: Props) 
       </View>
 
       <View style={styles.actions}>
+        {onBoost ? <CircleButton glyph="⚡" color={palette.navy} small onPress={onBoost} /> : null}
         <CircleButton glyph="✕" color={palette.sienna} onPress={() => fling('pass')} />
         <CircleButton glyph="★" color={palette.gold} small onPress={() => fling('superlike')} />
         <CircleButton glyph="♥" color={palette.burgundy} onPress={() => fling('like')} />

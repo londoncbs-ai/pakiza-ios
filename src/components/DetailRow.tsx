@@ -10,7 +10,7 @@ interface Props {
   value?: string | null;
 }
 
-/** Renders nothing when value is empty — safe to drop a long list of these in. */
+/** Renders nothing when value is empty - safe to drop a long list of these in. */
 export function DetailRow({ icon, label, value }: Props) {
   if (!value) return null;
   return (

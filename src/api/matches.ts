@@ -1,5 +1,5 @@
 import { api } from './client';
-import type { MatchSummary, SwipeResult } from './types';
+import type { MatchSummary, PublicProfile, SwipeResult } from './types';
 
 export const matchesApi = {
   like(userId: string, superlike = false) {
@@ -20,5 +20,15 @@ export const matchesApi = {
 
   unmatch(matchId: string) {
     return api.delete(`/matches/${matchId}`).then((r) => r.data);
+  },
+
+  /** Gold feature — 402 if the user isn't Gold. */
+  likesReceived() {
+    return api.get<PublicProfile[]>('/matches/likes-received').then((r) => r.data);
+  },
+
+  /** Premium feature — 402 if no boosts remaining. */
+  boost() {
+    return api.post('/matches/boost').then((r) => r.data);
   },
 };

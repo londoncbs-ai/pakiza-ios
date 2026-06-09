@@ -1,5 +1,5 @@
 /**
- * Pakiza brand palette — burgundy + gold, warm and editorial.
+ * Pakiza brand palette - burgundy + gold, warm and editorial.
  * Mirrors the Visual Identity spec.
  */
 export const palette = {

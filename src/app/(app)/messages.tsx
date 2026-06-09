@@ -83,7 +83,7 @@ export default function Messages() {
                 <View style={styles.body}>
                   <Text style={styles.name}>{item.other_profile.display_name}</Text>
                   <Text style={styles.preview} numberOfLines={1}>
-                    {item.last_message_at ? 'Tap to continue your conversation' : 'New match — say salaam 👋'}
+                    {item.last_message_at ? 'Tap to continue your conversation' : 'New match. Say salaam 👋'}
                   </Text>
                 </View>
                 <View style={styles.meta}>

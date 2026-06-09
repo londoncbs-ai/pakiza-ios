@@ -37,7 +37,7 @@ function RootNavigator() {
       // The (app) gate forwards to onboarding/profile-setup if no profile exists yet.
       router.replace('/(app)/discover');
     }
-    // When signed-in and inside (onboarding), leave the user there — the
+    // When signed-in and inside (onboarding), leave the user there - the
     // onboarding flow itself advances to (app) when complete.
   }, [status, segments, router]);
 
@@ -51,6 +51,8 @@ function RootNavigator() {
       <Stack.Screen name="notifications" />
       <Stack.Screen name="premium" />
       <Stack.Screen name="change-password" />
+      <Stack.Screen name="likes" />
+      <Stack.Screen name="terms" />
     </Stack>
   );
 }

@@ -3,7 +3,7 @@
  *
  * In development the backend runs on your Mac at port 8000. Rather than hard-code
  * the Mac's LAN IP (which changes whenever you switch network / DHCP renews), we
- * derive it from the host Expo is already serving the app from — that host IS your
+ * derive it from the host Expo is already serving the app from - that host IS your
  * Mac on the LAN, so the API and Metro always share the same address.
  *
  * Resolution order:
@@ -29,7 +29,7 @@ function hostFromExpo(): string | null {
   ];
   for (const c of candidates) {
     const host = typeof c === 'string' ? c.split(':')[0] : null;
-    // Only trust a real LAN IPv4 — reject localhost and tunnel domains
+    // Only trust a real LAN IPv4 - reject localhost and tunnel domains
     // (e.g. *.exp.direct), which can't reach the backend on :8000.
     if (host && IPV4.test(host) && host !== '127.0.0.1') return host;
   }
@@ -49,5 +49,5 @@ function resolveBaseUrl(): string {
 export const API_BASE_URL = resolveBaseUrl();
 export const API_V1 = `${API_BASE_URL}/v1`;
 
-// Visible in the Metro/Expo terminal logs — confirms which host the app is calling.
+// Visible in the Metro/Expo terminal logs - confirms which host the app is calling.
 console.log('[Pakiza] API base URL →', API_BASE_URL);

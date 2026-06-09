@@ -8,10 +8,13 @@
     "scheme": "pakiza",
     "userInterfaceStyle": "light",
     "backgroundColor": "#800020",
+    "runtimeVersion": { "policy": "appVersion" },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "app.pakiza.mobile"
     },
     "android": {
+      "package": "app.pakiza.mobile",
       "adaptiveIcon": {
         "backgroundColor": "#800020",
         "foregroundImage": "./assets/images/android-icon-foreground.png",

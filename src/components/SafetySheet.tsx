@@ -68,7 +68,7 @@ export function SafetySheet({
       await safetyApi.report(userId, reason);
       onClose();
       reset();
-      Alert.alert('Report submitted', 'Thank you — our team will review this profile.');
+      Alert.alert('Report submitted', 'Thank you. Our team will review this profile.');
       onActioned?.();
     } catch (err) {
       Alert.alert('Could not report', errorMessage(err));

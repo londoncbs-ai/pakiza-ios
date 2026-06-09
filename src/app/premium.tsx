@@ -8,6 +8,7 @@ import { errorMessage } from '@/api/client';
 import { subscriptionsApi } from '@/api/subscriptions';
 import type { Subscription, SubscriptionPlan } from '@/api/types';
 import { Button } from '@/components/Button';
+import { CheckoutSheet } from '@/components/CheckoutSheet';
 import { fonts, palette, radii, shadow, spacing } from '@/theme';
 
 const PLANS: { plan: SubscriptionPlan; name: string; price: string; perks: string[]; highlight?: boolean }[] = [
@@ -31,7 +32,7 @@ export default function Premium() {
   const router = useRouter();
   const [sub, setSub] = useState<Subscription | null>(null);
   const [loading, setLoading] = useState(true);
-  const [busy, setBusy] = useState<SubscriptionPlan | null>(null);
+  const [checkout, setCheckout] = useState<{ plan: SubscriptionPlan; name: string } | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -48,19 +49,6 @@ export default function Premium() {
       load();
     }, [load])
   );
-
-  const purchase = async (plan: SubscriptionPlan) => {
-    setBusy(plan);
-    try {
-      const updated = await subscriptionsApi.purchase(plan);
-      setSub(updated);
-      Alert.alert('Welcome to Pakiza ' + plan[0].toUpperCase() + plan.slice(1), 'Your premium features are now active.');
-    } catch (err) {
-      Alert.alert('Purchase failed', errorMessage(err));
-    } finally {
-      setBusy(null);
-    }
-  };
 
   const cancel = () => {
     Alert.alert('Cancel auto-renewal?', 'You’ll keep your benefits until the period ends.', [
@@ -94,7 +82,7 @@ export default function Premium() {
 
       <ScrollView contentContainerStyle={{ padding: spacing.lg, paddingBottom: insets.bottom + spacing.xl }}>
         <Text style={styles.lead}>Invest in finding the one.</Text>
-        <Text style={styles.sub}>Premium members connect with intention — more visibility, more meaningful matches.</Text>
+        <Text style={styles.sub}>Premium members connect with intention: more visibility, and more meaningful matches.</Text>
 
         {loading ? (
           <ActivityIndicator color={palette.gold} size="large" style={{ marginTop: 40 }} />
@@ -128,8 +116,7 @@ export default function Premium() {
                     label={isCurrent ? 'Current plan' : `Get ${p.name}`}
                     variant={p.highlight ? 'secondary' : 'outline'}
                     disabled={isCurrent}
-                    loading={busy === p.plan}
-                    onPress={() => purchase(p.plan)}
+                    onPress={() => setCheckout({ plan: p.plan, name: p.name })}
                     style={{ marginTop: spacing.md }}
                   />
                 </View>
@@ -142,10 +129,22 @@ export default function Premium() {
               </Pressable>
             ) : null}
 
-            <Text style={styles.disclaimer}>Dev mode — purchases are simulated (no real charge).</Text>
+            <Text style={styles.disclaimer}>Dev mode: purchases are simulated (no real charge).</Text>
           </>
         )}
       </ScrollView>
+
+      <CheckoutSheet
+        plan={checkout?.plan ?? null}
+        planName={checkout?.name ?? ''}
+        visible={!!checkout}
+        onClose={() => setCheckout(null)}
+        onPurchased={(s) => {
+          setSub(s);
+          setCheckout(null);
+          Alert.alert('Welcome to Pakiza ' + s.plan.toUpperCase(), 'Your benefits are now active.');
+        }}
+      />
     </View>
   );
 }

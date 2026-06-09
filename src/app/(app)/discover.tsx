@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -46,6 +46,16 @@ export default function Discover() {
     load();
   }, [load]);
 
+  const onBoost = useCallback(async () => {
+    try {
+      await matchesApi.boost();
+      Alert.alert('You are boosted', 'Your profile is shown first for the next 30 minutes.');
+      load();
+    } catch (err: any) {
+      if (err?.response?.status === 402) router.push('/premium');
+    }
+  }, [load, router]);
+
   const onDecision = useCallback(async (profile: PublicProfile, action: SwipeAction) => {
     try {
       if (action === 'pass') {
@@ -72,8 +82,8 @@ export default function Discover() {
       </View>
 
       {notice ? (
-        <Pressable onPress={() => setNotice(null)} style={styles.notice}>
-          <Text style={styles.noticeText}>{notice}</Text>
+        <Pressable onPress={() => { setNotice(null); router.push('/premium'); }} style={styles.notice}>
+          <Text style={styles.noticeText}>{notice}  Tap to upgrade.</Text>
         </Pressable>
       ) : null}
 
@@ -90,7 +100,7 @@ export default function Discover() {
             </Pressable>
           </View>
         ) : (
-          <SwipeDeck profiles={profiles} onDecision={onDecision} onOpen={setOpened} />
+          <SwipeDeck profiles={profiles} onDecision={onDecision} onOpen={setOpened} onBoost={onBoost} />
         )}
       </View>
 

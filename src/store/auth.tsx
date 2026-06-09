@@ -42,7 +42,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         await authApi.logout(refresh);
       } catch {
-        // ignore — clearing local tokens below is what matters
+        // ignore - clearing local tokens below is what matters
       }
     }
     await tokenStore.clear();
