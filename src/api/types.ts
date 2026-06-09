@@ -125,6 +125,15 @@ export interface SwipeResult {
   matched_profile: PublicProfile | null;
 }
 
+export interface Quota {
+  is_premium: boolean;
+  likes_remaining: number | null; // null = unlimited (premium)
+  likes_limit: number | null;
+  likes_reset_seconds: number;
+  active_matches: number;
+  match_limit: number | null; // null = unlimited (premium)
+}
+
 export interface MatchSummary {
   id: string;
   matched_at: string;

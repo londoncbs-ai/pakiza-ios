@@ -182,6 +182,16 @@ export default function ProfileTab() {
             <SettingRow icon="log-out-outline" label="Sign out" danger onPress={confirmSignOut} />
           </View>
         </Section>
+
+        <Section title="Policies">
+          <View style={styles.card}>
+            <SettingRow icon="document-text-outline" label="Terms & billing" onPress={() => router.push('/terms')} />
+            <View style={styles.divider} />
+            <SettingRow icon="shield-outline" label="Privacy Policy" onPress={() => router.push('/privacy')} />
+            <View style={styles.divider} />
+            <SettingRow icon="people-circle-outline" label="Community Guidelines" onPress={() => router.push('/community')} />
+          </View>
+        </Section>
       </ScrollView>
 
       {profile ? (

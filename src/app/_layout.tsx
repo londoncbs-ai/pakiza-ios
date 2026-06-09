@@ -53,6 +53,8 @@ function RootNavigator() {
       <Stack.Screen name="change-password" />
       <Stack.Screen name="likes" />
       <Stack.Screen name="terms" />
+      <Stack.Screen name="privacy" />
+      <Stack.Screen name="community" />
     </Stack>
   );
 }

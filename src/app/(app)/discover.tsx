@@ -7,7 +7,7 @@ import { useRouter } from 'expo-router';
 import { errorMessage } from '@/api/client';
 import { matchesApi } from '@/api/matches';
 import { profilesApi } from '@/api/profiles';
-import type { PublicProfile } from '@/api/types';
+import type { PublicProfile, Quota } from '@/api/types';
 import { MatchModal } from '@/components/MatchModal';
 import { ProfileDetail } from '@/components/ProfileDetail';
 import { SwipeDeck, type SwipeAction, type SwipeDeckHandle } from '@/components/SwipeDeck';
@@ -24,7 +24,12 @@ export default function Discover() {
   const [matched, setMatched] = useState<PublicProfile | null>(null);
   const [opened, setOpened] = useState<PublicProfile | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [quota, setQuota] = useState<Quota | null>(null);
   const deckRef = useRef<SwipeDeckHandle>(null);
+
+  const loadQuota = useCallback(async () => {
+    setQuota(await matchesApi.quota().catch(() => null));
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -45,7 +50,8 @@ export default function Discover() {
 
   useEffect(() => {
     load();
-  }, [load]);
+    loadQuota();
+  }, [load, loadQuota]);
 
   const onRewind = useCallback(async () => {
     try {
@@ -76,17 +82,37 @@ export default function Discover() {
         if (res.is_matched) setMatched(res.matched_profile ?? profile);
       }
     } catch (err: any) {
-      if (err?.response?.status === 429) {
-        setNotice(err?.response?.data?.detail ?? 'You have reached your like limit for now.');
+      const sc = err?.response?.status;
+      if (sc === 429 || sc === 403) {
+        setNotice(err?.response?.data?.detail ?? 'You have reached your limit for now.');
       }
+    } finally {
+      loadQuota();
     }
-  }, []);
+  }, [loadQuota]);
 
   return (
     <View style={[styles.root, { paddingTop: insets.top + spacing.sm }]}>
       <View style={styles.header}>
         <Wordmark size={30} color={palette.burgundy} />
         <Text style={styles.tagline}>where love finds purpose</Text>
+
+        {quota && !quota.is_premium ? (
+          <View style={styles.quotaRow}>
+            <View style={styles.quotaPill}>
+              <Ionicons name="heart" size={12} color={palette.burgundy} />
+              <Text style={styles.quotaText}>{quota.likes_remaining ?? 0} likes left</Text>
+            </View>
+            <Pressable
+              style={styles.quotaPill}
+              onPress={() => router.push('/(app)/matches')}
+            >
+              <Ionicons name="people" size={12} color={palette.burgundy} />
+              <Text style={styles.quotaText}>{quota.active_matches}/{quota.match_limit} matches</Text>
+            </Pressable>
+          </View>
+        ) : null}
+
         <Pressable onPress={() => router.push('/notifications')} hitSlop={10} style={styles.bell}>
           <Ionicons name="notifications-outline" size={24} color={palette.burgundy} />
         </Pressable>
@@ -136,6 +162,19 @@ const styles = StyleSheet.create({
   header: { alignItems: 'center', paddingBottom: spacing.sm },
   tagline: { fontFamily: fonts.body, fontSize: 12, color: palette.muted, letterSpacing: 1, marginTop: -2 },
   bell: { position: 'absolute', right: spacing.lg, top: 0 },
+  quotaRow: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm },
+  quotaPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: palette.white,
+    borderWidth: 1,
+    borderColor: palette.line,
+    paddingHorizontal: 11,
+    paddingVertical: 5,
+    borderRadius: 999,
+  },
+  quotaText: { fontFamily: fonts.bodyMedium, fontSize: 12, color: palette.ink },
   body: { flex: 1, paddingHorizontal: spacing.lg, paddingTop: spacing.sm },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   errorText: {

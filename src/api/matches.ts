@@ -1,5 +1,5 @@
 import { api } from './client';
-import type { MatchSummary, PublicProfile, SwipeResult } from './types';
+import type { MatchSummary, PublicProfile, Quota, SwipeResult } from './types';
 
 export const matchesApi = {
   like(userId: string, superlike = false) {
@@ -35,5 +35,10 @@ export const matchesApi = {
   /** Premium feature — undo last swipe; returns the profile to show again. 402 if free. */
   rewind() {
     return api.post<PublicProfile>('/matches/rewind').then((r) => r.data);
+  },
+
+  /** Remaining likes and matches for the current user. */
+  quota() {
+    return api.get<Quota>('/matches/quota').then((r) => r.data);
   },
 };
