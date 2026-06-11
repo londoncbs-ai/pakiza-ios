@@ -12,12 +12,12 @@ import { EmptyState } from '@/components/EmptyState';
 import { ErrorState } from '@/components/ErrorState';
 import { SkeletonList } from '@/components/Skeleton';
 import { Text } from '@/components/Text';
-import { fonts, palette, shadow, spacing, useTheme } from '@/theme';
+import { fonts, palette, radii, shadow, spacing, useTheme } from '@/theme';
 
 export default function Matches() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { c } = useTheme();
+  const { c, isDark } = useTheme();
   const [matches, setMatches] = useState<MatchSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -50,17 +50,22 @@ export default function Matches() {
   return (
     <View style={[styles.root, { backgroundColor: c.bg, paddingTop: insets.top + spacing.sm }]}>
       <View style={styles.header}>
-        <Text variant="title" tone="burgundy">Matches</Text>
+        <Text variant="title" tone="accent">Matches</Text>
         <Text variant="footnote" tone="muted">People you’ve both said yes to</Text>
       </View>
 
-      <Pressable style={[styles.likesBanner, { backgroundColor: c.surface, borderColor: palette.gold }]} onPress={() => router.push('/likes')}>
-        <Ionicons name="heart-circle" size={26} color={palette.gold} />
-        <View style={{ flex: 1 }}>
-          <Text style={styles.likesTitle}>See who likes you</Text>
-          <Text style={styles.likesSub}>Skip ahead to people already interested</Text>
+      <Pressable
+        style={[styles.likesBanner, { backgroundColor: c.surface, borderColor: c.border }, !isDark && shadow.soft]}
+        onPress={() => router.push('/likes')}
+      >
+        <View style={[styles.likesIcon, { backgroundColor: c.accentFaint }]}>
+          <Ionicons name="heart" size={20} color={c.accent} />
         </View>
-        <Ionicons name="chevron-forward" size={20} color={palette.muted} />
+        <View style={{ flex: 1 }}>
+          <Text variant="callout" tone="default" style={styles.likesTitle}>See who likes you</Text>
+          <Text variant="footnote" tone="muted">Skip ahead to people already interested</Text>
+        </View>
+        <Ionicons name="chevron-forward" size={20} color={c.textSubtle} />
       </Pressable>
 
       {loading ? (
@@ -77,7 +82,7 @@ export default function Matches() {
         <FlatList
           data={matches}
           keyExtractor={(m) => m.id}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={palette.burgundy} />}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.accent} />}
           contentContainerStyle={{ padding: spacing.lg, paddingBottom: insets.bottom + spacing.xl }}
           renderItem={({ item }) => {
             const photo =
@@ -91,24 +96,27 @@ export default function Matches() {
               }
             };
             return (
-              <Pressable style={[styles.card, { backgroundColor: c.surface }]} onPress={openChat}>
+              <Pressable
+                style={[styles.card, { backgroundColor: c.surface, borderColor: c.border }, !isDark && shadow.soft]}
+                onPress={openChat}
+              >
                 {photo ? (
                   <Image source={{ uri: photo }} style={styles.avatar} contentFit="cover" />
                 ) : (
-                  <View style={[styles.avatar, styles.avatarPlaceholder]}>
-                    <Text style={styles.avatarInitial}>{item.profile.display_name[0]}</Text>
+                  <View style={[styles.avatar, styles.avatarPlaceholder, { backgroundColor: c.surfaceAlt }]}>
+                    <Text style={styles.avatarInitial} tone="accent">{item.profile.display_name[0]}</Text>
                   </View>
                 )}
                 <View style={styles.cardBody}>
-                  <Text style={styles.cardName}>
+                  <Text variant="subhead" tone="default" style={styles.cardName}>
                     {item.profile.display_name}
                     {item.profile.age ? `, ${item.profile.age}` : ''}
                   </Text>
-                  <Text style={styles.cardMeta} numberOfLines={1}>
+                  <Text variant="footnote" tone="muted" style={styles.cardMeta} numberOfLines={1}>
                     {[item.profile.city, item.profile.occupation].filter(Boolean).join('  ·  ') || 'New match'}
                   </Text>
                 </View>
-                <Text style={styles.hello}>Say hello →</Text>
+                <Text variant="footnote" tone="accent" style={styles.hello}>Say hello →</Text>
               </Pressable>
             );
           }}
@@ -119,7 +127,7 @@ export default function Matches() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: palette.cream },
+  root: { flex: 1 },
   header: {
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.md,
@@ -128,30 +136,33 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
-    backgroundColor: palette.white,
     marginHorizontal: spacing.lg,
     marginBottom: spacing.sm,
     padding: spacing.md,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(199,159,94,0.5)',
+    borderRadius: radii.lg,
+    borderWidth: StyleSheet.hairlineWidth,
   },
-  likesTitle: { fontFamily: fonts.bodySemibold, fontSize: 15, color: palette.ink },
-  likesSub: { fontFamily: fonts.body, fontSize: 12.5, color: palette.muted, marginTop: 1 },
+  likesIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  likesTitle: { fontFamily: fonts.bodySemibold },
   card: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: palette.white,
-    borderRadius: 16,
+    borderRadius: radii.card,
+    borderWidth: StyleSheet.hairlineWidth,
     padding: spacing.md,
     marginBottom: spacing.md,
-    ...shadow.soft,
   },
   avatar: { width: 60, height: 60, borderRadius: 30 },
-  avatarPlaceholder: { backgroundColor: palette.sand, alignItems: 'center', justifyContent: 'center' },
-  avatarInitial: { fontFamily: fonts.display, fontSize: 26, color: palette.burgundy },
+  avatarPlaceholder: { alignItems: 'center', justifyContent: 'center' },
+  avatarInitial: { fontFamily: fonts.display, fontSize: 26 },
   cardBody: { flex: 1, marginLeft: spacing.md },
-  cardName: { fontFamily: fonts.displaySemibold, fontSize: 20, color: palette.ink },
-  cardMeta: { fontFamily: fonts.body, fontSize: 13.5, color: palette.muted, marginTop: 2 },
-  hello: { fontFamily: fonts.bodyMedium, fontSize: 13, color: palette.gold },
+  cardName: { fontFamily: fonts.displaySemibold },
+  cardMeta: { marginTop: 2 },
+  hello: { fontFamily: fonts.bodyMedium },
 });

@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -9,20 +9,35 @@ import { subscriptionsApi } from '@/api/subscriptions';
 import type { Subscription, SubscriptionPlan } from '@/api/types';
 import { Button } from '@/components/Button';
 import { CheckoutSheet } from '@/components/CheckoutSheet';
-import { fonts, palette, radii, shadow, spacing } from '@/theme';
+import { Screen } from '@/components/Screen';
+import { Text } from '@/components/Text';
+import { haptics } from '@/lib/haptics';
+import { palette, radii, spacing, useTheme } from '@/theme';
 
-const PLANS: { plan: SubscriptionPlan; name: string; price: string; perks: string[]; highlight?: boolean }[] = [
+const PLANS: { plan: SubscriptionPlan; name: string; price: string; period: string; tagline: string; perks: string[]; highlight?: boolean }[] = [
+  {
+    plan: 'free',
+    name: 'Free',
+    price: '£0',
+    period: '',
+    tagline: 'Start meeting people.',
+    perks: ['Daily curated profiles', 'Up to 4 matches', 'Send and receive messages'],
+  },
   {
     plan: 'premium',
     name: 'Premium',
-    price: '£14.99/mo',
+    price: '£14.99',
+    period: '/mo',
+    tagline: 'Connect with intention.',
     perks: ['Unlimited likes', 'See who you’ve matched faster', '1 monthly profile boost', 'Advanced filters'],
     highlight: true,
   },
   {
     plan: 'gold',
     name: 'Gold',
-    price: '£24.99/mo',
+    price: '£24.99',
+    period: '/mo',
+    tagline: 'Be seen first.',
     perks: ['Everything in Premium', 'See who liked you', '5 monthly boosts', 'Priority in discovery'],
   },
 ];
@@ -30,8 +45,10 @@ const PLANS: { plan: SubscriptionPlan; name: string; price: string; perks: strin
 export default function Premium() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { c, isDark } = useTheme();
   const [sub, setSub] = useState<Subscription | null>(null);
   const [loading, setLoading] = useState(true);
+  const [selected, setSelected] = useState<SubscriptionPlan>('premium');
   const [checkout, setCheckout] = useState<{ plan: SubscriptionPlan; name: string } | null>(null);
 
   const load = useCallback(async () => {
@@ -69,29 +86,47 @@ export default function Premium() {
   };
 
   const activePremium = sub && sub.plan !== 'free' && sub.status === 'active';
+  const selectedPlan = PLANS.find((p) => p.plan === selected) ?? PLANS[1];
+  const selectedIsCurrent = sub?.plan === selected && sub?.status === 'active';
+
+  const onContinue = () => {
+    if (selectedIsCurrent || selected === 'free') return;
+    haptics.light();
+    setCheckout({ plan: selectedPlan.plan, name: selectedPlan.name });
+  };
 
   return (
-    <View style={styles.root}>
-      <View style={[styles.header, { paddingTop: insets.top + 6 }]}>
-        <Pressable onPress={() => router.back()} hitSlop={12} style={{ width: 30 }}>
-          <Ionicons name="chevron-back" size={26} color={palette.cream} />
+    <Screen>
+      {/* Header */}
+      <View style={[styles.header, { paddingTop: insets.top + spacing.sm, borderBottomColor: c.border }]}>
+        <Pressable onPress={() => router.back()} hitSlop={12} style={styles.headerBtn}>
+          <Ionicons name="chevron-back" size={26} color={c.text} />
         </Pressable>
-        <Text style={styles.headerTitle}>Pakiza Premium</Text>
-        <View style={{ width: 30 }} />
+        <Text variant="subhead" tone="default">Pakiza Premium</Text>
+        <View style={styles.headerBtn} />
       </View>
 
-      <ScrollView contentContainerStyle={{ padding: spacing.lg, paddingBottom: insets.bottom + spacing.xl }}>
-        <Text style={styles.lead}>Invest in finding the one.</Text>
-        <Text style={styles.sub}>Premium members connect with intention: more visibility, and more meaningful matches.</Text>
+      <ScrollView
+        contentContainerStyle={{ padding: spacing.lg, paddingBottom: insets.bottom + 120 }}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Value prop */}
+        <View style={[styles.crest, { backgroundColor: c.accentFaint }]}>
+          <Ionicons name="heart" size={22} color={c.accent} />
+        </View>
+        <Text variant="display" tone="default" style={styles.lead}>Invest in finding the one.</Text>
+        <Text variant="callout" tone="muted" style={styles.sub}>
+          Premium members connect with intention: more visibility, and more meaningful matches.
+        </Text>
 
         {loading ? (
-          <ActivityIndicator color={palette.gold} size="large" style={{ marginTop: 40 }} />
+          <ActivityIndicator color={c.accent} size="large" style={{ marginTop: spacing.xxxl }} />
         ) : (
           <>
             {activePremium ? (
-              <View style={styles.current}>
-                <Ionicons name="ribbon" size={18} color={palette.gold} />
-                <Text style={styles.currentText}>
+              <View style={[styles.current, { backgroundColor: c.accentFaint }]}>
+                <Ionicons name="ribbon-outline" size={18} color={c.accent} />
+                <Text variant="footnote" tone="accent" style={styles.currentText}>
                   You’re on {sub!.plan.toUpperCase()}
                   {sub!.expires_at ? ` · renews ${new Date(sub!.expires_at).toLocaleDateString()}` : ''}
                 </Text>
@@ -100,39 +135,101 @@ export default function Premium() {
 
             {PLANS.map((p) => {
               const isCurrent = sub?.plan === p.plan && sub?.status === 'active';
+              const isSelected = selected === p.plan;
               return (
-                <View key={p.plan} style={[styles.card, p.highlight && styles.cardHighlight]}>
+                <Pressable
+                  key={p.plan}
+                  onPress={() => { haptics.selection(); setSelected(p.plan); }}
+                  style={({ pressed }) => [
+                    styles.card,
+                    {
+                      backgroundColor: isSelected ? c.accentFaint : c.surface,
+                      borderColor: isSelected ? c.accent : c.border,
+                      borderWidth: isSelected ? 2 : StyleSheet.hairlineWidth,
+                    },
+                    !isDark && styles.cardShadow,
+                    pressed && { opacity: 0.92 },
+                  ]}
+                >
                   <View style={styles.cardHead}>
-                    <Text style={styles.planName}>{p.name}</Text>
-                    <Text style={styles.price}>{p.price}</Text>
-                  </View>
-                  {p.perks.map((perk) => (
-                    <View key={perk} style={styles.perkRow}>
-                      <Ionicons name="checkmark-circle" size={18} color={palette.gold} />
-                      <Text style={styles.perk}>{perk}</Text>
+                    <View style={styles.cardHeadText}>
+                      <View style={styles.nameRow}>
+                        <Text variant="heading" tone="default">{p.name}</Text>
+                        {p.highlight ? (
+                          <View style={[styles.popularPill, { backgroundColor: c.accent }]}>
+                            <Text variant="label" color={c.textOnAccent} style={styles.popularText}>Popular</Text>
+                          </View>
+                        ) : null}
+                      </View>
+                      <Text variant="footnote" tone="muted" style={{ marginTop: 2 }}>{p.tagline}</Text>
                     </View>
-                  ))}
-                  <Button
-                    label={isCurrent ? 'Current plan' : `Get ${p.name}`}
-                    variant={p.highlight ? 'secondary' : 'outline'}
-                    disabled={isCurrent}
-                    onPress={() => setCheckout({ plan: p.plan, name: p.name })}
-                    style={{ marginTop: spacing.md }}
-                  />
-                </View>
+
+                    {/* Selection indicator */}
+                    <View
+                      style={[
+                        styles.radio,
+                        { borderColor: isSelected ? c.accent : c.borderStrong },
+                        isSelected && { backgroundColor: c.accent },
+                      ]}
+                    >
+                      {isSelected ? <Ionicons name="checkmark" size={15} color={c.textOnAccent} /> : null}
+                    </View>
+                  </View>
+
+                  <View style={styles.priceRow}>
+                    <Text variant="title" tone="default">{p.price}</Text>
+                    {p.period ? <Text variant="callout" tone="subtle" style={styles.period}>{p.period}</Text> : null}
+                    {isCurrent ? (
+                      <View style={[styles.currentTag, { borderColor: c.borderStrong }]}>
+                        <Text variant="label" tone="muted" style={styles.currentTagText}>Current</Text>
+                      </View>
+                    ) : null}
+                  </View>
+
+                  <View style={[styles.divider, { backgroundColor: c.border }]} />
+
+                  <View style={styles.perks}>
+                    {p.perks.map((perk) => (
+                      <View key={perk} style={styles.perkRow}>
+                        <Ionicons name="checkmark-circle" size={18} color={c.accent} />
+                        <Text variant="callout" tone="default" style={styles.perk}>{perk}</Text>
+                      </View>
+                    ))}
+                  </View>
+                </Pressable>
               );
             })}
 
             {activePremium && sub!.auto_renews ? (
-              <Pressable onPress={cancel} style={styles.cancel}>
-                <Text style={styles.cancelText}>Cancel auto-renewal</Text>
+              <Pressable onPress={cancel} style={styles.cancel} hitSlop={8}>
+                <Text variant="footnote" tone="muted">Cancel auto-renewal</Text>
               </Pressable>
             ) : null}
 
-            <Text style={styles.disclaimer}>Dev mode: purchases are simulated (no real charge).</Text>
+            <Text variant="footnote" tone="subtle" center style={styles.disclaimer}>
+              Dev mode: purchases are simulated (no real charge).
+            </Text>
           </>
         )}
       </ScrollView>
+
+      {/* Sticky CTA */}
+      {!loading ? (
+        <View style={[styles.ctaBar, { backgroundColor: c.surface, borderTopColor: c.border, paddingBottom: insets.bottom + spacing.md }]}>
+          <Button
+            label={
+              selectedIsCurrent
+                ? 'Current plan'
+                : selected === 'free'
+                  ? 'Your free plan'
+                  : `Get ${selectedPlan.name} · ${selectedPlan.price}${selectedPlan.period}`
+            }
+            variant="primary"
+            disabled={selectedIsCurrent || selected === 'free'}
+            onPress={onContinue}
+          />
+        </View>
+      ) : null}
 
       <CheckoutSheet
         plan={checkout?.plan ?? null}
@@ -145,26 +242,100 @@ export default function Premium() {
           Alert.alert('Welcome to Pakiza ' + s.plan.toUpperCase(), 'Your benefits are now active.');
         }}
       />
-    </View>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: palette.burgundyDeep },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.md, paddingBottom: spacing.md },
-  headerTitle: { fontFamily: fonts.displaySemibold, fontSize: 22, color: palette.cream },
-  lead: { fontFamily: fonts.display, fontSize: 34, color: palette.cream, marginTop: spacing.sm },
-  sub: { fontFamily: fonts.body, fontSize: 14.5, color: 'rgba(245,240,230,0.75)', lineHeight: 21, marginTop: spacing.sm, marginBottom: spacing.lg },
-  current: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: 'rgba(199,159,94,0.15)', borderRadius: 12, padding: spacing.md, marginBottom: spacing.lg },
-  currentText: { fontFamily: fonts.bodyMedium, color: palette.goldSoft, fontSize: 14 },
-  card: { backgroundColor: palette.cream, borderRadius: radii.card, padding: spacing.lg, marginBottom: spacing.lg, ...shadow.card },
-  cardHighlight: { borderWidth: 2, borderColor: palette.gold },
-  cardHead: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: spacing.md },
-  planName: { fontFamily: fonts.display, fontSize: 28, color: palette.burgundy },
-  price: { fontFamily: fonts.bodySemibold, fontSize: 17, color: palette.ink },
-  perkRow: { flexDirection: 'row', alignItems: 'center', gap: 9, marginBottom: 8 },
-  perk: { fontFamily: fonts.body, fontSize: 14.5, color: palette.ink, flex: 1 },
-  cancel: { alignItems: 'center', paddingVertical: spacing.md },
-  cancelText: { fontFamily: fonts.bodyMedium, color: 'rgba(245,240,230,0.7)', fontSize: 14 },
-  disclaimer: { fontFamily: fonts.body, fontSize: 12, color: 'rgba(245,240,230,0.45)', textAlign: 'center', marginTop: spacing.sm },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.md,
+    paddingBottom: spacing.sm,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  headerBtn: { width: 30, alignItems: 'flex-start' },
+
+  crest: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: spacing.lg,
+    marginBottom: spacing.md,
+  },
+  lead: { letterSpacing: -0.5 },
+  sub: { marginTop: spacing.sm, marginBottom: spacing.xl, lineHeight: 21 },
+
+  current: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    borderRadius: radii.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+    marginBottom: spacing.lg,
+  },
+  currentText: { flex: 1 },
+
+  card: {
+    borderRadius: radii.card,
+    padding: spacing.lg,
+    marginBottom: spacing.md,
+  },
+  cardShadow: {
+    shadowColor: '#3D0010',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 3,
+  },
+  cardHead: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md },
+  cardHeadText: { flex: 1 },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  popularPill: { borderRadius: radii.pill, paddingHorizontal: 9, paddingVertical: 3 },
+  popularText: { letterSpacing: 0.4 },
+
+  radio: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 2,
+  },
+
+  priceRow: { flexDirection: 'row', alignItems: 'baseline', gap: 2, marginTop: spacing.md },
+  period: { marginLeft: 1 },
+  currentTag: {
+    marginLeft: spacing.sm,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: radii.pill,
+    paddingHorizontal: 9,
+    paddingVertical: 3,
+    alignSelf: 'center',
+  },
+  currentTagText: { letterSpacing: 0.4 },
+
+  divider: { height: StyleSheet.hairlineWidth, marginVertical: spacing.md },
+
+  perks: { gap: spacing.sm },
+  perkRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  perk: { flex: 1 },
+
+  cancel: { alignItems: 'center', paddingVertical: spacing.md, marginTop: spacing.xs },
+  disclaimer: { marginTop: spacing.sm },
+
+  ctaBar: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
 });

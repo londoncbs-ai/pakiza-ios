@@ -7,10 +7,10 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 
 import { errorMessage } from '@/api/client';
 import { profilesApi } from '@/api/profiles';
@@ -19,8 +19,10 @@ import { Button } from './Button';
 import { MultiOptionGroup } from './MultiOptionGroup';
 import { OptionGroup } from './OptionGroup';
 import { Stepper } from './Stepper';
+import { Surface } from './Surface';
+import { Text } from './Text';
 import { TextField } from './TextField';
-import { colors, fonts, palette, spacing } from '@/theme';
+import { palette, radii, spacing, useTheme } from '@/theme';
 
 const RELIGION = [
   { label: 'Islam', value: 'islam' },
@@ -52,6 +54,7 @@ const EDUCATION = [
 
 export function PreferencesSheet({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const insets = useSafeAreaInsets();
+  const { c, isDark } = useTheme();
   const [p, setP] = useState<PartnerPreferences | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -86,18 +89,21 @@ export function PreferencesSheet({ visible, onClose }: { visible: boolean; onClo
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <View style={styles.header}>
-          <Pressable onPress={onClose} hitSlop={10}>
-            <Text style={styles.cancel}>Close</Text>
+      <KeyboardAvoidingView
+        style={[styles.root, { backgroundColor: c.bg }]}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <View style={[styles.header, { borderBottomColor: c.border }]}>
+          <Pressable onPress={onClose} hitSlop={10} style={styles.headerSide}>
+            <Text variant="callout" tone="muted">Close</Text>
           </Pressable>
-          <Text style={styles.title}>Preferences</Text>
-          <View style={{ width: 50 }} />
+          <Text variant="heading" tone="default">Preferences</Text>
+          <View style={styles.headerSide} />
         </View>
 
         {loading || !p ? (
           <View style={styles.center}>
-            <ActivityIndicator color={palette.burgundy} size="large" />
+            <ActivityIndicator color={c.accent} size="large" />
           </View>
         ) : (
           <ScrollView
@@ -105,42 +111,64 @@ export function PreferencesSheet({ visible, onClose }: { visible: boolean; onClo
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
-            <Text style={styles.hint}>These guide who you see and how we rank your matches.</Text>
-
-            <Text style={styles.section}>Age</Text>
-            <View style={styles.rangeRow}>
-              <Stepper label="Min" value={p.pref_min_age} onChange={(v) => set('pref_min_age', v)} min={18} max={80} />
-              <Stepper label="Max" value={p.pref_max_age} onChange={(v) => set('pref_max_age', v)} min={18} max={80} />
+            <View style={[styles.hintCard, { backgroundColor: c.accentFaint }]}>
+              <Ionicons name="sparkles-outline" size={18} color={c.accent} style={styles.hintIcon} />
+              <Text variant="footnote" tone="muted" style={styles.hintText}>
+                These guide who you see and how we rank your matches.
+              </Text>
             </View>
 
-            <Text style={styles.section}>Height (cm)</Text>
-            <View style={styles.rangeRow}>
-              <Stepper label="Min" value={p.pref_min_height_cm} onChange={(v) => set('pref_min_height_cm', v)} min={120} max={220} step={1} />
-              <Stepper label="Max" value={p.pref_max_height_cm} onChange={(v) => set('pref_max_height_cm', v)} min={120} max={220} step={1} />
-            </View>
+            <Section title="Age & height">
+              <Surface elevated={!isDark} style={styles.card}>
+                <View style={styles.rangeRow}>
+                  <Stepper label="Min age" value={p.pref_min_age} onChange={(v) => set('pref_min_age', v)} min={18} max={80} />
+                  <Stepper label="Max age" value={p.pref_max_age} onChange={(v) => set('pref_max_age', v)} min={18} max={80} />
+                </View>
+                <View style={[styles.rangeRow, styles.rangeRowLast]}>
+                  <Stepper label="Min height (cm)" value={p.pref_min_height_cm} onChange={(v) => set('pref_min_height_cm', v)} min={120} max={220} step={1} />
+                  <Stepper label="Max height (cm)" value={p.pref_max_height_cm} onChange={(v) => set('pref_max_height_cm', v)} min={120} max={220} step={1} />
+                </View>
+              </Surface>
+            </Section>
 
-            <Text style={styles.section}>Distance</Text>
-            <Stepper label="Within (km)" value={p.pref_max_distance_km} onChange={(v) => set('pref_max_distance_km', v)} min={5} max={500} step={5} />
+            <Section title="Distance">
+              <Surface elevated={!isDark} style={styles.card}>
+                <Stepper label="Within (km)" value={p.pref_max_distance_km} onChange={(v) => set('pref_max_distance_km', v)} min={5} max={500} step={5} />
+              </Surface>
+            </Section>
 
-            <Text style={styles.section}>Faith</Text>
-            <MultiOptionGroup label="Religion (any of)" options={RELIGION} value={p.pref_religion} onChange={(v) => set('pref_religion', v)} />
-            <TextField label="Denomination" value={p.pref_denomination ?? ''} onChangeText={(t) => set('pref_denomination', t || null)} placeholder="e.g. Sunni, Catholic" />
-            <View style={styles.rangeRow}>
-              <Stepper label="Religiosity min" value={p.pref_religiosity_min} onChange={(v) => set('pref_religiosity_min', v)} min={1} max={5} />
-              <Stepper label="Religiosity max" value={p.pref_religiosity_max} onChange={(v) => set('pref_religiosity_max', v)} min={1} max={5} />
-            </View>
+            <Section title="Faith">
+              <Surface elevated={!isDark} style={styles.card}>
+                <MultiOptionGroup label="Religion (any of)" options={RELIGION} value={p.pref_religion} onChange={(v) => set('pref_religion', v)} onDark={false} />
+                <TextField label="Denomination" value={p.pref_denomination ?? ''} onChangeText={(t) => set('pref_denomination', t || null)} placeholder="e.g. Sunni, Catholic" />
+                <View style={[styles.rangeRow, styles.rangeRowLast]}>
+                  <Stepper label="Religiosity min" value={p.pref_religiosity_min} onChange={(v) => set('pref_religiosity_min', v)} min={1} max={5} />
+                  <Stepper label="Religiosity max" value={p.pref_religiosity_max} onChange={(v) => set('pref_religiosity_max', v)} min={1} max={5} />
+                </View>
+              </Surface>
+            </Section>
 
-            <Text style={styles.section}>Background</Text>
-            <TextField label="Caste / biradari" value={p.pref_caste ?? ''} onChangeText={(t) => set('pref_caste', t || null)} placeholder="comma separated, blank = any" />
-            <TextField label="Ethnicity" value={p.pref_ethnicity ?? ''} onChangeText={(t) => set('pref_ethnicity', t || null)} placeholder="comma separated, blank = any" />
-            <TextField label="Countries (ISO codes)" value={p.pref_country_codes ?? ''} onChangeText={(t) => set('pref_country_codes', t || null)} placeholder="e.g. GB, AE, US" autoCapitalize="characters" />
-            <OptionGroup label="Minimum education" options={EDUCATION} value={p.pref_education_min} onChange={(v) => set('pref_education_min', v)} />
+            <Section title="Background">
+              <Surface elevated={!isDark} style={styles.card}>
+                <TextField label="Caste / biradari" value={p.pref_caste ?? ''} onChangeText={(t) => set('pref_caste', t || null)} placeholder="comma separated, blank = any" />
+                <TextField label="Ethnicity" value={p.pref_ethnicity ?? ''} onChangeText={(t) => set('pref_ethnicity', t || null)} placeholder="comma separated, blank = any" />
+                <TextField label="Countries (ISO codes)" value={p.pref_country_codes ?? ''} onChangeText={(t) => set('pref_country_codes', t || null)} placeholder="e.g. GB, AE, US" autoCapitalize="characters" />
+                <View style={styles.lastField}>
+                  <OptionGroup label="Minimum education" options={EDUCATION} value={p.pref_education_min} onChange={(v) => set('pref_education_min', v)} onDark={false} />
+                </View>
+              </Surface>
+            </Section>
 
-            <Text style={styles.section}>Family</Text>
-            <MultiOptionGroup label="Marital status (any of)" options={MARITAL} value={p.pref_marital_status} onChange={(v) => set('pref_marital_status', v)} />
-            <MultiOptionGroup label="Wants children (any of)" options={WANTS} value={p.pref_wants_children} onChange={(v) => set('pref_wants_children', v)} />
+            <Section title="Family">
+              <Surface elevated={!isDark} style={styles.card}>
+                <MultiOptionGroup label="Marital status (any of)" options={MARITAL} value={p.pref_marital_status} onChange={(v) => set('pref_marital_status', v)} onDark={false} />
+                <View style={styles.lastField}>
+                  <MultiOptionGroup label="Wants children (any of)" options={WANTS} value={p.pref_wants_children} onChange={(v) => set('pref_wants_children', v)} onDark={false} />
+                </View>
+              </Surface>
+            </Section>
 
-            {error ? <Text style={styles.error}>{error}</Text> : null}
+            {error ? <Text variant="footnote" tone="danger" center style={styles.error}>{error}</Text> : null}
             <Button label="Save preferences" onPress={save} loading={saving} style={{ marginTop: spacing.sm }} />
           </ScrollView>
         )}
@@ -149,8 +177,17 @@ export function PreferencesSheet({ visible, onClose }: { visible: boolean; onClo
   );
 }
 
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <View style={styles.section}>
+      <Text variant="label" tone="accent" style={styles.sectionLabel}>{title}</Text>
+      {children}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: palette.cream },
+  root: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   header: {
     flexDirection: 'row',
@@ -158,13 +195,25 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: palette.line,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  cancel: { fontFamily: fonts.bodyMedium, color: palette.muted, fontSize: 15, width: 50 },
-  title: { fontFamily: fonts.displaySemibold, fontSize: 22, color: palette.burgundy },
-  hint: { fontFamily: fonts.body, fontSize: 13.5, color: palette.muted, marginBottom: spacing.lg, lineHeight: 19 },
-  section: { fontFamily: fonts.displaySemibold, fontSize: 19, color: palette.burgundy, marginTop: spacing.md, marginBottom: spacing.sm },
-  rangeRow: { flexDirection: 'row', gap: spacing.md, marginBottom: spacing.sm },
-  error: { fontFamily: fonts.body, color: colors.danger, textAlign: 'center', marginTop: spacing.md },
+  headerSide: { width: 52 },
+  hintCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    borderRadius: radii.lg,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    marginBottom: spacing.xl,
+  },
+  hintIcon: { marginTop: 1 },
+  hintText: { flex: 1, lineHeight: 19 },
+  section: { marginBottom: spacing.xl },
+  sectionLabel: { marginBottom: spacing.sm, marginLeft: spacing.xs },
+  card: { padding: spacing.lg },
+  rangeRow: { flexDirection: 'row', gap: spacing.md, marginBottom: spacing.lg },
+  rangeRowLast: { marginBottom: 0 },
+  lastField: { marginBottom: -spacing.lg },
+  error: { marginTop: spacing.md },
 });

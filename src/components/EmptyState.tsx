@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { Button } from '@/components/Button';
 import { Text } from '@/components/Text';
-import { palette, spacing, tint } from '@/theme';
+import { spacing, useTheme } from '@/theme';
 
 /**
  * Branded empty state - a gold line-art mark, a headline, optional supporting
@@ -24,12 +24,13 @@ export function EmptyState({
   actionLabel?: string;
   onAction?: () => void;
 }) {
+  const { c } = useTheme();
   return (
     <View style={styles.root}>
-      <View style={styles.badge}>
-        <Ionicons name={icon} size={30} color={palette.gold} />
+      <View style={[styles.badge, { backgroundColor: c.accentFaint }]}>
+        <Ionicons name={icon} size={30} color={c.accent} />
       </View>
-      <Text variant="heading" tone="burgundy" center style={{ marginBottom: spacing.sm }}>
+      <Text variant="heading" tone="accent" center style={{ marginBottom: spacing.sm }}>
         {title}
       </Text>
       {message ? (
@@ -52,9 +53,6 @@ const styles = StyleSheet.create({
     borderRadius: 38,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: tint.goldFaint,
-    borderWidth: 1,
-    borderColor: tint.goldSoft,
     marginBottom: spacing.lg,
   },
   message: { maxWidth: 300 },

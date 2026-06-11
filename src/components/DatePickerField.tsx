@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, View } from 'react-native';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 
-import { fonts, palette, radii, spacing } from '@/theme';
+import { Text } from './Text';
+import { hexA, palette, radii, spacing, useTheme } from '@/theme';
 
 interface Props {
   label?: string;
@@ -28,6 +29,7 @@ const minDate = (() => {
 })();
 
 export function DatePickerField({ label, value, onChange, onDark = true }: Props) {
+  const { c, isDark } = useTheme();
   const [open, setOpen] = useState(false);
 
   const handle = (_e: DateTimePickerEvent, d?: Date) => {
@@ -36,10 +38,17 @@ export function DatePickerField({ label, value, onChange, onDark = true }: Props
     if (d) onChange(d);
   };
 
+  const fieldBg = onDark ? hexA(palette.cream, 0.08) : c.surfaceAlt;
+  const restingBorder = onDark ? hexA(palette.cream, 0.18) : c.border;
+  const placeholderColor = onDark ? hexA(palette.cream, 0.45) : c.textSubtle;
+  const valueColor = onDark ? palette.cream : c.text;
+
   return (
     <View style={styles.wrap}>
       {label ? (
-        <Text style={[styles.label, { color: onDark ? 'rgba(245,240,230,0.85)' : palette.muted }]}>{label}</Text>
+        <Text variant="footnote" color={onDark ? hexA(palette.cream, 0.85) : c.textMuted} style={styles.label}>
+          {label}
+        </Text>
       ) : null}
 
       <Pressable
@@ -47,18 +56,18 @@ export function DatePickerField({ label, value, onChange, onDark = true }: Props
         style={[
           styles.field,
           {
-            backgroundColor: onDark ? 'rgba(245,240,230,0.08)' : palette.white,
-            borderColor: open ? palette.gold : onDark ? 'rgba(245,240,230,0.18)' : palette.line,
+            backgroundColor: fieldBg,
+            borderColor: open ? c.accent : restingBorder,
           },
         ]}
       >
-        <Text style={[styles.value, { color: value ? (onDark ? palette.cream : palette.ink) : onDark ? 'rgba(245,240,230,0.45)' : palette.muted }]}>
+        <Text variant="body" color={value ? valueColor : placeholderColor}>
           {value ? fmt(value) : 'Select your date of birth'}
         </Text>
       </Pressable>
 
       {open ? (
-        <View style={Platform.OS === 'ios' ? styles.iosPicker : undefined}>
+        <View style={Platform.OS === 'ios' ? [styles.iosPicker, { backgroundColor: c.surfaceAlt }] : undefined}>
           <DateTimePicker
             mode="date"
             display={Platform.OS === 'ios' ? 'spinner' : 'default'}
@@ -66,11 +75,11 @@ export function DatePickerField({ label, value, onChange, onDark = true }: Props
             maximumDate={maxDate}
             minimumDate={minDate}
             onChange={handle}
-            themeVariant="light"
+            themeVariant={isDark ? 'dark' : 'light'}
           />
           {Platform.OS === 'ios' ? (
             <Pressable onPress={() => setOpen(false)} style={styles.done}>
-              <Text style={styles.doneText}>Done</Text>
+              <Text variant="callout" tone="accent">Done</Text>
             </Pressable>
           ) : null}
         </View>
@@ -81,21 +90,18 @@ export function DatePickerField({ label, value, onChange, onDark = true }: Props
 
 const styles = StyleSheet.create({
   wrap: { marginBottom: spacing.lg },
-  label: { fontFamily: fonts.bodyMedium, fontSize: 13, marginBottom: 7, marginLeft: 4, letterSpacing: 0.2 },
+  label: { marginBottom: spacing.xs + 3, marginLeft: spacing.xs },
   field: {
     height: 54,
-    borderRadius: radii.sm + 4,
-    borderWidth: 1.5,
-    paddingHorizontal: 16,
+    borderRadius: radii.input,
+    borderWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: spacing.lg,
     justifyContent: 'center',
   },
-  value: { fontFamily: fonts.body, fontSize: 16 },
   iosPicker: {
-    backgroundColor: palette.cream,
     borderRadius: radii.card,
     marginTop: spacing.sm,
     overflow: 'hidden',
   },
   done: { alignSelf: 'flex-end', paddingHorizontal: spacing.lg, paddingBottom: spacing.sm },
-  doneText: { fontFamily: fonts.bodySemibold, color: palette.burgundy, fontSize: 15 },
 });

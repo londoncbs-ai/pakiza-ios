@@ -12,7 +12,7 @@ import { EmptyState } from '@/components/EmptyState';
 import { ErrorState } from '@/components/ErrorState';
 import { SkeletonList } from '@/components/Skeleton';
 import { Text } from '@/components/Text';
-import { fonts, palette, shadow, spacing, useTheme } from '@/theme';
+import { fonts, palette, radii, shadow, spacing, useTheme } from '@/theme';
 
 function relativeTime(iso: string | null): string {
   if (!iso) return '';
@@ -29,7 +29,7 @@ function relativeTime(iso: string | null): string {
 export default function Messages() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { c } = useTheme();
+  const { c, isDark } = useTheme();
   const [items, setItems] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -61,7 +61,7 @@ export default function Messages() {
   return (
     <View style={[styles.root, { backgroundColor: c.bg, paddingTop: insets.top + spacing.sm }]}>
       <View style={styles.header}>
-        <Text variant="title" tone="burgundy">Messages</Text>
+        <Text variant="title" tone="accent">Messages</Text>
         <Text variant="footnote" tone="muted">Begin the conversation with purpose</Text>
       </View>
 
@@ -79,14 +79,14 @@ export default function Messages() {
         <FlatList
           data={items}
           keyExtractor={(c) => c.id}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={palette.burgundy} />}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.accent} />}
           contentContainerStyle={{ padding: spacing.lg, paddingBottom: insets.bottom + spacing.xl }}
           renderItem={({ item }) => {
             const photo =
               item.other_profile.photos?.find((p) => p.is_primary)?.cdn_url ?? item.other_profile.photos?.[0]?.cdn_url;
             return (
               <Pressable
-                style={[styles.row, { backgroundColor: c.surface }]}
+                style={[styles.row, { backgroundColor: c.surface, borderColor: c.border }, !isDark && shadow.soft]}
                 onPress={() =>
                   item.locked
                     ? router.push('/premium')
@@ -96,13 +96,13 @@ export default function Messages() {
                 {photo ? (
                   <Image source={{ uri: photo }} style={[styles.avatar, item.locked && styles.dim]} contentFit="cover" />
                 ) : (
-                  <View style={[styles.avatar, styles.placeholder]}>
-                    <Text style={styles.initial}>{item.other_profile.display_name[0]}</Text>
+                  <View style={[styles.avatar, styles.placeholder, { backgroundColor: c.surfaceAlt }]}>
+                    <Text style={styles.initial} tone="accent">{item.other_profile.display_name[0]}</Text>
                   </View>
                 )}
                 <View style={styles.body}>
-                  <Text style={styles.name}>{item.other_profile.display_name}</Text>
-                  <Text style={styles.preview} numberOfLines={1}>
+                  <Text variant="subhead" tone="default" style={styles.name}>{item.other_profile.display_name}</Text>
+                  <Text variant="footnote" tone="muted" style={styles.preview} numberOfLines={1}>
                     {item.locked
                       ? 'Locked — upgrade to keep this chat open'
                       : item.last_message_at
@@ -112,13 +112,13 @@ export default function Messages() {
                 </View>
                 <View style={styles.meta}>
                   {item.locked ? (
-                    <Ionicons name="lock-closed" size={18} color={palette.gold} />
+                    <Ionicons name="lock-closed" size={18} color={c.accent} />
                   ) : (
                     <>
-                      <Text style={styles.time}>{relativeTime(item.last_message_at)}</Text>
+                      <Text variant="footnote" tone="subtle">{relativeTime(item.last_message_at)}</Text>
                       {item.unread_count > 0 ? (
-                        <View style={styles.badge}>
-                          <Text style={styles.badgeText}>{item.unread_count}</Text>
+                        <View style={[styles.badge, { backgroundColor: palette.burgundy }]}>
+                          <Text variant="footnote" color={palette.cream} style={styles.badgeText}>{item.unread_count}</Text>
                         </View>
                       ) : null}
                     </>
@@ -134,18 +134,24 @@ export default function Messages() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: palette.cream },
+  root: { flex: 1 },
   header: { paddingHorizontal: spacing.lg, paddingBottom: spacing.md },
-  row: { flexDirection: 'row', alignItems: 'center', backgroundColor: palette.white, borderRadius: 16, padding: spacing.md, marginBottom: spacing.md, ...shadow.soft },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: radii.card,
+    borderWidth: StyleSheet.hairlineWidth,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+  },
   avatar: { width: 58, height: 58, borderRadius: 29 },
   dim: { opacity: 0.5 },
-  placeholder: { backgroundColor: palette.sand, alignItems: 'center', justifyContent: 'center' },
-  initial: { fontFamily: fonts.display, fontSize: 24, color: palette.burgundy },
+  placeholder: { alignItems: 'center', justifyContent: 'center' },
+  initial: { fontFamily: fonts.display, fontSize: 24 },
   body: { flex: 1, marginLeft: spacing.md },
-  name: { fontFamily: fonts.displaySemibold, fontSize: 19, color: palette.ink },
-  preview: { fontFamily: fonts.body, fontSize: 13.5, color: palette.muted, marginTop: 2 },
+  name: { fontFamily: fonts.displaySemibold },
+  preview: { marginTop: 2 },
   meta: { alignItems: 'flex-end', gap: 6 },
-  time: { fontFamily: fonts.body, fontSize: 12, color: palette.muted },
-  badge: { minWidth: 22, height: 22, borderRadius: 11, backgroundColor: palette.burgundy, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6 },
-  badgeText: { fontFamily: fonts.bodySemibold, fontSize: 12, color: palette.cream },
+  badge: { minWidth: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6 },
+  badgeText: { fontFamily: fonts.bodySemibold },
 });

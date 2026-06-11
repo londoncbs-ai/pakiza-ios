@@ -96,9 +96,9 @@ export default function ProfileTab() {
         {/* Identity card */}
         <Surface elevated style={styles.identity}>
           {photos[0] ? (
-            <Image source={{ uri: photos[0] }} style={styles.avatar} contentFit="cover" />
+            <Image source={{ uri: photos[0] }} style={[styles.avatar, { borderColor: c.accent }]} contentFit="cover" />
           ) : (
-            <View style={[styles.avatar, { backgroundColor: c.surfaceAlt, alignItems: 'center', justifyContent: 'center' }]}>
+            <View style={[styles.avatar, { borderColor: c.accent, backgroundColor: c.surfaceAlt, alignItems: 'center', justifyContent: 'center' }]}>
               <Text style={styles.avatarInitial}>{profile?.display_name?.[0] ?? '?'}</Text>
             </View>
           )}
@@ -111,7 +111,7 @@ export default function ProfileTab() {
           {/* Completion meter */}
           <View style={styles.meterRow}>
             <View style={[styles.meterTrack, { backgroundColor: c.surfaceAlt }]}>
-              <View style={[styles.meterFill, { width: `${pct}%` }]} />
+              <View style={[styles.meterFill, { width: `${pct}%`, backgroundColor: c.accent }]} />
             </View>
             <Text variant="footnote" tone="muted">{pct}% complete</Text>
           </View>

@@ -5,15 +5,16 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 
 import { BrandBackground } from './BrandBackground';
+import { Text } from './Text';
 import { Wordmark } from './Wordmark';
-import { fonts, palette, spacing } from '@/theme';
+import { palette, spacing } from '@/theme';
 
 interface Props {
   title: string;
@@ -43,10 +44,13 @@ export function AuthScaffold({ title, subtitle, children, showBack = true, showW
         >
           {showBack && router.canGoBack() ? (
             <Pressable onPress={() => router.back()} hitSlop={12} style={styles.back}>
-              <Text style={styles.backText}>‹  Back</Text>
+              <Ionicons name="chevron-back" size={20} color={palette.cream} />
+              <Text variant="callout" tone="onDark" style={styles.backText}>
+                Back
+              </Text>
             </Pressable>
           ) : (
-            <View style={{ height: 24 }} />
+            <View style={{ height: 28 }} />
           )}
 
           {showWordmark ? (
@@ -55,8 +59,14 @@ export function AuthScaffold({ title, subtitle, children, showBack = true, showW
             </View>
           ) : null}
 
-          <Text style={styles.title}>{title}</Text>
-          {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
+          <Text variant="display" tone="onDark" style={styles.title}>
+            {title}
+          </Text>
+          {subtitle ? (
+            <Text variant="callout" tone="onDarkMuted" style={styles.subtitle}>
+              {subtitle}
+            </Text>
+          ) : null}
 
           <View style={styles.form}>{children}</View>
         </ScrollView>
@@ -67,22 +77,10 @@ export function AuthScaffold({ title, subtitle, children, showBack = true, showW
 
 const styles = StyleSheet.create({
   content: { flexGrow: 1, paddingHorizontal: spacing.xl },
-  back: { paddingVertical: 6 },
-  backText: { color: 'rgba(245,240,230,0.85)', fontFamily: fonts.bodyMedium, fontSize: 15 },
-  brand: { alignItems: 'center', marginTop: spacing.lg, marginBottom: spacing.xl },
-  title: {
-    fontFamily: fonts.display,
-    color: palette.cream,
-    fontSize: 36,
-    lineHeight: 40,
-  },
-  subtitle: {
-    fontFamily: fonts.body,
-    color: 'rgba(245,240,230,0.75)',
-    fontSize: 15,
-    marginTop: spacing.sm,
-    marginBottom: spacing.xl,
-    lineHeight: 21,
-  },
-  form: { marginTop: spacing.sm },
+  back: { flexDirection: 'row', alignItems: 'center', paddingVertical: 6, marginLeft: -4 },
+  backText: { marginLeft: 2 },
+  brand: { alignItems: 'center', marginTop: spacing.lg, marginBottom: spacing.xxl },
+  title: { fontSize: 34, lineHeight: 40 },
+  subtitle: { marginTop: spacing.sm, marginBottom: spacing.xxl },
+  form: { marginTop: spacing.xs },
 });

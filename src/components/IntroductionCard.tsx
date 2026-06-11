@@ -20,10 +20,10 @@ import { Text } from './Text';
 import { label, titleCase } from '@/lib/format';
 import { fonts, palette, radii, shadow, spacing, surfaces, tint, useTheme } from '@/theme';
 
-/** Small uppercase section heading in gold. */
+/** Small uppercase section heading in the brand accent. */
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <Text variant="label" tone="gold" style={styles.sectionLabel}>
+    <Text variant="label" tone="accent" style={styles.sectionLabel}>
       {children}
     </Text>
   );
@@ -31,11 +31,12 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 
 /** Religiosity rendered as a 5-dot scale with its label. */
 function Religiosity({ level }: { level: number }) {
+  const { c } = useTheme();
   return (
     <View style={styles.religiosity}>
       <View style={styles.dots}>
         {[1, 2, 3, 4, 5].map((i) => (
-          <View key={i} style={[styles.relDot, i <= level && styles.relDotOn]} />
+          <View key={i} style={[styles.relDot, { backgroundColor: i <= level ? c.accent : c.borderStrong }]} />
         ))}
       </View>
       <Text variant="callout" tone="default">{label.religiosity(level)}</Text>
@@ -117,9 +118,9 @@ export function IntroductionCard({
           ) : null}
 
           {profile.compatibility != null ? (
-            <View style={styles.matchPill} pointerEvents="none">
-              <Ionicons name="sparkles" size={12} color={palette.ink} />
-              <Text variant="label" color={palette.ink} style={styles.matchPillText}>
+            <View style={[styles.matchPill, { backgroundColor: palette.burgundy }]} pointerEvents="none">
+              <Ionicons name="sparkles" size={12} color={palette.cream} />
+              <Text variant="label" color={palette.cream} style={styles.matchPillText}>
                 {profile.compatibility}% match
               </Text>
             </View>
@@ -136,8 +137,8 @@ export function IntroductionCard({
             </Text>
             {location ? (
               <View style={styles.locRow}>
-                <Ionicons name="location" size={14} color={palette.goldSoft} />
-                <Text variant="callout" color={palette.goldSoft}>{location}</Text>
+                <Ionicons name="location" size={14} color={palette.cream} />
+                <Text variant="callout" color={palette.cream}>{location}</Text>
               </View>
             ) : null}
           </View>
@@ -148,10 +149,10 @@ export function IntroductionCard({
           {reasons.length > 0 ? (
             <View style={styles.section}>
               <SectionLabel>Why you might match</SectionLabel>
-              <View style={styles.reasonCard}>
+              <View style={[styles.reasonCard, { backgroundColor: c.accentFaint, borderColor: c.border }]}>
                 {reasons.map((r) => (
                   <View key={r} style={styles.reasonRow}>
-                    <Ionicons name="checkmark-circle" size={18} color={palette.gold} />
+                    <Ionicons name="checkmark-circle" size={18} color={c.accent} />
                     <Text variant="callout" tone="default" style={styles.reasonText}>{r}</Text>
                   </View>
                 ))}

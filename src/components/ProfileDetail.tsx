@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Dimensions, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Dimensions, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -8,8 +8,9 @@ import { Ionicons } from '@expo/vector-icons';
 import type { PublicProfile } from '@/api/types';
 import { DetailRow } from './DetailRow';
 import { SafetySheet } from './SafetySheet';
+import { Text } from './Text';
 import { label, titleCase } from '@/lib/format';
-import { colors, fonts, palette, radii, shadow, spacing } from '@/theme';
+import { fonts, palette, radii, shadow, spacing, tint, useTheme } from '@/theme';
 
 const { width: W } = Dimensions.get('window');
 const HERO_H = Math.min(W * 1.15, 520);
@@ -26,6 +27,7 @@ export function ProfileDetail({
   onPass?: () => void;
 }) {
   const insets = useSafeAreaInsets();
+  const { c, isDark } = useTheme();
   const photos = [...(profile.photos ?? [])].sort(
     (a, b) => Number(b.is_primary) - Number(a.is_primary) || a.order_index - b.order_index
   );
@@ -37,7 +39,7 @@ export function ProfileDetail({
   const location = [profile.city, profile.country_name].filter(Boolean).join(', ');
 
   return (
-    <View style={styles.root}>
+    <View style={[styles.root, { backgroundColor: c.bg }]}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: (onLike ? 110 : 40) + insets.bottom }}>
         <View style={styles.hero}>
           {hero ? (
@@ -48,9 +50,10 @@ export function ProfileDetail({
             </View>
           )}
           <LinearGradient
-            colors={['rgba(61,0,16,0.35)', 'transparent', 'transparent', 'rgba(61,0,16,0.95)']}
-            locations={[0, 0.25, 0.55, 1]}
+            colors={tint.scrim}
+            locations={[0, 0.55, 1]}
             style={StyleSheet.absoluteFill}
+            pointerEvents="none"
           />
 
           <Pressable onPress={onClose} hitSlop={12} style={[styles.close, { top: insets.top + 8 }]}>
@@ -60,21 +63,23 @@ export function ProfileDetail({
             <Ionicons name="ellipsis-horizontal" size={22} color={palette.cream} />
           </Pressable>
 
-          <View style={styles.heroInfo}>
+          <View style={styles.heroInfo} pointerEvents="box-none">
             {profile.compatibility != null ? (
-              <View style={styles.matchPill}>
-                <Ionicons name="sparkles" size={13} color={palette.ink} />
-                <Text style={styles.matchPillText}>{profile.compatibility}% match</Text>
+              <View style={[styles.matchPill, { backgroundColor: palette.burgundy }]} pointerEvents="none">
+                <Ionicons name="sparkles" size={12} color={palette.cream} />
+                <Text variant="label" color={palette.cream} style={styles.matchPillText}>
+                  {profile.compatibility}% match
+                </Text>
               </View>
             ) : null}
-            <Text style={styles.name}>
+            <Text variant="display" color={palette.white} style={styles.name}>
               {profile.display_name}
-              {profile.age ? <Text style={styles.age}>, {profile.age}</Text> : null}
+              {profile.age ? <Text variant="title" color={palette.cream}>{`, ${profile.age}`}</Text> : null}
             </Text>
             {location ? (
               <View style={styles.locRow}>
-                <Ionicons name="location-outline" size={15} color={palette.goldSoft} />
-                <Text style={styles.loc}>{location}</Text>
+                <Ionicons name="location" size={14} color={palette.cream} />
+                <Text variant="callout" color={palette.cream}>{location}</Text>
               </View>
             ) : null}
           </View>
@@ -87,7 +92,11 @@ export function ProfileDetail({
               <Pressable key={p.id} onPress={() => setActive(i)}>
                 <Image
                   source={{ uri: p.cdn_url }}
-                  style={[styles.thumb, active === i && styles.thumbActive]}
+                  style={[
+                    styles.thumb,
+                    { backgroundColor: c.surfaceAlt },
+                    active === i && [styles.thumbActive, { borderColor: c.accent }],
+                  ]}
                   contentFit="cover"
                 />
               </Pressable>
@@ -98,14 +107,14 @@ export function ProfileDetail({
         <View style={styles.body}>
           {profile.bio ? (
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>About</Text>
-              <Text style={styles.bio}>{profile.bio}</Text>
+              <Text variant="label" tone="accent" style={styles.sectionLabel}>About {profile.display_name.split(' ')[0]}</Text>
+              <Text variant="body" tone="default" style={styles.bio}>{profile.bio}</Text>
             </View>
           ) : null}
 
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Details</Text>
-            <View style={styles.card}>
+            <Text variant="label" tone="accent" style={styles.sectionLabel}>Details</Text>
+            <View style={[styles.card, { backgroundColor: c.surface, borderColor: c.border }, !isDark && shadow.soft]}>
               <DetailRow icon="moon-outline" label="Faith" value={faith || null} />
               <DetailRow icon="sparkles-outline" label="Religiosity" value={label.religiosity(profile.religiosity)} />
               <DetailRow icon="people-circle-outline" label="Caste / biradari" value={titleCase(profile.caste)} />
@@ -124,13 +133,18 @@ export function ProfileDetail({
       </ScrollView>
 
       {onLike && onPass ? (
-        <View style={[styles.actionBar, { paddingBottom: insets.bottom + spacing.sm }]}>
-          <Pressable onPress={onPass} style={[styles.actionBtn, { width: 64, borderColor: palette.sienna }]}>
-            <Ionicons name="close" size={26} color={palette.sienna} />
+        <View
+          style={[
+            styles.actionBar,
+            { backgroundColor: c.bg, borderTopColor: c.border, paddingBottom: insets.bottom + spacing.sm },
+          ]}
+        >
+          <Pressable onPress={onPass} style={[styles.actionBtn, styles.passBtn, { borderColor: c.borderStrong }]}>
+            <Ionicons name="close" size={26} color={c.textMuted} />
           </Pressable>
           <Pressable onPress={onLike} style={[styles.actionBtn, styles.likeBtn]}>
             <Ionicons name="heart" size={24} color={palette.cream} />
-            <Text style={styles.likeText}>Like</Text>
+            <Text variant="subhead" color={palette.cream}>Like</Text>
           </Pressable>
         </View>
       ) : null}
@@ -147,17 +161,17 @@ export function ProfileDetail({
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: palette.cream },
+  root: { flex: 1 },
   hero: { height: HERO_H, backgroundColor: palette.burgundyDark, justifyContent: 'flex-end' },
   placeholder: { backgroundColor: palette.burgundy, alignItems: 'center', justifyContent: 'center' },
-  placeholderText: { fontFamily: fonts.display, fontSize: 120, color: palette.goldSoft },
+  placeholderText: { fontFamily: fonts.display, fontSize: 120, color: palette.cream },
   close: {
     position: 'absolute',
     right: spacing.lg,
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: 'rgba(26,16,18,0.4)',
+    backgroundColor: tint.overlaySoft,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -167,7 +181,7 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: 'rgba(26,16,18,0.4)',
+    backgroundColor: tint.overlaySoft,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -177,25 +191,27 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 5,
     alignSelf: 'flex-start',
-    backgroundColor: palette.gold,
     paddingHorizontal: 11,
-    paddingVertical: 5,
-    borderRadius: 999,
-    marginBottom: 10,
+    paddingVertical: 6,
+    borderRadius: radii.pill,
+    marginBottom: spacing.md,
   },
-  matchPillText: { fontFamily: fonts.bodySemibold, fontSize: 12.5, color: palette.ink },
-  name: { fontFamily: fonts.display, fontSize: 42, color: palette.white },
-  age: { fontFamily: fonts.display, fontSize: 36, color: palette.cream },
+  matchPillText: { letterSpacing: 0.3 },
+  name: { lineHeight: 46 },
   locRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 4 },
-  loc: { fontFamily: fonts.bodyMedium, fontSize: 14.5, color: palette.goldSoft },
   thumbs: { gap: spacing.sm, paddingHorizontal: spacing.lg, paddingTop: spacing.md },
-  thumb: { width: 64, height: 80, borderRadius: 10, opacity: 0.6 },
-  thumbActive: { opacity: 1, borderWidth: 2, borderColor: palette.gold },
-  body: { paddingHorizontal: spacing.lg, paddingTop: spacing.lg },
-  section: { marginBottom: spacing.lg },
-  sectionTitle: { fontFamily: fonts.displaySemibold, fontSize: 22, color: palette.burgundy, marginBottom: spacing.sm },
-  bio: { fontFamily: fonts.body, fontSize: 15.5, lineHeight: 23, color: palette.ink },
-  card: { backgroundColor: palette.white, borderRadius: radii.card, paddingHorizontal: spacing.lg, paddingVertical: spacing.xs, ...shadow.soft },
+  thumb: { width: 64, height: 80, borderRadius: radii.md, opacity: 0.55 },
+  thumbActive: { opacity: 1, borderWidth: 2 },
+  body: { paddingHorizontal: spacing.lg, paddingTop: spacing.xl },
+  section: { marginBottom: spacing.xl },
+  sectionLabel: { marginBottom: spacing.sm },
+  bio: { lineHeight: 23 },
+  card: {
+    borderRadius: radii.lg,
+    borderWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.xs,
+  },
   actionBar: {
     position: 'absolute',
     bottom: 0,
@@ -205,19 +221,16 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     paddingHorizontal: spacing.xl,
     paddingTop: spacing.md,
-    backgroundColor: palette.cream,
-    borderTopWidth: 1,
-    borderTopColor: palette.line,
+    borderTopWidth: StyleSheet.hairlineWidth,
   },
   actionBtn: {
     height: 56,
     borderRadius: radii.pill,
-    borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
     gap: 8,
   },
-  likeBtn: { flex: 1, backgroundColor: palette.burgundy, borderColor: palette.burgundy },
-  likeText: { fontFamily: fonts.bodySemibold, color: palette.cream, fontSize: 16 },
+  passBtn: { width: 64, borderWidth: 1.5 },
+  likeBtn: { flex: 1, backgroundColor: palette.burgundy },
 });

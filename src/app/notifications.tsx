@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -7,7 +7,11 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { errorMessage } from '@/api/client';
 import { notificationsApi } from '@/api/notifications';
 import type { AppNotification, NotificationType } from '@/api/types';
-import { fonts, palette, spacing } from '@/theme';
+import { EmptyState } from '@/components/EmptyState';
+import { PressableScale } from '@/components/PressableScale';
+import { Screen } from '@/components/Screen';
+import { Text } from '@/components/Text';
+import { palette, radii, spacing, useTheme } from '@/theme';
 
 const ICON: Record<NotificationType, keyof typeof Ionicons.glyphMap> = {
   match: 'heart',
@@ -32,6 +36,7 @@ function rel(iso: string): string {
 export default function Notifications() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { c } = useTheme();
   const [items, setItems] = useState<AppNotification[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -68,70 +73,109 @@ export default function Notifications() {
     setItems((prev) => prev.map((x) => ({ ...x, is_read: true })));
   };
 
+  const hasUnread = items.some((x) => !x.is_read);
+
   return (
-    <View style={styles.root}>
-      <View style={[styles.header, { paddingTop: insets.top + 6 }]}>
-        <Pressable onPress={() => router.back()} hitSlop={12} style={{ width: 60 }}>
-          <Text style={styles.back}>‹ Back</Text>
+    <Screen>
+      <View style={[styles.header, { paddingTop: insets.top + spacing.sm, borderBottomColor: c.border }]}>
+        <Pressable onPress={() => router.back()} hitSlop={12} style={styles.headerSide}>
+          <Ionicons name="chevron-back" size={26} color={c.text} />
         </Pressable>
-        <Text style={styles.title}>Notifications</Text>
-        <Pressable onPress={markAll} hitSlop={10} style={{ width: 60 }}>
-          <Text style={styles.markAll}>Read all</Text>
+        <Text variant="heading" tone="default">Notifications</Text>
+        <Pressable onPress={markAll} hitSlop={10} disabled={!hasUnread} style={styles.headerEnd}>
+          <Text variant="footnote" tone={hasUnread ? 'accent' : 'subtle'} style={styles.markAll}>
+            Read all
+          </Text>
         </Pressable>
       </View>
 
       {loading ? (
-        <ActivityIndicator color={palette.burgundy} size="large" style={{ marginTop: 60 }} />
+        <View style={styles.center}>
+          <ActivityIndicator color={c.accent} size="large" />
+        </View>
       ) : error ? (
-        <Text style={styles.empty}>{error}</Text>
+        <EmptyState
+          icon="alert-circle-outline"
+          title="Something went wrong"
+          message={error}
+          actionLabel="Try again"
+          onAction={load}
+        />
       ) : items.length === 0 ? (
-        <Text style={styles.empty}>You’re all caught up. Likes, matches and messages will show here.</Text>
+        <EmptyState
+          icon="notifications-outline"
+          title="You're all caught up"
+          message="Likes, matches and messages will show up here as they happen."
+        />
       ) : (
         <FlatList
           data={items}
           keyExtractor={(n) => n.id}
-          contentContainerStyle={{ padding: spacing.lg, paddingBottom: insets.bottom + spacing.xl }}
-          renderItem={({ item }) => (
-            <Pressable style={[styles.row, !item.is_read && styles.unread]} onPress={() => open(item)}>
-              <View style={styles.iconWrap}>
-                <Ionicons name={ICON[item.type] ?? 'notifications'} size={19} color={palette.burgundy} />
-              </View>
-              <View style={styles.body}>
-                <Text style={styles.rowTitle}>{item.title}</Text>
-                <Text style={styles.rowBody} numberOfLines={2}>{item.body}</Text>
-              </View>
-              <View style={styles.meta}>
-                <Text style={styles.time}>{rel(item.created_at)}</Text>
-                {!item.is_read ? <View style={styles.dot} /> : null}
-              </View>
-            </Pressable>
+          contentContainerStyle={{ paddingVertical: spacing.sm, paddingBottom: insets.bottom + spacing.xl }}
+          ItemSeparatorComponent={() => (
+            <View style={[styles.divider, { backgroundColor: c.border }]} />
           )}
+          renderItem={({ item }) => {
+            const unread = !item.is_read;
+            return (
+              <PressableScale
+                onPress={() => open(item)}
+                style={unread ? [styles.row, { backgroundColor: c.accentFaint }] : styles.row}
+              >
+                <View style={[styles.iconWrap, { backgroundColor: c.accentFaint }]}>
+                  <Ionicons name={ICON[item.type] ?? 'notifications'} size={20} color={c.accent} />
+                </View>
+                <View style={styles.body}>
+                  <Text variant="subhead" tone="default" numberOfLines={1}>{item.title}</Text>
+                  {item.body ? (
+                    <Text variant="callout" tone="muted" numberOfLines={2} style={styles.rowBody}>
+                      {item.body}
+                    </Text>
+                  ) : null}
+                </View>
+                <View style={styles.meta}>
+                  <Text variant="footnote" tone="subtle">{rel(item.created_at)}</Text>
+                  {unread ? <View style={[styles.dot, { backgroundColor: c.accent }]} /> : null}
+                </View>
+              </PressableScale>
+            );
+          }}
         />
       )}
-    </View>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: palette.cream },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.lg,
     paddingBottom: spacing.md,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  back: { fontFamily: fonts.bodyMedium, color: palette.muted, fontSize: 15 },
-  title: { fontFamily: fonts.displaySemibold, fontSize: 22, color: palette.burgundy },
-  markAll: { fontFamily: fonts.bodyMedium, color: palette.gold, fontSize: 14, textAlign: 'right' },
-  empty: { fontFamily: fonts.body, color: palette.muted, textAlign: 'center', marginTop: 70, paddingHorizontal: spacing.xxl, lineHeight: 22 },
-  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.md, paddingHorizontal: spacing.md, borderRadius: 14, marginBottom: 6 },
-  unread: { backgroundColor: 'rgba(199,159,94,0.12)' },
-  iconWrap: { width: 42, height: 42, borderRadius: 21, backgroundColor: 'rgba(128,0,32,0.07)', alignItems: 'center', justifyContent: 'center', marginRight: spacing.md },
+  headerSide: { width: 56, alignItems: 'flex-start' },
+  headerEnd: { width: 56, alignItems: 'flex-end' },
+  markAll: { textAlign: 'right' },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+  },
+  iconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: radii.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing.md,
+  },
   body: { flex: 1 },
-  rowTitle: { fontFamily: fonts.bodySemibold, fontSize: 15, color: palette.ink },
-  rowBody: { fontFamily: fonts.body, fontSize: 13.5, color: palette.muted, marginTop: 1 },
-  meta: { alignItems: 'flex-end', gap: 6, marginLeft: spacing.sm },
-  time: { fontFamily: fonts.body, fontSize: 12, color: palette.muted },
-  dot: { width: 9, height: 9, borderRadius: 5, backgroundColor: palette.burgundy },
+  rowBody: { marginTop: 2 },
+  meta: { alignItems: 'flex-end', gap: spacing.xs, marginLeft: spacing.sm },
+  dot: { width: 9, height: 9, borderRadius: radii.pill },
+  divider: { height: StyleSheet.hairlineWidth, marginLeft: spacing.lg + 44 + spacing.md },
 });

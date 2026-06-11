@@ -213,9 +213,9 @@ export default function Discover() {
                 <Text variant="subhead" color={palette.sienna}>Not now</Text>
               </PressableScale>
 
-              <PressableScale style={styles.saveBtn} onPress={onSave} disabled={busy}
+              <PressableScale style={[styles.saveBtn, { backgroundColor: c.accentFaint, borderColor: c.accent }]} onPress={onSave} disabled={busy}
                 accessibilityRole="button" accessibilityLabel="Save to revisit">
-                <Ionicons name="bookmark-outline" size={22} color={palette.gold} />
+                <Ionicons name="bookmark-outline" size={22} color={c.accent} />
               </PressableScale>
 
               <PressableScale style={[styles.actionPill, styles.interest]} onPress={onInterest} disabled={busy}

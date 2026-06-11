@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -8,7 +8,9 @@ import { errorMessage } from '@/api/client';
 import { subscriptionsApi } from '@/api/subscriptions';
 import type { Subscription, SubscriptionPlan } from '@/api/types';
 import { Button } from './Button';
-import { fonts, palette, radii, spacing } from '@/theme';
+import { PressableScale } from './PressableScale';
+import { Text } from './Text';
+import { radii, spacing, useTheme } from '@/theme';
 
 const PRICE: Record<string, string> = { premium: '£14.99', gold: '£24.99' };
 
@@ -35,6 +37,7 @@ export function CheckoutSheet({
 }) {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { c } = useTheme();
   const [agreed, setAgreed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -61,12 +64,43 @@ export function CheckoutSheet({
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={styles.backdrop} onPress={onClose} />
-      <View style={[styles.sheet, { paddingBottom: insets.bottom + spacing.lg }]}>
-        <View style={styles.grabber} />
-        <Text style={styles.title}>Subscribe to {planName}</Text>
-        <Text style={styles.price}>{price}<Text style={styles.per}> / month</Text></Text>
+      <Pressable style={[styles.backdrop, { backgroundColor: c.overlay }]} onPress={onClose} />
+      <View
+        style={[
+          styles.sheet,
+          { backgroundColor: c.surface, paddingBottom: insets.bottom + spacing.lg },
+        ]}
+      >
+        <View style={[styles.grabber, { backgroundColor: c.borderStrong }]} />
 
+        {/* Header */}
+        <Text variant="label" tone="accent" style={styles.kicker}>
+          Pakiza Premium
+        </Text>
+        <Text variant="title" tone="default">Subscribe to {planName}</Text>
+
+        {/* Order summary */}
+        <View style={[styles.summary, { backgroundColor: c.surfaceAlt, borderColor: c.border }]}>
+          <View style={styles.summaryRow}>
+            <Text variant="callout" tone="muted">Plan</Text>
+            <Text variant="callout" tone="default">{planName}</Text>
+          </View>
+          <View style={[styles.divider, { backgroundColor: c.border }]} />
+          <View style={styles.summaryRow}>
+            <Text variant="callout" tone="muted">Billing</Text>
+            <Text variant="callout" tone="default">Monthly</Text>
+          </View>
+          <View style={[styles.divider, { backgroundColor: c.border }]} />
+          <View style={styles.summaryRow}>
+            <Text variant="body" tone="default">Total today</Text>
+            <View style={styles.priceWrap}>
+              <Text variant="heading" tone="default">{price}</Text>
+              <Text variant="footnote" tone="subtle"> / month</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Billing terms */}
         <View style={styles.terms}>
           <Term text={`Billed ${price} every month to your payment method.`} />
           <Term text="Renews automatically until cancelled. Cancel anytime from Profile → Pakiza Premium." />
@@ -74,15 +108,27 @@ export function CheckoutSheet({
           <Term text="Prices include applicable taxes. No refunds for partial periods." />
         </View>
 
-        <Pressable style={styles.agreeRow} onPress={() => setAgreed((a) => !a)}>
-          <Ionicons name={agreed ? 'checkbox' : 'square-outline'} size={22} color={agreed ? palette.burgundy : palette.muted} />
-          <Text style={styles.agreeText}>
+        {/* Agreement */}
+        <PressableScale haptic style={styles.agreeRow} onPress={() => setAgreed((a) => !a)}>
+          <Ionicons
+            name={agreed ? 'checkbox' : 'square-outline'}
+            size={22}
+            color={agreed ? c.accent : c.textSubtle}
+          />
+          <Text variant="footnote" tone="muted" style={styles.agreeText}>
             I agree to the{' '}
-            <Text style={styles.link} onPress={() => router.push('/terms')}>Terms & billing agreement</Text>.
+            <Text variant="footnote" tone="accent" style={styles.link} onPress={() => router.push('/terms')}>
+              Terms & billing agreement
+            </Text>
+            .
           </Text>
-        </Pressable>
+        </PressableScale>
 
-        {error ? <Text style={styles.error}>{error}</Text> : null}
+        {error ? (
+          <Text variant="footnote" tone="danger" center style={styles.error}>
+            {error}
+          </Text>
+        ) : null}
 
         <Button
           label={agreed ? `Subscribe ${price}/mo` : 'Agree to continue'}
@@ -90,34 +136,60 @@ export function CheckoutSheet({
           loading={busy}
           disabled={!agreed}
         />
-        <Text style={styles.dev}>Dev mode: simulated payment, you won’t be charged.</Text>
+
+        <Text variant="footnote" tone="subtle" center style={styles.dev}>
+          Dev mode: simulated payment, you won’t be charged.
+        </Text>
       </View>
     </Modal>
   );
 }
 
 function Term({ text }: { text: string }) {
+  const { c } = useTheme();
   return (
     <View style={styles.termRow}>
-      <Ionicons name="ellipse" size={5} color={palette.gold} style={{ marginTop: 7 }} />
-      <Text style={styles.termText}>{text}</Text>
+      <View style={[styles.bullet, { backgroundColor: c.accent }]} />
+      <Text variant="footnote" tone="muted" style={styles.termText}>
+        {text}
+      </Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: 'rgba(26,16,18,0.5)' },
-  sheet: { backgroundColor: palette.cream, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: spacing.xl, paddingTop: spacing.sm },
-  grabber: { alignSelf: 'center', width: 40, height: 4, borderRadius: 2, backgroundColor: palette.line, marginBottom: spacing.md },
-  title: { fontFamily: fonts.display, fontSize: 28, color: palette.burgundy },
-  price: { fontFamily: fonts.displaySemibold, fontSize: 30, color: palette.ink, marginTop: 4, marginBottom: spacing.md },
-  per: { fontFamily: fonts.body, fontSize: 15, color: palette.muted },
-  terms: { backgroundColor: palette.white, borderRadius: radii.card, padding: spacing.lg, gap: 10, marginBottom: spacing.lg },
-  termRow: { flexDirection: 'row', gap: 8 },
-  termText: { flex: 1, fontFamily: fonts.body, fontSize: 13.5, color: palette.ink, lineHeight: 19 },
-  agreeRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: spacing.lg },
-  agreeText: { flex: 1, fontFamily: fonts.body, fontSize: 14, color: palette.ink, lineHeight: 20 },
-  link: { fontFamily: fonts.bodySemibold, color: palette.burgundy, textDecorationLine: 'underline' },
-  error: { fontFamily: fonts.body, color: '#B00020', textAlign: 'center', marginBottom: spacing.sm },
-  dev: { fontFamily: fonts.body, fontSize: 11.5, color: palette.muted, textAlign: 'center', marginTop: spacing.sm },
+  backdrop: { flex: 1 },
+  sheet: {
+    borderTopLeftRadius: radii.card,
+    borderTopRightRadius: radii.card,
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.sm,
+  },
+  grabber: { alignSelf: 'center', width: 40, height: 4, borderRadius: 2, marginBottom: spacing.lg },
+  kicker: { marginBottom: spacing.xs },
+  summary: {
+    borderRadius: radii.lg,
+    borderWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.xs,
+    marginTop: spacing.lg,
+    marginBottom: spacing.lg,
+  },
+  summaryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: spacing.md,
+  },
+  priceWrap: { flexDirection: 'row', alignItems: 'baseline' },
+  divider: { height: StyleSheet.hairlineWidth },
+  terms: { gap: spacing.md, marginBottom: spacing.lg },
+  termRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm },
+  bullet: { width: 5, height: 5, borderRadius: 3, marginTop: 7 },
+  termText: { flex: 1, lineHeight: 19 },
+  agreeRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.lg },
+  agreeText: { flex: 1, lineHeight: 20 },
+  link: { textDecorationLine: 'underline' },
+  error: { marginBottom: spacing.sm },
+  dev: { marginTop: spacing.md },
 });

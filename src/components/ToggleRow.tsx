@@ -1,7 +1,8 @@
 import React from 'react';
-import { StyleSheet, Switch, Text, View } from 'react-native';
+import { StyleSheet, Switch, View } from 'react-native';
 
-import { fonts, palette } from '@/theme';
+import { Text } from './Text';
+import { hexA, palette, spacing, useTheme } from '@/theme';
 
 interface Props {
   label: string;
@@ -12,28 +13,32 @@ interface Props {
 }
 
 export function ToggleRow({ label, hint, value, onValueChange, onDark = true }: Props) {
+  const { c } = useTheme();
+  const offTrack = onDark ? hexA(palette.cream, 0.2) : c.borderStrong;
+
   return (
     <View style={styles.row}>
       <View style={styles.text}>
-        <Text style={[styles.label, { color: onDark ? palette.cream : palette.ink }]}>{label}</Text>
+        <Text variant="callout" color={onDark ? palette.cream : c.text}>{label}</Text>
         {hint ? (
-          <Text style={[styles.hint, { color: onDark ? 'rgba(245,240,230,0.6)' : palette.muted }]}>{hint}</Text>
+          <Text variant="footnote" color={onDark ? hexA(palette.cream, 0.6) : c.textMuted} style={styles.hint}>
+            {hint}
+          </Text>
         ) : null}
       </View>
       <Switch
         value={value}
         onValueChange={onValueChange}
-        trackColor={{ false: onDark ? 'rgba(245,240,230,0.2)' : palette.line, true: palette.gold }}
+        trackColor={{ false: offTrack, true: c.accent }}
         thumbColor={palette.cream}
-        ios_backgroundColor={onDark ? 'rgba(245,240,230,0.2)' : palette.line}
+        ios_backgroundColor={offTrack}
       />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 },
-  text: { flex: 1, paddingRight: 12 },
-  label: { fontFamily: fonts.bodyMedium, fontSize: 14.5 },
-  hint: { fontFamily: fonts.body, fontSize: 12.5, marginTop: 2, lineHeight: 17 },
+  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.lg },
+  text: { flex: 1, paddingRight: spacing.md },
+  hint: { marginTop: 2, lineHeight: 17 },
 });

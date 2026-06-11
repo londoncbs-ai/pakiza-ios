@@ -6,7 +6,6 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -25,9 +24,11 @@ import type {
 } from '@/api/types';
 import { Button } from './Button';
 import { OptionGroup } from './OptionGroup';
+import { Surface } from './Surface';
+import { Text } from './Text';
 import { TextField } from './TextField';
 import { ToggleRow } from './ToggleRow';
-import { colors, fonts, palette, spacing } from '@/theme';
+import { radii, spacing, useTheme } from '@/theme';
 
 const EDUCATION = [
   { label: 'High school', value: 'high_school' as EducationLevel },
@@ -86,6 +87,7 @@ export function EditProfileSheet({
   onSaved: (p: MyProfile) => void;
 }) {
   const insets = useSafeAreaInsets();
+  const { c } = useTheme();
   const [bio, setBio] = useState(profile.bio ?? '');
   const [city, setCity] = useState(profile.city ?? '');
   const [country, setCountry] = useState(profile.country_name ?? '');
@@ -153,83 +155,92 @@ export function EditProfileSheet({
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <View style={styles.header}>
-          <Pressable onPress={onClose} hitSlop={10}>
-            <Text style={styles.cancel}>Cancel</Text>
+      <KeyboardAvoidingView style={[styles.root, { backgroundColor: c.bg }]} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <View style={[styles.header, { borderBottomColor: c.border }]}>
+          <Pressable onPress={onClose} hitSlop={10} style={styles.headerSide}>
+            <Text variant="subhead" tone="muted">Cancel</Text>
           </Pressable>
-          <Text style={styles.title}>Edit profile</Text>
-          <View style={{ width: 56 }} />
+          <Text variant="heading" tone="default">Edit profile</Text>
+          <View style={styles.headerSide} />
         </View>
 
         <ScrollView
-          contentContainerStyle={{ padding: spacing.lg, paddingBottom: insets.bottom + 100 }}
+          contentContainerStyle={{ padding: spacing.lg, paddingBottom: insets.bottom + 120, gap: spacing.lg }}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <Section title="About you" />
-          <TextField label="Bio" value={bio} onChangeText={setBio} multiline placeholder="What are you looking for?" style={{ height: 100, paddingTop: 14, textAlignVertical: 'top' }} />
-          <TextField label="City" value={city} onChangeText={setCity} placeholder="e.g. London" />
-          <TextField label="Country" value={country} onChangeText={setCountry} placeholder="e.g. United Kingdom" />
-          <TextField label="Ethnicity" value={ethnicity} onChangeText={setEthnicity} placeholder="e.g. South Asian, Arab" />
-          <View style={styles.row}>
-            <View style={styles.half}><TextField label="Height (cm)" value={height} onChangeText={setHeight} keyboardType="number-pad" placeholder="170" /></View>
-            <View style={styles.half}><TextField label="Weight (kg)" value={weight} onChangeText={setWeight} keyboardType="number-pad" placeholder="optional" /></View>
-          </View>
-          <OptionGroup label="Body type" options={BODY} value={body} onChange={setBody} onDark={false} />
+          <Section title="About you">
+            <TextField label="Bio" value={bio} onChangeText={setBio} multiline placeholder="What are you looking for?" style={{ height: 100, paddingTop: 14, textAlignVertical: 'top' }} />
+            <TextField label="City" value={city} onChangeText={setCity} placeholder="e.g. London" />
+            <TextField label="Country" value={country} onChangeText={setCountry} placeholder="e.g. United Kingdom" />
+            <TextField label="Ethnicity" value={ethnicity} onChangeText={setEthnicity} placeholder="e.g. South Asian, Arab" />
+            <View style={styles.row}>
+              <View style={styles.half}><TextField label="Height (cm)" value={height} onChangeText={setHeight} keyboardType="number-pad" placeholder="170" /></View>
+              <View style={styles.half}><TextField label="Weight (kg)" value={weight} onChangeText={setWeight} keyboardType="number-pad" placeholder="optional" /></View>
+            </View>
+            <OptionGroup label="Body type" options={BODY} value={body} onChange={setBody} onDark={false} />
+          </Section>
 
-          <Section title="Faith" />
-          <TextField label="Denomination" value={denomination} onChangeText={setDenomination} placeholder="e.g. Sunni" />
-          <OptionGroup label="Religiosity" options={RELIGIOSITY} value={religiosity} onChange={setReligiosity} onDark={false} />
-          <TextField label="Caste / biradari" value={caste} onChangeText={setCaste} placeholder="e.g. Jat, Rajput, Syed…" />
-          <ToggleRow label="Show caste on my profile" hint="When off, caste stays private and is used only for matching." value={casteVisible} onValueChange={setCasteVisible} onDark={false} />
+          <Section title="Faith">
+            <TextField label="Denomination" value={denomination} onChangeText={setDenomination} placeholder="e.g. Sunni" />
+            <OptionGroup label="Religiosity" options={RELIGIOSITY} value={religiosity} onChange={setReligiosity} onDark={false} />
+            <TextField label="Caste / biradari" value={caste} onChangeText={setCaste} placeholder="e.g. Jat, Rajput, Syed…" />
+            <ToggleRow label="Show caste on my profile" hint="When off, caste stays private and is used only for matching." value={casteVisible} onValueChange={setCasteVisible} onDark={false} />
+          </Section>
 
-          <Section title="Background" />
-          <TextField label="Profession" value={occupation} onChangeText={setOccupation} placeholder="e.g. Pharmacist" />
-          <OptionGroup label="Education" options={EDUCATION} value={education} onChange={setEducation} onDark={false} />
-          <TextField label="Field of study" value={educationField} onChangeText={setEducationField} placeholder="e.g. Medicine" />
-          <TextField label="Languages (comma separated)" value={languages} onChangeText={setLanguages} placeholder="e.g. en, ar, ur" />
+          <Section title="Background">
+            <TextField label="Profession" value={occupation} onChangeText={setOccupation} placeholder="e.g. Pharmacist" />
+            <OptionGroup label="Education" options={EDUCATION} value={education} onChange={setEducation} onDark={false} />
+            <TextField label="Field of study" value={educationField} onChangeText={setEducationField} placeholder="e.g. Medicine" />
+            <TextField label="Languages (comma separated)" value={languages} onChangeText={setLanguages} placeholder="e.g. en, ar, ur" />
+          </Section>
 
-          <Section title="Lifestyle & family" />
-          <OptionGroup label="Marital status" options={MARITAL} value={marital} onChange={setMarital} onDark={false} />
-          <ToggleRow label="I have children" value={hasChildren} onValueChange={setHasChildren} onDark={false} />
-          <OptionGroup label="Want children" options={WANTS} value={wants} onChange={setWants} onDark={false} />
-          <OptionGroup label="Smoking" options={LIFESTYLE} value={smoking} onChange={setSmoking} onDark={false} />
-          <OptionGroup label="Drinking" options={LIFESTYLE} value={drinking} onChange={setDrinking} onDark={false} />
-          <OptionGroup label="Willing to relocate" options={RELOCATE} value={relocate} onChange={setRelocate} onDark={false} />
+          <Section title="Lifestyle & family">
+            <OptionGroup label="Marital status" options={MARITAL} value={marital} onChange={setMarital} onDark={false} />
+            <ToggleRow label="I have children" value={hasChildren} onValueChange={setHasChildren} onDark={false} />
+            <OptionGroup label="Want children" options={WANTS} value={wants} onChange={setWants} onDark={false} />
+            <OptionGroup label="Smoking" options={LIFESTYLE} value={smoking} onChange={setSmoking} onDark={false} />
+            <OptionGroup label="Drinking" options={LIFESTYLE} value={drinking} onChange={setDrinking} onDark={false} />
+            <OptionGroup label="Willing to relocate" options={RELOCATE} value={relocate} onChange={setRelocate} onDark={false} />
+          </Section>
 
-          <Section title="Privacy" />
-          <ToggleRow label="Blur my photos until matched" value={photosBlurred} onValueChange={setPhotosBlurred} onDark={false} />
-          <ToggleRow label="Hide me from my phone contacts" value={hideContacts} onValueChange={setHideContacts} onDark={false} />
-          <ToggleRow label="Incognito mode" hint="Browse without leaving profile-view notifications." value={incognito} onValueChange={setIncognito} onDark={false} />
+          <Section title="Privacy">
+            <ToggleRow label="Blur my photos until matched" value={photosBlurred} onValueChange={setPhotosBlurred} onDark={false} />
+            <ToggleRow label="Hide me from my phone contacts" value={hideContacts} onValueChange={setHideContacts} onDark={false} />
+            <ToggleRow label="Incognito mode" hint="Browse without leaving profile-view notifications." value={incognito} onValueChange={setIncognito} onDark={false} />
+          </Section>
 
-          {error ? <Text style={styles.error}>{error}</Text> : null}
-          <Button label="Save changes" onPress={save} loading={saving} style={{ marginTop: spacing.sm }} />
+          {error ? <Text variant="footnote" tone="danger" center>{error}</Text> : null}
+          <Button label="Save changes" onPress={save} loading={saving} style={{ marginTop: spacing.xs }} />
         </ScrollView>
       </KeyboardAvoidingView>
     </Modal>
   );
 }
 
-function Section({ title }: { title: string }) {
-  return <Text style={styles.section}>{title}</Text>;
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <View style={styles.section}>
+      <Text variant="label" tone="accent" style={styles.sectionLabel}>{title}</Text>
+      <Surface style={styles.sectionCard}>{children}</Surface>
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: palette.cream },
+  root: { flex: 1 },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: palette.line,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  cancel: { fontFamily: fonts.bodyMedium, color: palette.muted, fontSize: 15, width: 56 },
-  title: { fontFamily: fonts.displaySemibold, fontSize: 22, color: palette.burgundy },
-  section: { fontFamily: fonts.displaySemibold, fontSize: 19, color: palette.burgundy, marginTop: spacing.lg, marginBottom: spacing.md },
+  headerSide: { width: 56 },
+  section: { gap: spacing.sm },
+  sectionLabel: { marginLeft: spacing.xs },
+  sectionCard: { padding: spacing.lg, paddingBottom: spacing.xs },
   row: { flexDirection: 'row', gap: spacing.md },
   half: { flex: 1 },
-  error: { fontFamily: fonts.body, color: colors.danger, textAlign: 'center', marginTop: spacing.md },
 });

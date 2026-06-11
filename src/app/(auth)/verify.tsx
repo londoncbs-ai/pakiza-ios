@@ -1,13 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 
 import { authApi } from '@/api/auth';
 import { errorMessage } from '@/api/client';
 import { AuthScaffold } from '@/components/AuthScaffold';
 import { Button } from '@/components/Button';
+import { Text } from '@/components/Text';
 import { useAuth } from '@/store/auth';
-import { fonts, palette, radii, spacing } from '@/theme';
+import { fonts, hexA, palette, radii, spacing } from '@/theme';
 
 const LENGTH = 6;
 
@@ -58,7 +59,9 @@ export default function Verify() {
       <Pressable onPress={() => inputRef.current?.focus()} style={styles.boxes}>
         {digits.map((d, i) => (
           <View key={i} style={[styles.box, code.length === i && styles.boxActive]}>
-            <Text style={styles.boxText}>{d}</Text>
+            <Text variant="title" tone="onDark" style={styles.boxText}>
+              {d}
+            </Text>
           </View>
         ))}
       </Pressable>
@@ -74,14 +77,22 @@ export default function Verify() {
         style={styles.hidden}
       />
 
-      {debugOtp ? <Text style={styles.devHint}>Dev mode · code auto-filled ({debugOtp})</Text> : null}
-      {error ? <Text style={styles.error}>{error}</Text> : null}
+      {debugOtp ? (
+        <Text variant="footnote" color={palette.rose} center style={styles.devHint}>
+          Dev mode · code auto-filled ({debugOtp})
+        </Text>
+      ) : null}
+      {error ? (
+        <Text variant="footnote" color={palette.rose} center style={styles.error}>
+          {error}
+        </Text>
+      ) : null}
 
       <Button label="Verify & continue" onPress={() => verify(code)} loading={loading} style={{ marginTop: spacing.lg }} />
 
-      <Text style={styles.resend}>
+      <Text variant="callout" tone="onDarkMuted" center style={styles.resend}>
         Didn’t get it?{' '}
-        <Text style={styles.link} onPress={resend}>
+        <Text variant="callout" color={palette.rose} style={styles.link} onPress={resend}>
           Resend code
         </Text>
       </Text>
@@ -94,29 +105,18 @@ const styles = StyleSheet.create({
   box: {
     width: 48,
     height: 58,
-    borderRadius: radii.sm,
+    borderRadius: radii.input,
     borderWidth: 1.5,
-    borderColor: 'rgba(245,240,230,0.25)',
-    backgroundColor: 'rgba(245,240,230,0.06)',
+    borderColor: hexA(palette.cream, 0.22),
+    backgroundColor: hexA(palette.cream, 0.06),
     alignItems: 'center',
     justifyContent: 'center',
   },
-  boxActive: { borderColor: palette.gold },
-  boxText: { fontFamily: fonts.displaySemibold, fontSize: 26, color: palette.cream },
+  boxActive: { borderColor: palette.rose, backgroundColor: hexA(palette.cream, 0.1) },
+  boxText: { fontSize: 26 },
   hidden: { position: 'absolute', opacity: 0, height: 1, width: 1 },
-  devHint: {
-    fontFamily: fonts.body,
-    color: palette.gold,
-    fontSize: 12.5,
-    textAlign: 'center',
-    marginTop: spacing.md,
-  },
-  error: { fontFamily: fonts.body, color: '#F0B7B0', textAlign: 'center', marginTop: spacing.md },
-  resend: {
-    fontFamily: fonts.body,
-    color: 'rgba(245,240,230,0.75)',
-    textAlign: 'center',
-    marginTop: spacing.xl,
-  },
-  link: { fontFamily: fonts.bodySemibold, color: palette.gold },
+  devHint: { marginTop: spacing.md },
+  error: { marginTop: spacing.md },
+  resend: { marginTop: spacing.xl },
+  link: { fontFamily: fonts.bodySemibold },
 });

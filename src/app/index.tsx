@@ -24,7 +24,6 @@ export default function Onboarding() {
             label="I already have an account"
             variant="outline"
             onPress={() => router.push('/(auth)/sign-in')}
-            style={{ marginTop: spacing.md }}
           />
         </View>
       </View>
@@ -35,5 +34,5 @@ export default function Onboarding() {
 const styles = StyleSheet.create({
   container: { flex: 1, paddingHorizontal: spacing.xl, justifyContent: 'flex-end' },
   hero: { flex: 1, alignItems: 'center', justifyContent: 'center', marginTop: '40%' },
-  actions: { width: '100%' },
+  actions: { width: '100%', gap: spacing.md },
 });

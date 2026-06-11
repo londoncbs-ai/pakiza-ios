@@ -1,22 +1,33 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 
-import { BrandBackground } from '@/components/BrandBackground';
 import { Button } from '@/components/Button';
-import { fonts, palette, spacing } from '@/theme';
+import { Screen } from '@/components/Screen';
+import { Surface } from '@/components/Surface';
+import { Text } from '@/components/Text';
+import { haptics } from '@/lib/haptics';
+import { palette, radii, spacing, useTheme } from '@/theme';
+
+const TRUST_POINTS: { icon: keyof typeof Ionicons.glyphMap; text: string }[] = [
+  { icon: 'eye-off-outline', text: 'Your selfie is never shown on your profile.' },
+  { icon: 'people-outline', text: 'Verified members earn a trusted badge.' },
+  { icon: 'lock-closed-outline', text: 'Used only to confirm it is really you.' },
+];
 
 export default function IdVerify() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { c } = useTheme();
   const [selfie, setSelfie] = useState<string | null>(null);
   const [verifying, setVerifying] = useState(false);
 
   const takeSelfie = async () => {
+    haptics.selection();
     const perm = await ImagePicker.requestCameraPermissionsAsync();
     if (!perm.granted) {
       // Fall back to library if camera is unavailable (e.g. simulator).
@@ -38,32 +49,75 @@ export default function IdVerify() {
   };
 
   return (
-    <BrandBackground>
-      <View style={[styles.container, { paddingTop: insets.top + spacing.xl, paddingBottom: insets.bottom + spacing.xl }]}>
+    <Screen>
+      <View
+        style={[
+          styles.container,
+          { paddingTop: insets.top + spacing.xxl, paddingBottom: insets.bottom + spacing.lg },
+        ]}
+      >
         <View style={styles.body}>
-          <View style={styles.badge}>
+          {/* Shield / selfie motif - the trust mark */}
+          <Pressable onPress={takeSelfie} style={styles.badgeWrap}>
+            <View
+              style={[
+                styles.badge,
+                { backgroundColor: c.accentFaint, borderColor: c.accent },
+              ]}
+            >
+              {selfie ? (
+                <Image source={{ uri: selfie }} style={styles.selfie} contentFit="cover" />
+              ) : (
+                <Ionicons name="shield-checkmark" size={64} color={c.accent} />
+              )}
+            </View>
             {selfie ? (
-              <Image source={{ uri: selfie }} style={styles.selfie} contentFit="cover" />
-            ) : (
-              <Ionicons name="shield-checkmark-outline" size={64} color={palette.gold} />
-            )}
-          </View>
-
-          <Text style={styles.title}>Verify your identity</Text>
-          <Text style={styles.subtitle}>
-            A quick selfie keeps Pakiza safe and authentic. Your photo is used only to confirm
-            it’s really you. It’s never shown on your profile.
-          </Text>
-
-          <Pressable onPress={takeSelfie} style={styles.captureRow}>
-            <Ionicons name="camera-outline" size={20} color={palette.cream} />
-            <Text style={styles.captureText}>{selfie ? 'Retake selfie' : 'Take a selfie'}</Text>
+              <View style={[styles.editTag, { backgroundColor: palette.burgundy, borderColor: c.bg }]}>
+                <Ionicons name="camera" size={16} color={palette.cream} />
+              </View>
+            ) : null}
           </Pressable>
 
-          <View style={styles.devNote}>
-            <Ionicons name="construct-outline" size={14} color={palette.goldSoft} />
-            <Text style={styles.devText}>Dev mode: verification is optional and can be skipped.</Text>
-          </View>
+          <Text variant="title" tone="default" center style={styles.title}>
+            A community you can trust
+          </Text>
+          <Text variant="callout" tone="muted" center style={styles.subtitle}>
+            A quick selfie keeps Pakiza safe and authentic, so every member you meet is real.
+          </Text>
+
+          {/* Trust benefits */}
+          <Surface elevated style={styles.trustCard}>
+            {TRUST_POINTS.map((p, i) => (
+              <View
+                key={p.text}
+                style={[
+                  styles.trustRow,
+                  i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.border },
+                ]}
+              >
+                <View style={[styles.trustIcon, { backgroundColor: c.accentFaint }]}>
+                  <Ionicons name={p.icon} size={18} color={c.accent} />
+                </View>
+                <Text variant="callout" tone="default" style={styles.trustText}>
+                  {p.text}
+                </Text>
+              </View>
+            ))}
+          </Surface>
+
+          <Pressable
+            onPress={takeSelfie}
+            style={({ pressed }) => [
+              styles.captureRow,
+              { backgroundColor: c.surfaceAlt, borderColor: c.borderStrong },
+              pressed && { opacity: 0.7 },
+            ]}
+          >
+            <Ionicons name="camera-outline" size={20} color={c.accent} />
+            <Text variant="callout" tone="accent" style={styles.captureText}>
+              {selfie ? 'Retake selfie' : 'Take a selfie'}
+            </Text>
+          </Pressable>
         </View>
 
         <View style={styles.actions}>
@@ -73,55 +127,70 @@ export default function IdVerify() {
             loading={verifying}
           />
           <Pressable onPress={finish} hitSlop={10} style={styles.skip}>
-            <Text style={styles.skipText}>Skip for now</Text>
+            <Text variant="callout" tone="muted">Skip for now</Text>
           </Pressable>
+
+          <View style={styles.devNote}>
+            <Ionicons name="construct-outline" size={13} color={c.textSubtle} />
+            <Text variant="footnote" tone="subtle">
+              Dev mode: verification is optional and can be skipped.
+            </Text>
+          </View>
         </View>
       </View>
-    </BrandBackground>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, paddingHorizontal: spacing.xl, justifyContent: 'space-between' },
   body: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  badgeWrap: { marginBottom: spacing.xl },
   badge: {
-    width: 160,
-    height: 160,
-    borderRadius: 80,
-    backgroundColor: 'rgba(245,240,230,0.06)',
+    width: 148,
+    height: 148,
+    borderRadius: 74,
     borderWidth: 1.5,
-    borderColor: 'rgba(199,159,94,0.5)',
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
-    marginBottom: spacing.xl,
   },
   selfie: { width: '100%', height: '100%' },
-  title: { fontFamily: fonts.display, fontSize: 36, color: palette.cream, textAlign: 'center' },
-  subtitle: {
-    fontFamily: fonts.body,
-    fontSize: 15,
-    color: 'rgba(245,240,230,0.75)',
-    textAlign: 'center',
-    lineHeight: 22,
-    marginTop: spacing.md,
-    paddingHorizontal: spacing.sm,
+  editTag: {
+    position: 'absolute',
+    right: 4,
+    bottom: 4,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    borderWidth: 3,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
+  title: { marginBottom: spacing.sm },
+  subtitle: { paddingHorizontal: spacing.sm, marginBottom: spacing.xl },
+  trustCard: { width: '100%', paddingHorizontal: spacing.lg },
+  trustRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.md },
+  trustIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  trustText: { flex: 1 },
   captureRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: spacing.sm,
     marginTop: spacing.xl,
-    borderWidth: 1.5,
-    borderColor: 'rgba(245,240,230,0.5)',
+    borderWidth: StyleSheet.hairlineWidth,
     paddingHorizontal: 22,
     paddingVertical: 12,
-    borderRadius: 999,
+    borderRadius: radii.pill,
   },
-  captureText: { fontFamily: fonts.bodySemibold, color: palette.cream, fontSize: 15 },
-  devNote: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: spacing.xl },
-  devText: { fontFamily: fonts.body, color: palette.goldSoft, fontSize: 12.5 },
+  captureText: { letterSpacing: 0.2 },
   actions: { width: '100%' },
-  skip: { alignItems: 'center', paddingVertical: spacing.md, marginTop: spacing.sm },
-  skipText: { fontFamily: fonts.bodyMedium, color: 'rgba(245,240,230,0.7)', fontSize: 14.5 },
+  skip: { alignItems: 'center', paddingVertical: spacing.md, marginTop: spacing.xs },
+  devNote: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: spacing.sm },
 });

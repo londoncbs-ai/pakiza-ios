@@ -28,7 +28,7 @@ export function TextField({ label, onDark, error, style, ...rest }: Props) {
             borderColor: error
               ? palette.sienna
               : focused
-                ? palette.gold
+                ? c.accent
                 : onDark
                   ? 'rgba(245,240,230,0.18)'
                   : c.border,

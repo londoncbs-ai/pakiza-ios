@@ -9,6 +9,7 @@ type Tone =
   | 'subtle'
   | 'onDark'
   | 'onDarkMuted'
+  | 'accent'
   | 'gold'
   | 'burgundy'
   | 'danger'
@@ -39,8 +40,9 @@ export function Text({ variant = 'body', tone = 'default', color, center, style,
     subtle: c.textSubtle,
     onDark: palette.cream,
     onDarkMuted: tint.onDarkSoft,
+    accent: c.accent,
     gold: palette.gold,
-    burgundy: palette.burgundy,
+    burgundy: c.accent, // burgundy tone now resolves to the scheme-aware accent
     danger: c.danger,
     success: c.success,
   };

@@ -34,11 +34,11 @@ export function InterestModal({
             <Image source={{ uri: photo }} style={styles.avatar} contentFit="cover" />
           ) : (
             <View style={[styles.avatar, styles.avatarPlaceholder]}>
-              <Text variant="display" color={palette.goldSoft}>{firstName[0]}</Text>
+              <Text variant="display" color={palette.rose}>{firstName[0]}</Text>
             </View>
           )}
           <View style={styles.crest}>
-            <Ionicons name="sparkles" size={16} color={palette.ink} />
+            <Ionicons name="sparkles" size={16} color={palette.cream} />
           </View>
         </View>
 
@@ -76,7 +76,7 @@ const styles = StyleSheet.create({
     height: 132,
     borderRadius: 66,
     borderWidth: 3,
-    borderColor: palette.gold,
+    borderColor: palette.rose,
   },
   avatarPlaceholder: { backgroundColor: palette.burgundy, alignItems: 'center', justifyContent: 'center' },
   crest: {
@@ -86,7 +86,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: palette.gold,
+    backgroundColor: palette.rose,
     alignItems: 'center',
     justifyContent: 'center',
   },

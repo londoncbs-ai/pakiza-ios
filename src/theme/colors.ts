@@ -30,6 +30,7 @@ export const palette = {
   // derived shades
   burgundyDark: '#5C0017',
   burgundyDeep: '#3D0010',
+  rose: '#D2697A', // lighter red, for accents on dark surfaces (over photos / dark overlays)
   goldSoft: '#E2C892',
   ink: '#2A1A1E', // near-black warm text
   muted: '#6E5F57', // secondary text on light (darkened from #8A7B72 to meet WCAG AA)

@@ -1,8 +1,10 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
-import { fonts, palette, radii } from '@/theme';
+import { PressableScale } from './PressableScale';
+import { Text } from './Text';
+import { hexA, palette, radii, spacing, useTheme } from '@/theme';
 
 interface Props {
   label?: string;
@@ -28,6 +30,8 @@ export function Stepper({
   nullable = true,
   onDark = false,
 }: Props) {
+  const { c } = useTheme();
+
   const dec = () => {
     if (value == null) return;
     const n = value - step;
@@ -39,20 +43,28 @@ export function Stepper({
     else onChange(Math.min(max, value + step));
   };
 
-  const fg = onDark ? palette.cream : palette.ink;
   const display = value == null ? 'Any' : `${value}${suffix}`;
+
+  const fieldBg = onDark ? hexA(palette.cream, 0.06) : c.surfaceAlt;
+  const fieldBorder = onDark ? hexA(palette.cream, 0.18) : c.border;
+  const btnBg = onDark ? hexA(palette.cream, 0.1) : c.accentFaint;
+  const iconColor = onDark ? palette.cream : c.accent;
 
   return (
     <View style={styles.wrap}>
-      {label ? <Text style={[styles.label, { color: onDark ? 'rgba(245,240,230,0.85)' : palette.muted }]}>{label}</Text> : null}
-      <View style={[styles.row, { borderColor: onDark ? 'rgba(245,240,230,0.18)' : palette.line, backgroundColor: onDark ? 'rgba(245,240,230,0.06)' : palette.white }]}>
-        <Pressable onPress={dec} hitSlop={8} style={styles.btn}>
-          <Ionicons name="remove" size={20} color={palette.burgundy} />
-        </Pressable>
-        <Text style={[styles.value, { color: fg }]}>{display}</Text>
-        <Pressable onPress={inc} hitSlop={8} style={styles.btn}>
-          <Ionicons name="add" size={20} color={palette.burgundy} />
-        </Pressable>
+      {label ? (
+        <Text variant="footnote" color={onDark ? hexA(palette.cream, 0.85) : c.textMuted} style={styles.label}>
+          {label}
+        </Text>
+      ) : null}
+      <View style={[styles.row, { borderColor: fieldBorder, backgroundColor: fieldBg }]}>
+        <PressableScale onPress={dec} hitSlop={8} scaleTo={0.9} style={[styles.btn, { backgroundColor: btnBg }]}>
+          <Ionicons name="remove" size={20} color={iconColor} />
+        </PressableScale>
+        <Text variant="subhead" color={onDark ? palette.cream : c.text}>{display}</Text>
+        <PressableScale onPress={inc} hitSlop={8} scaleTo={0.9} style={[styles.btn, { backgroundColor: btnBg }]}>
+          <Ionicons name="add" size={20} color={iconColor} />
+        </PressableScale>
       </View>
     </View>
   );
@@ -60,15 +72,15 @@ export function Stepper({
 
 const styles = StyleSheet.create({
   wrap: { flex: 1 },
-  label: { fontFamily: fonts.bodyMedium, fontSize: 13, marginBottom: 7, marginLeft: 4 },
+  label: { marginBottom: spacing.xs + 3, marginLeft: spacing.xs },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     height: 50,
-    borderWidth: 1.5,
-    borderRadius: radii.sm + 4,
-    paddingHorizontal: 6,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: radii.input,
+    paddingHorizontal: spacing.xs + 2,
   },
   btn: {
     width: 38,
@@ -76,7 +88,5 @@ const styles = StyleSheet.create({
     borderRadius: 19,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(128,0,32,0.06)',
   },
-  value: { fontFamily: fonts.bodySemibold, fontSize: 16 },
 });

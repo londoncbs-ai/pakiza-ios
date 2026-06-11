@@ -7,11 +7,11 @@ import {
   Platform,
   Pressable,
   StyleSheet,
-  Text,
   TextInput,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
@@ -20,15 +20,42 @@ import { errorMessage } from '@/api/client';
 import { matchesApi } from '@/api/matches';
 import type { ChatMessage, Conversation } from '@/api/types';
 import { SafetySheet } from '@/components/SafetySheet';
+import { Screen } from '@/components/Screen';
+import { Text } from '@/components/Text';
+import { Button } from '@/components/Button';
+import { PressableScale } from '@/components/PressableScale';
+import { haptics } from '@/lib/haptics';
 import { tokenStore } from '@/lib/storage';
 import { useAuth } from '@/store/auth';
-import { fonts, palette, radii, spacing } from '@/theme';
+import { fonts, palette, radii, spacing, useTheme } from '@/theme';
+
+/** Day key for grouping messages into date separators. */
+function dayKey(iso: string): string {
+  return new Date(iso).toDateString();
+}
+
+/** Human date label for a separator (Today / Yesterday / e.g. 4 June). */
+function dayLabel(iso: string): string {
+  const d = new Date(iso);
+  const today = new Date();
+  const yesterday = new Date();
+  yesterday.setDate(today.getDate() - 1);
+  if (d.toDateString() === today.toDateString()) return 'Today';
+  if (d.toDateString() === yesterday.toDateString()) return 'Yesterday';
+  return d.toLocaleDateString(undefined, { day: 'numeric', month: 'long' });
+}
+
+/** Short time stamp shown under a bubble. */
+function timeLabel(iso: string): string {
+  return new Date(iso).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+}
 
 export default function ChatThread() {
   const { id, name } = useLocalSearchParams<{ id: string; name?: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { userId } = useAuth();
+  const { c, isDark } = useTheme();
 
   const [messages, setMessages] = useState<ChatMessage[]>([]); // newest-first (inverted list)
   const [loading, setLoading] = useState(true);
@@ -54,7 +81,7 @@ export default function ChatThread() {
   useEffect(() => {
     let active = true;
     (async () => {
-      chatApi.getConversation(String(id)).then((c) => active && setConv(c)).catch(() => {});
+      chatApi.getConversation(String(id)).then((conversation) => active && setConv(conversation)).catch(() => {});
       let isLocked = false;
       try {
         const history = await chatApi.getMessages(String(id));
@@ -143,6 +170,7 @@ export default function ChatThread() {
   };
 
   const openMenu = () => {
+    haptics.selection();
     Alert.alert(name ?? 'Options', undefined, [
       { text: 'Report or block', onPress: () => setSafetyOpen(true) },
       { text: 'Unmatch', style: 'destructive', onPress: unmatch },
@@ -167,81 +195,200 @@ export default function ChatThread() {
     }
   };
 
+  const peer = conv?.other_profile;
+  const peerName = peer?.display_name ?? name ?? 'Chat';
+  const peerPhoto = peer?.photos?.find((p) => p.is_primary)?.cdn_url ?? peer?.photos?.[0]?.cdn_url;
+  const canSend = !!text.trim() && !sending;
+
   return (
-    <View style={styles.root}>
-      <View style={[styles.header, { paddingTop: insets.top + 6 }]}>
+    <Screen>
+      {/* Header */}
+      <View
+        style={[
+          styles.header,
+          { paddingTop: insets.top + spacing.xs, backgroundColor: c.surface, borderBottomColor: c.border },
+        ]}
+      >
         <Pressable onPress={() => router.back()} hitSlop={12} style={styles.back}>
-          <Ionicons name="chevron-back" size={26} color={palette.cream} />
+          <Ionicons name="chevron-back" size={26} color={c.text} />
         </Pressable>
-        <Text style={styles.headerName} numberOfLines={1}>{name ?? 'Chat'}</Text>
-        <Pressable onPress={openMenu} hitSlop={12} style={{ width: 30, alignItems: 'flex-end' }}>
-          <Ionicons name="ellipsis-horizontal" size={22} color={palette.cream} />
+
+        <View style={styles.headerCenter}>
+          {peerPhoto ? (
+            <Image source={{ uri: peerPhoto }} style={styles.headerAvatar} contentFit="cover" transition={120} />
+          ) : (
+            <View style={[styles.headerAvatar, styles.headerAvatarFallback, { backgroundColor: c.accentFaint }]}>
+              <Text variant="callout" tone="accent">{peerName[0]?.toUpperCase() ?? '?'}</Text>
+            </View>
+          )}
+          <View style={styles.headerText}>
+            <Text variant="subhead" tone="default" numberOfLines={1} style={styles.headerName}>
+              {peerName}
+            </Text>
+            {peerTyping ? (
+              <Text variant="footnote" tone="accent">typing…</Text>
+            ) : conv ? (
+              <Text variant="footnote" tone="subtle">Matched</Text>
+            ) : null}
+          </View>
+        </View>
+
+        <Pressable onPress={openMenu} hitSlop={12} style={styles.kebab}>
+          <Ionicons name="ellipsis-horizontal" size={22} color={c.textMuted} />
         </Pressable>
       </View>
 
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+        keyboardVerticalOffset={0}
       >
         {loading ? (
-          <View style={styles.center}><ActivityIndicator color={palette.burgundy} size="large" /></View>
+          <View style={styles.center}>
+            <ActivityIndicator color={c.accent} size="large" />
+          </View>
         ) : locked ? (
           <View style={styles.lockedWrap}>
-            <Ionicons name="lock-closed" size={44} color={palette.gold} />
-            <Text style={styles.lockedTitle}>This chat is locked</Text>
-            <Text style={styles.lockedBody}>
-              On the free plan you can keep a few chats open at once. Upgrade to message all your matches, or unmatch someone to free up a slot.
+            <View style={[styles.lockBadge, { backgroundColor: c.accentFaint }]}>
+              <Ionicons name="lock-closed" size={32} color={c.accent} />
+            </View>
+            <Text variant="heading" tone="default" center style={{ marginTop: spacing.lg }}>
+              This chat is locked
             </Text>
-            <Pressable style={styles.upgradeBtn} onPress={() => router.replace('/premium')}>
-              <Text style={styles.upgradeText}>Upgrade to Premium</Text>
-            </Pressable>
+            <Text variant="body" tone="muted" center style={styles.lockedBody}>
+              On the free plan you can keep a few chats open at once. Upgrade to message all your matches, or unmatch
+              someone to free up a slot.
+            </Text>
+            <Button
+              label="Upgrade to Premium"
+              variant="primary"
+              onPress={() => router.replace('/premium')}
+              style={{ marginTop: spacing.lg, alignSelf: 'stretch' }}
+            />
           </View>
         ) : (
           <FlatList
             data={messages}
             inverted
             keyExtractor={(m) => m.id}
-            contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingVertical: spacing.md }}
+            contentContainerStyle={styles.listContent}
+            keyboardDismissMode="interactive"
             ListEmptyComponent={
               <View style={styles.emptyWrap}>
-                <Text style={styles.empty}>You matched! Send a thoughtful first message to begin.</Text>
+                <View style={[styles.emptyBadge, { backgroundColor: c.accentFaint }]}>
+                  <Ionicons name="chatbubbles-outline" size={30} color={c.accent} />
+                </View>
+                <Text variant="subhead" tone="default" center style={{ marginTop: spacing.md }}>
+                  You matched!
+                </Text>
+                <Text variant="body" tone="muted" center style={styles.emptyBody}>
+                  Send a thoughtful first message to begin.
+                </Text>
               </View>
             }
-            renderItem={({ item }) => {
+            renderItem={({ item, index }) => {
+              // Inverted list: the visually-previous (older) message is at index+1.
+              const older = messages[index + 1];
+              const showDay = !older || dayKey(older.sent_at) !== dayKey(item.sent_at);
+
+              // System / wali messages render as a centered pill, not a bubble.
+              if (item.type === 'system' || item.type === 'wali') {
+                return (
+                  <View>
+                    <View style={styles.systemRow}>
+                      <View style={[styles.systemPill, { backgroundColor: c.surfaceAlt }]}>
+                        {item.type === 'wali' ? (
+                          <Ionicons name="shield-checkmark" size={13} color={c.textMuted} />
+                        ) : null}
+                        <Text variant="footnote" tone="muted" center>
+                          {item.content}
+                        </Text>
+                      </View>
+                    </View>
+                    {showDay ? <DaySeparator iso={item.sent_at} /> : null}
+                  </View>
+                );
+              }
+
               const mine = item.sender_id === userId;
               return (
-                <View style={[styles.bubbleRow, mine ? styles.rowMine : styles.rowTheirs]}>
-                  <View style={[styles.bubble, mine ? styles.bubbleMine : styles.bubbleTheirs]}>
-                    <Text style={[styles.msgText, mine ? styles.textMine : styles.textTheirs]}>{item.content}</Text>
+                <View>
+                  <View style={[styles.bubbleRow, mine ? styles.rowMine : styles.rowTheirs]}>
+                    <View style={[mine ? styles.colMine : styles.colTheirs]}>
+                      <View
+                        style={[
+                          styles.bubble,
+                          mine
+                            ? [styles.bubbleMine, { backgroundColor: palette.burgundy }]
+                            : [styles.bubbleTheirs, { backgroundColor: c.surfaceAlt, borderColor: c.border }],
+                        ]}
+                      >
+                        <Text
+                          variant="body"
+                          color={mine ? palette.cream : c.text}
+                          style={styles.msgText}
+                        >
+                          {item.content}
+                        </Text>
+                      </View>
+                      <View style={[styles.metaRow, mine ? styles.metaMine : styles.metaTheirs]}>
+                        <Text variant="footnote" tone="subtle">{timeLabel(item.sent_at)}</Text>
+                        {mine ? (
+                          <Ionicons
+                            name={item.is_read ? 'checkmark-done' : 'checkmark'}
+                            size={14}
+                            color={item.is_read ? c.accent : c.textSubtle}
+                          />
+                        ) : null}
+                      </View>
+                    </View>
                   </View>
+                  {showDay ? <DaySeparator iso={item.sent_at} /> : null}
                 </View>
               );
             }}
           />
         )}
 
-        {peerTyping ? <Text style={styles.typing}>typing…</Text> : null}
-        {error ? <Text style={styles.error}>{error}</Text> : null}
+        {error ? (
+          <Text variant="footnote" tone="danger" center style={styles.error}>
+            {error}
+          </Text>
+        ) : null}
 
         {!locked ? (
-        <View style={[styles.composer, { paddingBottom: insets.bottom + spacing.sm }]}>
-          <TextInput
-            style={styles.input}
-            value={text}
-            onChangeText={(t) => {
-              setText(t);
-              sendTyping(t.length > 0);
-            }}
-            placeholder="Write a message…"
-            placeholderTextColor={palette.muted}
-            multiline
-            onBlur={() => sendTyping(false)}
-          />
-          <Pressable onPress={send} disabled={!text.trim() || sending} style={[styles.sendBtn, (!text.trim() || sending) && styles.sendDisabled]}>
-            <Ionicons name="send" size={20} color={palette.cream} />
-          </Pressable>
-        </View>
+          <View
+            style={[
+              styles.composer,
+              {
+                paddingBottom: insets.bottom + spacing.sm,
+                backgroundColor: c.surface,
+                borderTopColor: c.border,
+              },
+            ]}
+          >
+            <TextInput
+              style={[styles.input, { backgroundColor: c.surfaceAlt, color: c.text, borderColor: c.border }]}
+              value={text}
+              onChangeText={(t) => {
+                setText(t);
+                sendTyping(t.length > 0);
+              }}
+              placeholder="Write a message…"
+              placeholderTextColor={c.textSubtle}
+              multiline
+              onBlur={() => sendTyping(false)}
+              keyboardAppearance={isDark ? 'dark' : 'light'}
+            />
+            <PressableScale
+              onPress={send}
+              disabled={!canSend}
+              haptic={false}
+              style={[styles.sendBtn, { backgroundColor: palette.burgundy, opacity: canSend ? 1 : 0.45 }]}
+            >
+              <Ionicons name="arrow-up" size={22} color={palette.cream} />
+            </PressableScale>
+          </View>
         ) : null}
       </KeyboardAvoidingView>
 
@@ -254,67 +401,101 @@ export default function ChatThread() {
           onActioned={() => router.back()}
         />
       ) : null}
+    </Screen>
+  );
+}
+
+/** Centered subtle date label between days of messages. */
+function DaySeparator({ iso }: { iso: string }) {
+  return (
+    <View style={styles.daySep}>
+      <Text variant="label" tone="subtle">{dayLabel(iso)}</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: palette.cream },
   flex: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  lockedWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.xl, gap: spacing.sm },
-  lockedTitle: { fontFamily: fonts.display, fontSize: 26, color: palette.burgundy, marginTop: spacing.sm },
-  lockedBody: { fontFamily: fonts.body, fontSize: 14.5, color: palette.muted, textAlign: 'center', lineHeight: 21 },
-  upgradeBtn: { backgroundColor: palette.gold, paddingHorizontal: 28, paddingVertical: 13, borderRadius: 999, marginTop: spacing.md },
-  upgradeText: { fontFamily: fonts.bodySemibold, color: palette.ink, fontSize: 15 },
+
+  // Header
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.md,
-    paddingBottom: spacing.md,
-    backgroundColor: palette.burgundy,
+    paddingHorizontal: spacing.sm,
+    paddingBottom: spacing.sm,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  back: { width: 30 },
-  headerName: { fontFamily: fonts.displaySemibold, fontSize: 22, color: palette.cream, flex: 1, textAlign: 'center' },
-  emptyWrap: { transform: [{ scaleY: -1 }], paddingTop: 80, paddingHorizontal: spacing.xl },
-  empty: { fontFamily: fonts.body, color: palette.muted, textAlign: 'center', lineHeight: 22 },
-  bubbleRow: { marginVertical: 4, flexDirection: 'row' },
+  back: { width: 34, height: 34, alignItems: 'center', justifyContent: 'center' },
+  headerCenter: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingHorizontal: 2 },
+  headerAvatar: { width: 38, height: 38, borderRadius: 19 },
+  headerAvatarFallback: { alignItems: 'center', justifyContent: 'center' },
+  headerText: { flex: 1 },
+  headerName: { marginBottom: 0 },
+  kebab: { width: 34, height: 34, alignItems: 'center', justifyContent: 'center' },
+
+  // Locked state
+  lockedWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.xl },
+  lockBadge: { width: 72, height: 72, borderRadius: 36, alignItems: 'center', justifyContent: 'center' },
+  lockedBody: { marginTop: spacing.sm, lineHeight: 22 },
+
+  // List
+  listContent: { paddingHorizontal: spacing.lg, paddingVertical: spacing.md },
+  emptyWrap: { transform: [{ scaleY: -1 }], paddingTop: 96, paddingHorizontal: spacing.xl, alignItems: 'center' },
+  emptyBadge: { width: 64, height: 64, borderRadius: 32, alignItems: 'center', justifyContent: 'center' },
+  emptyBody: { marginTop: spacing.xs, lineHeight: 22 },
+
+  // Date separator
+  daySep: { alignItems: 'center', paddingVertical: spacing.md },
+
+  // System / wali pill
+  systemRow: { alignItems: 'center', paddingVertical: spacing.sm },
+  systemPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    maxWidth: '82%',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radii.pill,
+  },
+
+  // Bubbles
+  bubbleRow: { marginVertical: 3, flexDirection: 'row' },
   rowMine: { justifyContent: 'flex-end' },
   rowTheirs: { justifyContent: 'flex-start' },
-  bubble: { maxWidth: '78%', paddingHorizontal: 14, paddingVertical: 10, borderRadius: 18 },
-  bubbleMine: { backgroundColor: palette.burgundy, borderBottomRightRadius: 5 },
-  bubbleTheirs: { backgroundColor: palette.white, borderBottomLeftRadius: 5, borderWidth: 1, borderColor: palette.line },
-  msgText: { fontFamily: fonts.body, fontSize: 15.5, lineHeight: 21 },
-  textMine: { color: palette.cream },
-  textTheirs: { color: palette.ink },
-  typing: { fontFamily: fonts.body, fontSize: 12.5, color: palette.muted, marginLeft: spacing.lg, marginBottom: 4 },
-  error: { fontFamily: fonts.body, color: '#B00020', fontSize: 12.5, textAlign: 'center', marginBottom: 4 },
+  colMine: { maxWidth: '78%', alignItems: 'flex-end' },
+  colTheirs: { maxWidth: '78%', alignItems: 'flex-start' },
+  bubble: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: radii.lg },
+  bubbleMine: { borderBottomRightRadius: radii.xs / 2 },
+  bubbleTheirs: { borderBottomLeftRadius: radii.xs / 2, borderWidth: StyleSheet.hairlineWidth },
+  msgText: { fontSize: 15.5, lineHeight: 21 },
+  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3, paddingHorizontal: 2 },
+  metaMine: { justifyContent: 'flex-end' },
+  metaTheirs: { justifyContent: 'flex-start' },
+
+  error: { marginBottom: spacing.xs },
+
+  // Composer
   composer: {
     flexDirection: 'row',
     alignItems: 'flex-end',
     gap: spacing.sm,
     paddingHorizontal: spacing.md,
     paddingTop: spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: palette.line,
-    backgroundColor: palette.cream,
+    borderTopWidth: StyleSheet.hairlineWidth,
   },
   input: {
     flex: 1,
     maxHeight: 120,
     minHeight: 44,
-    backgroundColor: palette.white,
-    borderRadius: 22,
-    borderWidth: 1,
-    borderColor: palette.line,
+    borderRadius: radii.lg,
+    borderWidth: StyleSheet.hairlineWidth,
     paddingHorizontal: 16,
     paddingTop: 11,
     paddingBottom: 11,
     fontFamily: fonts.body,
     fontSize: 15.5,
-    color: palette.ink,
   },
-  sendBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: palette.burgundy, alignItems: 'center', justifyContent: 'center' },
-  sendDisabled: { opacity: 0.5 },
+  sendBtn: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
 });

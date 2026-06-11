@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { StyleSheet, Text } from 'react-native';
+import { StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 
 import { authApi } from '@/api/auth';
 import { errorMessage } from '@/api/client';
 import { AuthScaffold } from '@/components/AuthScaffold';
 import { Button } from '@/components/Button';
+import { Text } from '@/components/Text';
 import { TextField } from '@/components/TextField';
 import { fonts, palette, spacing } from '@/theme';
 
@@ -76,9 +77,9 @@ export default function SignUp() {
 
       <Button label="Continue" onPress={onSubmit} loading={loading} style={{ marginTop: spacing.sm }} />
 
-      <Text style={styles.foot}>
+      <Text variant="callout" tone="onDarkMuted" center style={styles.foot}>
         Already have an account?{' '}
-        <Text style={styles.link} onPress={() => router.replace('/(auth)/sign-in')}>
+        <Text variant="callout" color={palette.rose} style={styles.link} onPress={() => router.replace('/(auth)/sign-in')}>
           Sign in
         </Text>
       </Text>
@@ -87,12 +88,6 @@ export default function SignUp() {
 }
 
 const styles = StyleSheet.create({
-  foot: {
-    fontFamily: fonts.body,
-    color: 'rgba(245,240,230,0.75)',
-    textAlign: 'center',
-    marginTop: spacing.xl,
-    fontSize: 14,
-  },
-  link: { fontFamily: fonts.bodySemibold, color: palette.gold },
+  foot: { marginTop: spacing.xl },
+  link: { fontFamily: fonts.bodySemibold },
 });
