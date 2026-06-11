@@ -4,6 +4,7 @@ import {
   Alert,
   FlatList,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
   StyleSheet,
@@ -18,6 +19,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { chatApi, chatSocketUrl } from '@/api/chat';
 import { errorMessage } from '@/api/client';
 import { matchesApi } from '@/api/matches';
+import { REPORT_REASONS, safetyApi, type ReportReason } from '@/api/safety';
 import type { ChatMessage, Conversation } from '@/api/types';
 import { SafetySheet } from '@/components/SafetySheet';
 import { Screen } from '@/components/Screen';
@@ -65,6 +67,7 @@ export default function ChatThread() {
   const [peerTyping, setPeerTyping] = useState(false);
   const [conv, setConv] = useState<Conversation | null>(null);
   const [safetyOpen, setSafetyOpen] = useState(false);
+  const [reportMsg, setReportMsg] = useState<ChatMessage | null>(null);
   const [locked, setLocked] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
   const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -195,6 +198,20 @@ export default function ChatThread() {
     }
   };
 
+  const submitReport = async (reason: ReportReason) => {
+    const m = reportMsg;
+    setReportMsg(null);
+    if (!m) return;
+    try {
+      await safetyApi.report(m.sender_id, reason, undefined, m.id);
+      haptics.success();
+      Alert.alert('Message reported', 'Thank you. Our team will review this message and the surrounding conversation.');
+    } catch (err: any) {
+      if (err?.response?.status === 409) Alert.alert('Already reported', 'You have already reported this message.');
+      else Alert.alert('Could not report', errorMessage(err));
+    }
+  };
+
   const peer = conv?.other_profile;
   const peerName = peer?.display_name ?? name ?? 'Chat';
   const peerPhoto = peer?.photos?.find((p) => p.is_primary)?.cdn_url ?? peer?.photos?.[0]?.cdn_url;
@@ -315,7 +332,9 @@ export default function ChatThread() {
                 <View>
                   <View style={[styles.bubbleRow, mine ? styles.rowMine : styles.rowTheirs]}>
                     <View style={[mine ? styles.colMine : styles.colTheirs]}>
-                      <View
+                      <Pressable
+                        onLongPress={!mine ? () => { haptics.selection(); setReportMsg(item); } : undefined}
+                        delayLongPress={350}
                         style={[
                           styles.bubble,
                           mine
@@ -330,7 +349,7 @@ export default function ChatThread() {
                         >
                           {item.content}
                         </Text>
-                      </View>
+                      </Pressable>
                       <View style={[styles.metaRow, mine ? styles.metaMine : styles.metaTheirs]}>
                         <Text variant="footnote" tone="subtle">{timeLabel(item.sent_at)}</Text>
                         {mine ? (
@@ -401,6 +420,36 @@ export default function ChatThread() {
           onActioned={() => router.back()}
         />
       ) : null}
+
+      {/* Report-a-message reason picker */}
+      <Modal visible={!!reportMsg} transparent animationType="fade" onRequestClose={() => setReportMsg(null)}>
+        <Pressable style={styles.sheetOverlay} onPress={() => setReportMsg(null)}>
+          <Pressable style={[styles.sheet, { backgroundColor: c.surface, paddingBottom: insets.bottom + spacing.md }]}>
+            <Text variant="subhead" tone="default" center style={{ marginBottom: 2 }}>Report this message</Text>
+            <Text variant="footnote" tone="muted" center style={{ marginBottom: spacing.md }}>
+              Our team will see this message and the surrounding chat.
+            </Text>
+            {reportMsg?.content ? (
+              <View style={[styles.reportPreview, { backgroundColor: c.surfaceAlt, borderColor: c.border }]}>
+                <Text variant="footnote" tone="muted" numberOfLines={3}>“{reportMsg.content}”</Text>
+              </View>
+            ) : null}
+            {REPORT_REASONS.map((r) => (
+              <Pressable
+                key={r.value}
+                onPress={() => submitReport(r.value)}
+                style={[styles.reasonRow, { borderTopColor: c.border }]}
+              >
+                <Text variant="body" tone="default">{r.label}</Text>
+                <Ionicons name="chevron-forward" size={18} color={c.textSubtle} />
+              </Pressable>
+            ))}
+            <Pressable onPress={() => setReportMsg(null)} style={styles.reasonCancel}>
+              <Text variant="subhead" tone="muted">Cancel</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </Screen>
   );
 }
@@ -498,4 +547,11 @@ const styles = StyleSheet.create({
     fontSize: 15.5,
   },
   sendBtn: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
+
+  // Report-message sheet
+  sheetOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(20,16,17,0.45)' },
+  sheet: { borderTopLeftRadius: radii.card, borderTopRightRadius: radii.card, paddingHorizontal: spacing.lg, paddingTop: spacing.lg },
+  reportPreview: { borderWidth: StyleSheet.hairlineWidth, borderRadius: radii.md, padding: spacing.md, marginBottom: spacing.sm },
+  reasonRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: spacing.md, borderTopWidth: StyleSheet.hairlineWidth },
+  reasonCancel: { alignItems: 'center', paddingTop: spacing.md, paddingBottom: spacing.xs },
 });

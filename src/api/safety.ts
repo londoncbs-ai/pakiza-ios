@@ -9,13 +9,23 @@ export type ReportReason =
   | 'scam'
   | 'other';
 
+export const REPORT_REASONS: { value: ReportReason; label: string }[] = [
+  { value: 'harassment', label: 'Harassment or abuse' },
+  { value: 'inappropriate_content', label: 'Inappropriate content' },
+  { value: 'spam', label: 'Spam or scam' },
+  { value: 'fake_profile', label: 'Fake profile' },
+  { value: 'scam', label: 'Asking for money' },
+  { value: 'other', label: 'Something else' },
+];
+
 export const safetyApi = {
-  report(reportedUserId: string, reason: ReportReason, description?: string) {
+  report(reportedUserId: string, reason: ReportReason, description?: string, messageId?: string) {
     return api
       .post('/safety/reports', {
         reported_user_id: reportedUserId,
         reason,
         description: description || undefined,
+        message_id: messageId || undefined,
       })
       .then((r) => r.data);
   },
