@@ -239,3 +239,54 @@ export interface CreateProfileInput {
 }
 
 export type UpdateProfileInput = Partial<CreateProfileInput>;
+
+// ── Events ──────────────────────────────────────────────────────────────────
+export type EventCategory =
+  | 'matrimonial_meet'
+  | 'speed_matching'
+  | 'webinar'
+  | 'workshop'
+  | 'community'
+  | 'family';
+
+export type RSVPStatus = 'going' | 'interested';
+
+export interface EventItem {
+  id: string;
+  title: string;
+  description: string;
+  category: EventCategory;
+  starts_at: string;
+  ends_at: string | null;
+  is_online: boolean;
+  location_name: string | null;
+  city: string | null;
+  country_name: string | null;
+  cover_image_url: string | null;
+  host_name: string | null;
+  capacity: number | null;
+  price_label: string | null;
+  is_featured: boolean;
+  going_count: number;
+  my_rsvp: RSVPStatus | null;
+}
+
+// ── News / articles ─────────────────────────────────────────────────────────
+export type ArticleCategory = 'advice' | 'success_story' | 'faith' | 'guide' | 'announcement';
+
+export interface ArticleItem {
+  id: string;
+  title: string;
+  slug: string;
+  excerpt: string;
+  category: ArticleCategory;
+  author_name: string;
+  cover_image_url: string | null;
+  read_minutes: number;
+  published_at: string;
+  is_featured: boolean;
+}
+
+export interface Article extends ArticleItem {
+  body: string;
+}

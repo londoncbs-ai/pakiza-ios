@@ -55,6 +55,10 @@ function RootNavigator() {
       <Stack.Screen name="change-email" />
       <Stack.Screen name="likes" />
       <Stack.Screen name="saved" />
+      <Stack.Screen name="events" />
+      <Stack.Screen name="event/[id]" />
+      <Stack.Screen name="news" />
+      <Stack.Screen name="article/[id]" />
       <Stack.Screen name="terms" />
       <Stack.Screen name="privacy" />
       <Stack.Screen name="community" />
