@@ -1,13 +1,8 @@
-export { colors, palette } from './colors';
-
-/** Font families - keys match the names registered in the root layout's useFonts(). */
-export const fonts = {
-  display: 'Cormorant', // Cormorant Garamond (serif) - headings & wordmark
-  displaySemibold: 'CormorantSemibold',
-  body: 'Inter', // sans - UI & body
-  bodyMedium: 'InterMedium',
-  bodySemibold: 'InterSemibold',
-} as const;
+export { colors, palette, tint, surfaces, hexA } from './colors';
+export { fonts } from './fonts';
+export { typography } from './typography';
+export type { TypeRole, TypeSpec } from './typography';
+export { springs, durations } from './motion';
 
 export const spacing = {
   xs: 4,
@@ -19,11 +14,19 @@ export const spacing = {
   xxxl: 48,
 } as const;
 
+/** Radius scale - one coherent set, no more `radii.sm + 4` arithmetic. */
 export const radii = {
-  card: 16,
-  pill: 999,
+  xs: 8,
   sm: 10,
+  md: 12,
+  input: 14, // text fields, steppers, pickers
+  lg: 16,
+  card: 20,
+  pill: 999,
 } as const;
+
+/** A fully-rounded radius for an avatar/circle of a given size. */
+export const avatarRadius = (size: number) => size / 2;
 
 export const shadow = {
   card: {
@@ -39,5 +42,13 @@ export const shadow = {
     shadowOpacity: 0.12,
     shadowRadius: 8,
     elevation: 4,
+  },
+  /** Reserved for content floating over photography (e.g. the introduction card). */
+  photo: {
+    shadowColor: '#3D0010',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.22,
+    shadowRadius: 24,
+    elevation: 12,
   },
 } as const;

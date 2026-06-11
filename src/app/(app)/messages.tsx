@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
@@ -8,6 +8,10 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { chatApi } from '@/api/chat';
 import { errorMessage } from '@/api/client';
 import type { Conversation } from '@/api/types';
+import { EmptyState } from '@/components/EmptyState';
+import { ErrorState } from '@/components/ErrorState';
+import { SkeletonList } from '@/components/Skeleton';
+import { Text } from '@/components/Text';
 import { fonts, palette, shadow, spacing } from '@/theme';
 
 function relativeTime(iso: string | null): string {
@@ -27,6 +31,7 @@ export default function Messages() {
   const router = useRouter();
   const [items, setItems] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -37,8 +42,14 @@ export default function Messages() {
       setError(errorMessage(err));
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }, []);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    load();
+  }, [load]);
 
   useFocusEffect(
     useCallback(() => {
@@ -49,20 +60,25 @@ export default function Messages() {
   return (
     <View style={[styles.root, { paddingTop: insets.top + spacing.sm }]}>
       <View style={styles.header}>
-        <Text style={styles.title}>Messages</Text>
-        <Text style={styles.subtitle}>Begin the conversation with purpose</Text>
+        <Text variant="title" tone="burgundy">Messages</Text>
+        <Text variant="footnote" tone="muted">Begin the conversation with purpose</Text>
       </View>
 
       {loading ? (
-        <ActivityIndicator color={palette.burgundy} size="large" style={{ marginTop: 60 }} />
+        <SkeletonList />
       ) : error ? (
-        <Text style={styles.empty}>{error}</Text>
+        <ErrorState message={error} onRetry={onRefresh} />
       ) : items.length === 0 ? (
-        <Text style={styles.empty}>No conversations yet. When you match, you can start a chat here.</Text>
+        <EmptyState
+          icon="chatbubbles-outline"
+          title="No conversations yet"
+          message="When you and someone both express interest, you can begin a thoughtful conversation here."
+        />
       ) : (
         <FlatList
           data={items}
           keyExtractor={(c) => c.id}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={palette.burgundy} />}
           contentContainerStyle={{ padding: spacing.lg, paddingBottom: insets.bottom + spacing.xl }}
           renderItem={({ item }) => {
             const photo =
@@ -119,9 +135,6 @@ export default function Messages() {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: palette.cream },
   header: { paddingHorizontal: spacing.lg, paddingBottom: spacing.md },
-  title: { fontFamily: fonts.display, fontSize: 32, color: palette.burgundy },
-  subtitle: { fontFamily: fonts.body, fontSize: 13.5, color: palette.muted, marginTop: -2 },
-  empty: { fontFamily: fonts.body, color: palette.muted, textAlign: 'center', marginTop: 70, paddingHorizontal: spacing.xxl, lineHeight: 22 },
   row: { flexDirection: 'row', alignItems: 'center', backgroundColor: palette.white, borderRadius: 16, padding: spacing.md, marginBottom: spacing.md, ...shadow.soft },
   avatar: { width: 58, height: 58, borderRadius: 29 },
   dim: { opacity: 0.5 },

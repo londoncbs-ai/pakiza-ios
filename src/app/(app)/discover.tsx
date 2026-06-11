@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Modal, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -8,9 +8,12 @@ import { errorMessage } from '@/api/client';
 import { matchesApi } from '@/api/matches';
 import { profilesApi } from '@/api/profiles';
 import type { PublicProfile, Quota } from '@/api/types';
+import { ErrorState } from '@/components/ErrorState';
 import { MatchModal } from '@/components/MatchModal';
 import { ProfileDetail } from '@/components/ProfileDetail';
+import { SkeletonCard } from '@/components/Skeleton';
 import { SwipeDeck, type SwipeAction, type SwipeDeckHandle } from '@/components/SwipeDeck';
+import { Text } from '@/components/Text';
 import { Wordmark } from '@/components/Wordmark';
 import { fonts, palette, spacing } from '@/theme';
 
@@ -95,7 +98,7 @@ export default function Discover() {
     <View style={[styles.root, { paddingTop: insets.top + spacing.sm }]}>
       <View style={styles.header}>
         <Wordmark size={30} color={palette.burgundy} />
-        <Text style={styles.tagline}>where love finds purpose</Text>
+        <Text variant="footnote" tone="muted" style={styles.tagline}>where love finds purpose</Text>
 
         {quota && !quota.is_premium ? (
           <View style={styles.quotaRow}>
@@ -126,16 +129,9 @@ export default function Discover() {
 
       <View style={[styles.body, { paddingBottom: spacing.md }]}>
         {loading ? (
-          <View style={styles.center}>
-            <ActivityIndicator color={palette.burgundy} size="large" />
-          </View>
+          <SkeletonCard />
         ) : error ? (
-          <View style={styles.center}>
-            <Text style={styles.errorText}>{error}</Text>
-            <Pressable onPress={load} style={styles.retry}>
-              <Text style={styles.retryText}>Try again</Text>
-            </Pressable>
-          </View>
+          <ErrorState message={error} onRetry={load} />
         ) : (
           <SwipeDeck ref={deckRef} profiles={profiles} onDecision={onDecision} onOpen={setOpened} onBoost={onBoost} onRewind={onRewind} />
         )}
@@ -176,16 +172,6 @@ const styles = StyleSheet.create({
   },
   quotaText: { fontFamily: fonts.bodyMedium, fontSize: 12, color: palette.ink },
   body: { flex: 1, paddingHorizontal: spacing.lg, paddingTop: spacing.sm },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  errorText: {
-    fontFamily: fonts.body,
-    color: palette.muted,
-    textAlign: 'center',
-    marginBottom: spacing.lg,
-    paddingHorizontal: spacing.xl,
-  },
-  retry: { backgroundColor: palette.burgundy, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 999 },
-  retryText: { fontFamily: fonts.bodySemibold, color: palette.cream },
   notice: { backgroundColor: palette.sand, marginHorizontal: spacing.lg, padding: spacing.md, borderRadius: 12 },
   noticeText: { fontFamily: fonts.bodyMedium, color: palette.ink, textAlign: 'center', fontSize: 13 },
 });

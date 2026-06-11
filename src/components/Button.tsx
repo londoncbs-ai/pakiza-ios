@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 
 import { colors, fonts, palette, radii, shadow } from '@/theme';
+import { haptics } from '@/lib/haptics';
 
 type Variant = 'primary' | 'secondary' | 'dark' | 'outline' | 'ghost';
 
@@ -41,6 +42,9 @@ export function Button({ label, onPress, variant = 'primary', loading, disabled,
   return (
     <Pressable
       onPress={onPress}
+      onPressIn={() => {
+        if (!isDisabled) haptics.selection();
+      }}
       disabled={isDisabled}
       style={({ pressed }) => [
         styles.base,

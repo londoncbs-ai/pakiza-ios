@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Alert, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Modal, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
@@ -8,19 +8,22 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { matchesApi } from '@/api/matches';
 import type { PublicProfile } from '@/api/types';
 import { Button } from '@/components/Button';
+import { EmptyState } from '@/components/EmptyState';
 import { ProfileDetail } from '@/components/ProfileDetail';
-import { fonts, palette, radii, shadow, spacing } from '@/theme';
+import { SkeletonList } from '@/components/Skeleton';
+import { Text } from '@/components/Text';
+import { fonts, palette, radii, shadow, spacing, tint } from '@/theme';
 
 export default function LikesYou() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const [profiles, setProfiles] = useState<PublicProfile[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [locked, setLocked] = useState(false);
   const [opened, setOpened] = useState<PublicProfile | null>(null);
 
   const load = useCallback(async () => {
-    setLoading(true);
     try {
       setProfiles(await matchesApi.likesReceived());
       setLocked(false);
@@ -28,8 +31,14 @@ export default function LikesYou() {
       if (err?.response?.status === 402) setLocked(true);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }, []);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    load();
+  }, [load]);
 
   useFocusEffect(
     useCallback(() => {
@@ -57,12 +66,12 @@ export default function LikesYou() {
         <Pressable onPress={() => router.back()} hitSlop={12} style={{ width: 30 }}>
           <Ionicons name="chevron-back" size={26} color={palette.burgundy} />
         </Pressable>
-        <Text style={styles.title}>Likes You</Text>
+        <Text variant="heading" tone="burgundy">Likes You</Text>
         <View style={{ width: 30 }} />
       </View>
 
       {loading ? (
-        <ActivityIndicator color={palette.burgundy} size="large" style={{ marginTop: 60 }} />
+        <SkeletonList count={4} />
       ) : locked ? (
         <View style={styles.lock}>
           <View style={styles.lockIcon}>
@@ -75,9 +84,16 @@ export default function LikesYou() {
           <Button label="Upgrade to Gold" variant="secondary" onPress={() => router.push('/premium')} style={{ marginTop: spacing.lg }} />
         </View>
       ) : profiles.length === 0 ? (
-        <Text style={styles.empty}>No new likes right now. Keep your profile fresh and check back soon.</Text>
+        <EmptyState
+          icon="heart-outline"
+          title="No new likes right now"
+          message="Keep your profile fresh and check back soon. New interest will appear here."
+        />
       ) : (
-        <ScrollView contentContainerStyle={styles.grid}>
+        <ScrollView
+          contentContainerStyle={styles.grid}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={palette.burgundy} />}
+        >
           {profiles.map((p) => {
             const photo = p.photos?.find((x) => x.is_primary)?.cdn_url ?? p.photos?.[0]?.cdn_url;
             return (
@@ -116,17 +132,15 @@ export default function LikesYou() {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: palette.cream },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.md, paddingBottom: spacing.md },
-  title: { fontFamily: fonts.displaySemibold, fontSize: 22, color: palette.burgundy },
   lock: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.xxl },
-  lockIcon: { width: 88, height: 88, borderRadius: 44, backgroundColor: 'rgba(199,159,94,0.15)', alignItems: 'center', justifyContent: 'center', marginBottom: spacing.lg },
+  lockIcon: { width: 88, height: 88, borderRadius: 44, backgroundColor: tint.goldFaint, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.lg },
   lockTitle: { fontFamily: fonts.display, fontSize: 28, color: palette.burgundy, textAlign: 'center' },
   lockBody: { fontFamily: fonts.body, fontSize: 15, color: palette.muted, textAlign: 'center', lineHeight: 22, marginTop: spacing.sm },
-  empty: { fontFamily: fonts.body, color: palette.muted, textAlign: 'center', marginTop: 70, paddingHorizontal: spacing.xxl, lineHeight: 22 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', padding: spacing.md, gap: spacing.md },
   card: { width: '47%', aspectRatio: 0.8, borderRadius: radii.card, overflow: 'hidden', backgroundColor: palette.burgundyDark, ...shadow.soft },
   ph: { backgroundColor: palette.burgundy, alignItems: 'center', justifyContent: 'center' },
   phText: { fontFamily: fonts.display, fontSize: 64, color: palette.goldSoft },
-  cardOverlay: { position: 'absolute', left: 0, right: 0, bottom: 0, padding: spacing.md, backgroundColor: 'rgba(61,0,16,0.65)' },
+  cardOverlay: { position: 'absolute', left: 0, right: 0, bottom: 0, padding: spacing.md, backgroundColor: tint.overlayStrong },
   cardName: { fontFamily: fonts.displaySemibold, fontSize: 18, color: palette.cream },
-  cardCity: { fontFamily: fonts.body, fontSize: 12.5, color: 'rgba(245,240,230,0.85)' },
+  cardCity: { fontFamily: fonts.body, fontSize: 12.5, color: tint.onDarkSoft },
 });

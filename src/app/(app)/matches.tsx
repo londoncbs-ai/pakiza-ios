@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
@@ -8,6 +8,10 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { errorMessage } from '@/api/client';
 import { matchesApi } from '@/api/matches';
 import type { MatchSummary } from '@/api/types';
+import { EmptyState } from '@/components/EmptyState';
+import { ErrorState } from '@/components/ErrorState';
+import { SkeletonList } from '@/components/Skeleton';
+import { Text } from '@/components/Text';
 import { fonts, palette, shadow, spacing } from '@/theme';
 
 export default function Matches() {
@@ -15,10 +19,10 @@ export default function Matches() {
   const router = useRouter();
   const [matches, setMatches] = useState<MatchSummary[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    setLoading(true);
     try {
       setMatches(await matchesApi.list());
       setError(null);
@@ -26,8 +30,14 @@ export default function Matches() {
       setError(errorMessage(err));
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }, []);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    load();
+  }, [load]);
 
   // Refresh whenever the tab gains focus (e.g. after a new match in Discover).
   useFocusEffect(
@@ -39,8 +49,8 @@ export default function Matches() {
   return (
     <View style={[styles.root, { paddingTop: insets.top + spacing.sm }]}>
       <View style={styles.header}>
-        <Text style={styles.title}>Matches</Text>
-        <Text style={styles.subtitle}>People you’ve both said yes to</Text>
+        <Text variant="title" tone="burgundy">Matches</Text>
+        <Text variant="footnote" tone="muted">People you’ve both said yes to</Text>
       </View>
 
       <Pressable style={styles.likesBanner} onPress={() => router.push('/likes')}>
@@ -53,17 +63,20 @@ export default function Matches() {
       </Pressable>
 
       {loading ? (
-        <ActivityIndicator color={palette.burgundy} size="large" style={{ marginTop: 60 }} />
+        <SkeletonList />
       ) : error ? (
-        <Text style={styles.empty}>{error}</Text>
+        <ErrorState message={error} onRetry={onRefresh} />
       ) : matches.length === 0 ? (
-        <Text style={styles.empty}>
-          No matches yet. Keep exploring. When you and someone both say yes, they’ll appear here.
-        </Text>
+        <EmptyState
+          icon="people-outline"
+          title="No matches yet"
+          message="When you and someone both express interest, they’ll appear here to begin a conversation."
+        />
       ) : (
         <FlatList
           data={matches}
           keyExtractor={(m) => m.id}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={palette.burgundy} />}
           contentContainerStyle={{ padding: spacing.lg, paddingBottom: insets.bottom + spacing.xl }}
           renderItem={({ item }) => {
             const photo =
@@ -110,8 +123,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.md,
   },
-  title: { fontFamily: fonts.display, fontSize: 32, color: palette.burgundy },
-  subtitle: { fontFamily: fonts.body, fontSize: 13.5, color: palette.muted, marginTop: -2 },
   likesBanner: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -126,14 +137,6 @@ const styles = StyleSheet.create({
   },
   likesTitle: { fontFamily: fonts.bodySemibold, fontSize: 15, color: palette.ink },
   likesSub: { fontFamily: fonts.body, fontSize: 12.5, color: palette.muted, marginTop: 1 },
-  empty: {
-    fontFamily: fonts.body,
-    color: palette.muted,
-    textAlign: 'center',
-    marginTop: 70,
-    paddingHorizontal: spacing.xxl,
-    lineHeight: 22,
-  },
   card: {
     flexDirection: 'row',
     alignItems: 'center',
