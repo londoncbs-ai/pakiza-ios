@@ -73,11 +73,13 @@ export interface PublicProfile {
   marital_status: MaritalStatus | null;
   has_children: boolean | null;
   wants_children: WantsChildren | null;
+  willing_to_relocate: RelocationWillingness | null;
   languages_spoken: string | null;
   bio: string | null;
   photos: Photo[];
   profile_complete_pct: number;
   compatibility: number | null; // 0-100, set by the discovery feed (matching algorithm)
+  compatibility_reasons?: string[]; // plain-language "why you match", feed only
 }
 
 /** Own full profile - ProfileResponse (includes private fields). */
