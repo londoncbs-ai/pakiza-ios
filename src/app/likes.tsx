@@ -12,11 +12,12 @@ import { EmptyState } from '@/components/EmptyState';
 import { ProfileDetail } from '@/components/ProfileDetail';
 import { SkeletonList } from '@/components/Skeleton';
 import { Text } from '@/components/Text';
-import { fonts, palette, radii, shadow, spacing, tint } from '@/theme';
+import { fonts, palette, radii, shadow, spacing, tint, useTheme } from '@/theme';
 
 export default function LikesYou() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { c } = useTheme();
   const [profiles, setProfiles] = useState<PublicProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -61,7 +62,7 @@ export default function LikesYou() {
   };
 
   return (
-    <View style={styles.root}>
+    <View style={[styles.root, { backgroundColor: c.bg }]}>
       <View style={[styles.header, { paddingTop: insets.top + 6 }]}>
         <Pressable onPress={() => router.back()} hitSlop={12} style={{ width: 30 }}>
           <Ionicons name="chevron-back" size={26} color={palette.burgundy} />

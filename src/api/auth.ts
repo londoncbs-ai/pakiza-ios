@@ -37,4 +37,10 @@ export const authApi = {
       .post('/auth/change-password', { current_password, new_password })
       .then((r) => r.data);
   },
+
+  changeEmail(new_email: string, current_password: string) {
+    return api
+      .post('/auth/change-email', { new_email, current_password })
+      .then((r) => r.data);
+  },
 };

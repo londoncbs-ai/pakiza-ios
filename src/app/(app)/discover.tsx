@@ -19,13 +19,14 @@ import { Text } from '@/components/Text';
 import { Wordmark } from '@/components/Wordmark';
 import { haptics } from '@/lib/haptics';
 import { savedStore } from '@/lib/savedStore';
-import { palette, spacing, tint } from '@/theme';
+import { palette, spacing, tint, useTheme } from '@/theme';
 
 const PAGE = 12;
 
 export default function Discover() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { c } = useTheme();
 
   const [profiles, setProfiles] = useState<PublicProfile[]>([]);
   const [index, setIndex] = useState(0);
@@ -157,18 +158,18 @@ export default function Discover() {
   }, [current, busy, advance, loadQuota]);
 
   return (
-    <View style={[styles.root, { paddingTop: insets.top + spacing.sm }]}>
+    <View style={[styles.root, { backgroundColor: c.bg, paddingTop: insets.top + spacing.sm }]}>
       <View style={styles.header}>
         <Wordmark size={28} color={palette.burgundy} />
         <Text variant="footnote" tone="muted" style={styles.tagline}>where love finds purpose</Text>
 
         {quota && !quota.is_premium ? (
           <View style={styles.quotaRow}>
-            <View style={styles.quotaPill}>
+            <View style={[styles.quotaPill, { backgroundColor: c.surface, borderColor: c.border }]}>
               <Ionicons name="heart" size={12} color={palette.burgundy} />
               <Text variant="footnote" tone="default">{quota.likes_remaining ?? 0} likes left</Text>
             </View>
-            <Pressable style={styles.quotaPill} onPress={() => router.push('/(app)/matches')}>
+            <Pressable style={[styles.quotaPill, { backgroundColor: c.surface, borderColor: c.border }]} onPress={() => router.push('/(app)/matches')}>
               <Ionicons name="people" size={12} color={palette.burgundy} />
               <Text variant="footnote" tone="default">{quota.active_matches}/{quota.match_limit} matches</Text>
             </Pressable>
@@ -206,7 +207,7 @@ export default function Discover() {
             </Animated.View>
 
             <View style={styles.actionBar}>
-              <PressableScale style={[styles.actionPill, styles.notNow]} onPress={onNotNow} disabled={busy}
+              <PressableScale style={[styles.actionPill, styles.notNow, { backgroundColor: c.surface, borderColor: c.borderStrong }]} onPress={onNotNow} disabled={busy}
                 accessibilityRole="button" accessibilityLabel="Not now">
                 <Ionicons name="close" size={20} color={palette.sienna} />
                 <Text variant="subhead" color={palette.sienna}>Not now</Text>

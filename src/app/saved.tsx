@@ -15,11 +15,12 @@ import { PressableScale } from '@/components/PressableScale';
 import { Text } from '@/components/Text';
 import { haptics } from '@/lib/haptics';
 import { savedStore } from '@/lib/savedStore';
-import { palette, radii, shadow, spacing, surfaces } from '@/theme';
+import { palette, radii, shadow, spacing, surfaces, useTheme } from '@/theme';
 
 export default function Saved() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { c } = useTheme();
   const [items, setItems] = useState<PublicProfile[]>([]);
   const [opened, setOpened] = useState<PublicProfile | null>(null);
   const [matched, setMatched] = useState<PublicProfile | null>(null);
@@ -59,7 +60,7 @@ export default function Saved() {
   }, [refresh, router]);
 
   return (
-    <View style={styles.root}>
+    <View style={[styles.root, { backgroundColor: c.bg }]}>
       <View style={[styles.header, { paddingTop: insets.top + 6 }]}>
         <Pressable onPress={() => router.back()} hitSlop={12} style={{ width: 30 }}>
           <Ionicons name="chevron-back" size={26} color={palette.burgundy} />
@@ -82,7 +83,7 @@ export default function Saved() {
           {items.map((p) => {
             const photo = p.photos?.find((x) => x.is_primary)?.cdn_url ?? p.photos?.[0]?.cdn_url;
             return (
-              <PressableScale key={p.user_id} style={styles.row} onPress={() => setOpened(p)} haptic={false}>
+              <PressableScale key={p.user_id} style={[styles.row, { backgroundColor: c.surface }]} onPress={() => setOpened(p)} haptic={false}>
                 {photo ? (
                   <Image source={{ uri: photo }} style={styles.thumb} contentFit="cover" />
                 ) : (
@@ -111,7 +112,7 @@ export default function Saved() {
       {/* Full review of a saved profile */}
       <Modal visible={!!opened} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setOpened(null)}>
         {opened ? (
-          <View style={styles.sheet}>
+          <View style={[styles.sheet, { backgroundColor: c.bg }]}>
             <View style={[styles.sheetHeader, { paddingTop: spacing.md }]}>
               <Pressable onPress={() => setOpened(null)} hitSlop={12}>
                 <Ionicons name="chevron-down" size={26} color={palette.burgundy} />

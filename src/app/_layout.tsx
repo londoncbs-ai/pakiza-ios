@@ -16,7 +16,7 @@ import {
 } from '@expo-google-fonts/inter';
 
 import { AuthProvider, useAuth } from '@/store/auth';
-import { palette } from '@/theme';
+import { ThemeProvider, useTheme } from '@/theme';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -24,6 +24,7 @@ function RootNavigator() {
   const { status } = useAuth();
   const segments = useSegments();
   const router = useRouter();
+  const { c } = useTheme();
 
   useEffect(() => {
     if (status === 'loading') return;
@@ -42,7 +43,7 @@ function RootNavigator() {
   }, [status, segments, router]);
 
   return (
-    <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: palette.cream } }}>
+    <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: c.bg } }}>
       <Stack.Screen name="index" />
       <Stack.Screen name="(auth)" />
       <Stack.Screen name="(onboarding)" />
@@ -51,6 +52,7 @@ function RootNavigator() {
       <Stack.Screen name="notifications" />
       <Stack.Screen name="premium" />
       <Stack.Screen name="change-password" />
+      <Stack.Screen name="change-email" />
       <Stack.Screen name="likes" />
       <Stack.Screen name="saved" />
       <Stack.Screen name="terms" />
@@ -78,11 +80,18 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <AuthProvider>
-          <StatusBar style="light" />
-          <RootNavigator />
-        </AuthProvider>
+        <ThemeProvider>
+          <AuthProvider>
+            <ThemedStatusBar />
+            <RootNavigator />
+          </AuthProvider>
+        </ThemeProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );
+}
+
+function ThemedStatusBar() {
+  const { isDark } = useTheme();
+  return <StatusBar style={isDark ? 'light' : 'dark'} />;
 }

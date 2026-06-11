@@ -12,11 +12,12 @@ import { EmptyState } from '@/components/EmptyState';
 import { ErrorState } from '@/components/ErrorState';
 import { SkeletonList } from '@/components/Skeleton';
 import { Text } from '@/components/Text';
-import { fonts, palette, shadow, spacing } from '@/theme';
+import { fonts, palette, shadow, spacing, useTheme } from '@/theme';
 
 export default function Matches() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { c } = useTheme();
   const [matches, setMatches] = useState<MatchSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -47,13 +48,13 @@ export default function Matches() {
   );
 
   return (
-    <View style={[styles.root, { paddingTop: insets.top + spacing.sm }]}>
+    <View style={[styles.root, { backgroundColor: c.bg, paddingTop: insets.top + spacing.sm }]}>
       <View style={styles.header}>
         <Text variant="title" tone="burgundy">Matches</Text>
         <Text variant="footnote" tone="muted">People you’ve both said yes to</Text>
       </View>
 
-      <Pressable style={styles.likesBanner} onPress={() => router.push('/likes')}>
+      <Pressable style={[styles.likesBanner, { backgroundColor: c.surface, borderColor: palette.gold }]} onPress={() => router.push('/likes')}>
         <Ionicons name="heart-circle" size={26} color={palette.gold} />
         <View style={{ flex: 1 }}>
           <Text style={styles.likesTitle}>See who likes you</Text>
@@ -90,7 +91,7 @@ export default function Matches() {
               }
             };
             return (
-              <Pressable style={styles.card} onPress={openChat}>
+              <Pressable style={[styles.card, { backgroundColor: c.surface }]} onPress={openChat}>
                 {photo ? (
                   <Image source={{ uri: photo }} style={styles.avatar} contentFit="cover" />
                 ) : (

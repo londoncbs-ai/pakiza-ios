@@ -3,6 +3,10 @@ export { fonts } from './fonts';
 export { typography } from './typography';
 export type { TypeRole, TypeSpec } from './typography';
 export { springs, durations } from './motion';
+export { ThemeProvider, useTheme } from './ThemeProvider';
+export type { ThemePreference } from './ThemeProvider';
+export { lightColors, darkColors } from './themes';
+export type { ThemeColors } from './themes';
 
 export const spacing = {
   xs: 4,

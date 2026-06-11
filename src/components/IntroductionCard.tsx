@@ -18,7 +18,7 @@ import { DetailRow } from './DetailRow';
 import { SafetySheet } from './SafetySheet';
 import { Text } from './Text';
 import { label, titleCase } from '@/lib/format';
-import { fonts, palette, radii, shadow, spacing, surfaces, tint } from '@/theme';
+import { fonts, palette, radii, shadow, spacing, surfaces, tint, useTheme } from '@/theme';
 
 /** Small uppercase section heading in gold. */
 function SectionLabel({ children }: { children: React.ReactNode }) {
@@ -56,6 +56,7 @@ export function IntroductionCard({
   onActioned?: () => void;
 }) {
   const insets = useSafeAreaInsets();
+  const { c } = useTheme();
   const [width, setWidth] = useState(0);
   const [photoIdx, setPhotoIdx] = useState(0);
   const [safetyOpen, setSafetyOpen] = useState(false);
@@ -82,7 +83,7 @@ export function IntroductionCard({
   };
 
   return (
-    <View style={styles.card} onLayout={(e: LayoutChangeEvent) => setWidth(e.nativeEvent.layout.width)}>
+    <View style={[styles.card, { backgroundColor: c.surface }]} onLayout={(e: LayoutChangeEvent) => setWidth(e.nativeEvent.layout.width)}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: spacing.xl }}>
         {/* Hero photo pager */}
         <View style={[styles.hero, { height: heroH }]}>
@@ -176,7 +177,7 @@ export function IntroductionCard({
           {faith || profile.religiosity ? (
             <View style={styles.section}>
               <SectionLabel>Faith & values</SectionLabel>
-              <View style={styles.detailCard}>
+              <View style={[styles.detailCard, { backgroundColor: c.surface, borderColor: c.border }]}>
                 <DetailRow icon="moon-outline" label="Faith" value={faith || null} />
                 {profile.religiosity ? (
                   <View style={styles.religiosityRow}>

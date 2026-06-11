@@ -12,7 +12,7 @@ import { EmptyState } from '@/components/EmptyState';
 import { ErrorState } from '@/components/ErrorState';
 import { SkeletonList } from '@/components/Skeleton';
 import { Text } from '@/components/Text';
-import { fonts, palette, shadow, spacing } from '@/theme';
+import { fonts, palette, shadow, spacing, useTheme } from '@/theme';
 
 function relativeTime(iso: string | null): string {
   if (!iso) return '';
@@ -29,6 +29,7 @@ function relativeTime(iso: string | null): string {
 export default function Messages() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { c } = useTheme();
   const [items, setItems] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -58,7 +59,7 @@ export default function Messages() {
   );
 
   return (
-    <View style={[styles.root, { paddingTop: insets.top + spacing.sm }]}>
+    <View style={[styles.root, { backgroundColor: c.bg, paddingTop: insets.top + spacing.sm }]}>
       <View style={styles.header}>
         <Text variant="title" tone="burgundy">Messages</Text>
         <Text variant="footnote" tone="muted">Begin the conversation with purpose</Text>
@@ -85,7 +86,7 @@ export default function Messages() {
               item.other_profile.photos?.find((p) => p.is_primary)?.cdn_url ?? item.other_profile.photos?.[0]?.cdn_url;
             return (
               <Pressable
-                style={styles.row}
+                style={[styles.row, { backgroundColor: c.surface }]}
                 onPress={() =>
                   item.locked
                     ? router.push('/premium')

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { StyleSheet, Text, TextInput, TextInputProps, View } from 'react-native';
 
-import { fonts, palette, radii } from '@/theme';
+import { fonts, palette, radii, tint, useTheme } from '@/theme';
 
 interface Props extends TextInputProps {
   label?: string;
@@ -11,26 +11,27 @@ interface Props extends TextInputProps {
 }
 
 export function TextField({ label, onDark, error, style, ...rest }: Props) {
+  const { c } = useTheme();
   const [focused, setFocused] = useState(false);
-  const labelColor = onDark ? 'rgba(245,240,230,0.85)' : palette.muted;
+  const labelColor = onDark ? tint.onDarkSoft : c.textMuted;
 
   return (
     <View style={styles.wrap}>
       {label ? <Text style={[styles.label, { color: labelColor }]}>{label}</Text> : null}
       <TextInput
-        placeholderTextColor={onDark ? 'rgba(245,240,230,0.45)' : palette.muted}
+        placeholderTextColor={onDark ? tint.onDarkFaint : c.textSubtle}
         style={[
           styles.input,
           {
-            backgroundColor: onDark ? 'rgba(245,240,230,0.08)' : palette.white,
-            color: onDark ? palette.cream : palette.ink,
+            backgroundColor: onDark ? 'rgba(245,240,230,0.08)' : c.surfaceAlt,
+            color: onDark ? palette.cream : c.text,
             borderColor: error
               ? palette.sienna
               : focused
                 ? palette.gold
                 : onDark
                   ? 'rgba(245,240,230,0.18)'
-                  : palette.line,
+                  : c.border,
           },
           style,
         ]}

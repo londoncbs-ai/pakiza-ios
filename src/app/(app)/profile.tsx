@@ -1,20 +1,23 @@
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useFocusEffect, useRouter } from 'expo-router';
 
-import { errorMessage } from '@/api/client';
 import { profilesApi } from '@/api/profiles';
 import type { MyProfile } from '@/api/types';
 import { DetailRow } from '@/components/DetailRow';
 import { EditProfileSheet } from '@/components/EditProfileSheet';
 import { PreferencesSheet } from '@/components/PreferencesSheet';
+import { Screen } from '@/components/Screen';
+import { Surface } from '@/components/Surface';
+import { Text } from '@/components/Text';
 import { label, titleCase } from '@/lib/format';
+import { haptics } from '@/lib/haptics';
 import { useAuth } from '@/store/auth';
-import { colors, fonts, palette, radii, shadow, spacing } from '@/theme';
+import { fonts, palette, radii, spacing, useTheme, type ThemePreference } from '@/theme';
 
 const MAX_PHOTOS = 6;
 
@@ -22,19 +25,18 @@ export default function ProfileTab() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { signOut } = useAuth();
+  const { c } = useTheme();
 
   const [profile, setProfile] = useState<MyProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [prefsOpen, setPrefsOpen] = useState(false);
-  // Locally-managed photo URIs (dev placeholder for picture management).
   const [photos, setPhotos] = useState<string[]>([]);
 
   const load = useCallback(async () => {
     try {
       const p = await profilesApi.getMine();
       setProfile(p);
-      // Seed the grid with any server photos that actually render (skip dev placeholders).
       const serverPhotos = (p?.photos ?? [])
         .map((ph) => ph.cdn_url)
         .filter((u) => !u.includes('cdn.example.com'));
@@ -46,11 +48,7 @@ export default function ProfileTab() {
     }
   }, []);
 
-  useFocusEffect(
-    useCallback(() => {
-      load();
-    }, [load])
-  );
+  useFocusEffect(useCallback(() => { load(); }, [load]));
 
   const addPhoto = async () => {
     if (photos.length >= MAX_PHOTOS) {
@@ -60,13 +58,11 @@ export default function ProfileTab() {
     const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.8 });
     if (res.canceled) return;
     const uri = res.assets[0].uri;
-    setPhotos((p) => [...p, uri]); // optimistic, local display
-    profilesApi.uploadPhoto(uri).catch(() => {}); // best-effort dev upload
+    setPhotos((p) => [...p, uri]);
+    profilesApi.uploadPhoto(uri).catch(() => {});
   };
 
-  const removePhoto = (uri: string) => {
-    setPhotos((p) => p.filter((u) => u !== uri));
-  };
+  const removePhoto = (uri: string) => setPhotos((p) => p.filter((u) => u !== uri));
 
   const confirmSignOut = () => {
     Alert.alert('Sign out', 'Are you sure you want to sign out?', [
@@ -77,54 +73,60 @@ export default function ProfileTab() {
 
   if (loading) {
     return (
-      <View style={[styles.root, styles.center]}>
+      <Screen style={styles.center}>
         <ActivityIndicator color={palette.burgundy} size="large" />
-      </View>
+      </Screen>
     );
   }
 
   const faith = profile ? [label.religion(profile.religion), profile.denomination].filter(Boolean).join(' · ') : '';
   const location = profile ? [profile.city, profile.country_name].filter(Boolean).join(', ') : '';
+  const pct = profile?.profile_complete_pct ?? 0;
 
   return (
-    <View style={styles.root}>
+    <Screen>
       <ScrollView
         contentContainerStyle={{ paddingTop: insets.top + spacing.md, paddingBottom: spacing.xxxl }}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.h1}>Profile</Text>
+        <Text variant="title" tone="burgundy" style={{ paddingHorizontal: spacing.lg, marginBottom: spacing.md }}>
+          Profile
+        </Text>
 
         {/* Identity card */}
-        <View style={styles.identity}>
+        <Surface elevated style={styles.identity}>
           {photos[0] ? (
             <Image source={{ uri: photos[0] }} style={styles.avatar} contentFit="cover" />
           ) : (
-            <View style={[styles.avatar, styles.avatarPlaceholder]}>
+            <View style={[styles.avatar, { backgroundColor: c.surfaceAlt, alignItems: 'center', justifyContent: 'center' }]}>
               <Text style={styles.avatarInitial}>{profile?.display_name?.[0] ?? '?'}</Text>
             </View>
           )}
-          <Text style={styles.name}>
+          <Text variant="title" tone="default" style={{ marginTop: spacing.md }}>
             {profile?.display_name}
-            {profile?.age ? <Text style={styles.age}>, {profile.age}</Text> : null}
+            {profile?.age ? <Text variant="heading" tone="muted">{`, ${profile.age}`}</Text> : null}
           </Text>
-          {location ? <Text style={styles.loc}>{location}</Text> : null}
+          {location ? <Text variant="callout" tone="muted" style={{ marginTop: 2 }}>{location}</Text> : null}
 
-          <View style={styles.completion}>
-            <Ionicons name="ribbon-outline" size={15} color={palette.gold} />
-            <Text style={styles.completionText}>{profile?.profile_complete_pct ?? 0}% complete</Text>
+          {/* Completion meter */}
+          <View style={styles.meterRow}>
+            <View style={[styles.meterTrack, { backgroundColor: c.surfaceAlt }]}>
+              <View style={[styles.meterFill, { width: `${pct}%` }]} />
+            </View>
+            <Text variant="footnote" tone="muted">{pct}% complete</Text>
           </View>
 
-          <Pressable onPress={() => setEditing(true)} style={styles.editBtn}>
+          <Pressable onPress={() => { haptics.selection(); setEditing(true); }} style={styles.editBtn}>
             <Ionicons name="create-outline" size={17} color={palette.cream} />
-            <Text style={styles.editText}>Edit profile</Text>
+            <Text variant="subhead" color={palette.cream}>Edit profile</Text>
           </Pressable>
-        </View>
+        </Surface>
 
         {/* Photos */}
         <Section title="My photos">
           <View style={styles.photoGrid}>
             {photos.map((uri) => (
-              <View key={uri} style={styles.photoTile}>
+              <View key={uri} style={[styles.photoTile, { backgroundColor: c.surfaceAlt }]}>
                 <Image source={{ uri }} style={styles.photoImg} contentFit="cover" />
                 <Pressable onPress={() => removePhoto(uri)} hitSlop={6} style={styles.removeBtn}>
                   <Ionicons name="close" size={14} color={palette.cream} />
@@ -132,9 +134,9 @@ export default function ProfileTab() {
               </View>
             ))}
             {photos.length < MAX_PHOTOS ? (
-              <Pressable onPress={addPhoto} style={[styles.photoTile, styles.addTile]}>
+              <Pressable onPress={addPhoto} style={[styles.photoTile, styles.addTile, { borderColor: c.borderStrong }]}>
                 <Ionicons name="add" size={30} color={palette.burgundy} />
-                <Text style={styles.addText}>Add</Text>
+                <Text variant="footnote" tone="burgundy">Add</Text>
               </Pressable>
             ) : null}
           </View>
@@ -143,8 +145,8 @@ export default function ProfileTab() {
         {/* Details */}
         {profile ? (
           <Section title="About me">
-            {profile.bio ? <Text style={styles.bio}>{profile.bio}</Text> : null}
-            <View style={styles.card}>
+            {profile.bio ? <Text variant="body" tone="default" style={styles.bio}>{profile.bio}</Text> : null}
+            <Surface elevated style={styles.card}>
               <DetailRow icon="moon-outline" label="Faith" value={faith || null} />
               <DetailRow icon="sparkles-outline" label="Religiosity" value={label.religiosity(profile.religiosity)} />
               <DetailRow
@@ -164,33 +166,42 @@ export default function ProfileTab() {
               <DetailRow icon="flame-outline" label="Smoking" value={label.smokeDrink(profile.smoking)} />
               <DetailRow icon="wine-outline" label="Drinking" value={label.smokeDrink(profile.drinking)} />
               <DetailRow icon="airplane-outline" label="Relocation" value={label.relocate(profile.willing_to_relocate)} />
-            </View>
+            </Surface>
           </Section>
         ) : null}
 
-        {/* Settings */}
+        {/* Appearance */}
+        <Section title="Appearance">
+          <Surface elevated style={styles.cardPad}>
+            <AppearanceToggle />
+          </Surface>
+        </Section>
+
+        {/* Account */}
         <Section title="Account">
-          <View style={styles.card}>
+          <Surface elevated style={styles.card}>
             <SettingRow icon="options-outline" label="Partner preferences" onPress={() => setPrefsOpen(true)} />
-            <View style={styles.divider} />
+            <Divider />
             <SettingRow icon="diamond-outline" label="Pakiza Premium" onPress={() => router.push('/premium')} />
-            <View style={styles.divider} />
+            <Divider />
             <SettingRow icon="shield-checkmark-outline" label="Verify identity" onPress={() => router.push('/(onboarding)/id-verify')} />
-            <View style={styles.divider} />
+            <Divider />
+            <SettingRow icon="mail-outline" label="Change email" onPress={() => router.push('/change-email')} />
+            <Divider />
             <SettingRow icon="lock-closed-outline" label="Change password" onPress={() => router.push('/change-password')} />
-            <View style={styles.divider} />
+            <Divider />
             <SettingRow icon="log-out-outline" label="Sign out" danger onPress={confirmSignOut} />
-          </View>
+          </Surface>
         </Section>
 
         <Section title="Policies">
-          <View style={styles.card}>
+          <Surface elevated style={styles.card}>
             <SettingRow icon="document-text-outline" label="Terms & billing" onPress={() => router.push('/terms')} />
-            <View style={styles.divider} />
+            <Divider />
             <SettingRow icon="shield-outline" label="Privacy Policy" onPress={() => router.push('/privacy')} />
-            <View style={styles.divider} />
+            <Divider />
             <SettingRow icon="people-circle-outline" label="Community Guidelines" onPress={() => router.push('/community')} />
-          </View>
+          </Surface>
         </Section>
       </ScrollView>
 
@@ -199,14 +210,38 @@ export default function ProfileTab() {
           profile={profile}
           visible={editing}
           onClose={() => setEditing(false)}
-          onSaved={(p) => {
-            setProfile(p);
-            setEditing(false);
-          }}
+          onSaved={(p) => { setProfile(p); setEditing(false); }}
         />
       ) : null}
 
       <PreferencesSheet visible={prefsOpen} onClose={() => setPrefsOpen(false)} />
+    </Screen>
+  );
+}
+
+/** Light / Dark / System segmented control. */
+function AppearanceToggle() {
+  const { c, preference, setPreference } = useTheme();
+  const opts: { key: ThemePreference; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
+    { key: 'light', label: 'Light', icon: 'sunny-outline' },
+    { key: 'dark', label: 'Dark', icon: 'moon-outline' },
+    { key: 'system', label: 'System', icon: 'phone-portrait-outline' },
+  ];
+  return (
+    <View style={[styles.segment, { backgroundColor: c.surfaceAlt }]}>
+      {opts.map((o) => {
+        const active = preference === o.key;
+        return (
+          <Pressable
+            key={o.key}
+            onPress={() => { haptics.selection(); setPreference(o.key); }}
+            style={[styles.segmentItem, active && { backgroundColor: palette.burgundy }]}
+          >
+            <Ionicons name={o.icon} size={16} color={active ? palette.cream : c.textMuted} />
+            <Text variant="footnote" color={active ? palette.cream : c.textMuted}>{o.label}</Text>
+          </Pressable>
+        );
+      })}
     </View>
   );
 }
@@ -214,10 +249,15 @@ export default function ProfileTab() {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <View style={styles.section}>
-      <Text style={styles.sectionTitle}>{title}</Text>
+      <Text variant="heading" tone="burgundy" style={{ marginBottom: spacing.md }}>{title}</Text>
       {children}
     </View>
   );
+}
+
+function Divider() {
+  const { c } = useTheme();
+  return <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: c.border }} />;
 }
 
 function SettingRow({
@@ -231,29 +271,24 @@ function SettingRow({
   onPress: () => void;
   danger?: boolean;
 }) {
-  const color = danger ? colors.danger : palette.ink;
+  const { c } = useTheme();
   return (
-    <Pressable onPress={onPress} style={styles.settingRow}>
-      <Ionicons name={icon} size={20} color={danger ? colors.danger : palette.burgundy} />
-      <Text style={[styles.settingText, { color }]}>{text}</Text>
-      <Ionicons name="chevron-forward" size={18} color={palette.muted} />
+    <Pressable onPress={() => { haptics.selection(); onPress(); }} style={styles.settingRow}>
+      <Ionicons name={icon} size={20} color={danger ? c.danger : palette.burgundy} />
+      <Text variant="callout" color={danger ? c.danger : c.text} style={{ flex: 1 }}>{text}</Text>
+      <Ionicons name="chevron-forward" size={18} color={c.textSubtle} />
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: palette.cream },
   center: { alignItems: 'center', justifyContent: 'center' },
-  h1: { fontFamily: fonts.display, fontSize: 32, color: palette.burgundy, paddingHorizontal: spacing.lg, marginBottom: spacing.md },
-  identity: { alignItems: 'center', paddingHorizontal: spacing.lg },
+  identity: { alignItems: 'center', paddingVertical: spacing.xl, marginHorizontal: spacing.lg },
   avatar: { width: 110, height: 110, borderRadius: 55, borderWidth: 2, borderColor: palette.gold },
-  avatarPlaceholder: { backgroundColor: palette.sand, alignItems: 'center', justifyContent: 'center' },
   avatarInitial: { fontFamily: fonts.display, fontSize: 44, color: palette.burgundy },
-  name: { fontFamily: fonts.display, fontSize: 30, color: palette.ink, marginTop: spacing.md },
-  age: { fontFamily: fonts.display, fontSize: 26, color: palette.muted },
-  loc: { fontFamily: fonts.body, fontSize: 14, color: palette.muted, marginTop: 2 },
-  completion: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: spacing.sm },
-  completionText: { fontFamily: fonts.bodyMedium, fontSize: 13, color: palette.sienna },
+  meterRow: { alignItems: 'center', gap: 6, marginTop: spacing.md, width: '70%' },
+  meterTrack: { height: 6, borderRadius: 3, width: '100%', overflow: 'hidden' },
+  meterFill: { height: 6, borderRadius: 3, backgroundColor: palette.gold },
   editBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -264,11 +299,9 @@ const styles = StyleSheet.create({
     borderRadius: radii.pill,
     marginTop: spacing.lg,
   },
-  editText: { fontFamily: fonts.bodySemibold, color: palette.cream, fontSize: 14.5 },
   section: { marginTop: spacing.xl, paddingHorizontal: spacing.lg },
-  sectionTitle: { fontFamily: fonts.displaySemibold, fontSize: 21, color: palette.burgundy, marginBottom: spacing.md },
   photoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  photoTile: { width: 104, height: 132, borderRadius: 12, overflow: 'hidden', backgroundColor: palette.white },
+  photoTile: { width: 104, height: 132, borderRadius: 12, overflow: 'hidden' },
   photoImg: { width: '100%', height: '100%' },
   removeBtn: {
     position: 'absolute',
@@ -277,22 +310,23 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: 'rgba(26,16,18,0.6)',
+    backgroundColor: 'rgba(20,16,17,0.6)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  addTile: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1.5,
-    borderColor: palette.line,
-    borderStyle: 'dashed',
-    gap: 2,
-  },
-  addText: { fontFamily: fonts.bodyMedium, fontSize: 12, color: palette.burgundy },
-  bio: { fontFamily: fonts.body, fontSize: 15.5, lineHeight: 23, color: palette.ink, marginBottom: spacing.md },
-  card: { backgroundColor: palette.white, borderRadius: radii.card, paddingHorizontal: spacing.lg, paddingVertical: spacing.xs, ...shadow.soft },
+  addTile: { alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderStyle: 'dashed', gap: 2 },
+  bio: { lineHeight: 23, marginBottom: spacing.md },
+  card: { paddingHorizontal: spacing.lg, paddingVertical: spacing.xs },
+  cardPad: { padding: spacing.md },
   settingRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.md },
-  settingText: { flex: 1, fontFamily: fonts.bodyMedium, fontSize: 15.5 },
-  divider: { height: 1, backgroundColor: palette.line },
+  segment: { flexDirection: 'row', borderRadius: radii.pill, padding: 4, gap: 4 },
+  segmentItem: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 9,
+    borderRadius: radii.pill,
+  },
 });
