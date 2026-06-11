@@ -62,6 +62,7 @@ function RootNavigator() {
       <Stack.Screen name="terms" />
       <Stack.Screen name="privacy" />
       <Stack.Screen name="community" />
+      <Stack.Screen name="support" />
     </Stack>
   );
 }

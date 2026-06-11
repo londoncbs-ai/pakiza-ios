@@ -290,3 +290,25 @@ export interface ArticleItem {
 export interface Article extends ArticleItem {
   body: string;
 }
+
+// ── Support chat (member <-> support team) ──────────────────────────────────
+export type SupportSender = 'member' | 'admin' | 'system';
+export type SupportThreadStatus = 'open' | 'closed';
+
+export interface SupportChatMessage {
+  id: string;
+  thread_id: string;
+  sender_id: string | null;
+  sender_role: SupportSender;
+  body: string;
+  read_by_member: boolean;
+  read_by_admin: boolean;
+  created_at: string;
+}
+
+export interface SupportThread {
+  id: string;
+  status: SupportThreadStatus;
+  last_message_at: string | null;
+  messages: SupportChatMessage[];
+}

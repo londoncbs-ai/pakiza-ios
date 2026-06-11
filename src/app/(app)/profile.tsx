@@ -190,6 +190,8 @@ export default function ProfileTab() {
             <Divider />
             <SettingRow icon="lock-closed-outline" label="Change password" onPress={() => router.push('/change-password')} />
             <Divider />
+            <SettingRow icon="chatbubbles-outline" label="Help and support" onPress={() => router.push('/support')} />
+            <Divider />
             <SettingRow icon="log-out-outline" label="Sign out" danger onPress={confirmSignOut} />
           </Surface>
         </Section>
