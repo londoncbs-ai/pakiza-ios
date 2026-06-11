@@ -22,9 +22,11 @@ export default function LikesYou() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [locked, setLocked] = useState(false);
+  const [likeCount, setLikeCount] = useState(0);
   const [opened, setOpened] = useState<PublicProfile | null>(null);
 
   const load = useCallback(async () => {
+    matchesApi.likesCount().then(setLikeCount).catch(() => {});
     try {
       setProfiles(await matchesApi.likesReceived());
       setLocked(false);
@@ -78,9 +80,15 @@ export default function LikesYou() {
           <View style={[styles.lockIcon, { backgroundColor: c.accentFaint }]}>
             <Ionicons name="lock-closed" size={40} color={c.accent} />
           </View>
-          <Text variant="title" tone="accent" center style={styles.lockTitle}>See who already likes you</Text>
+          <Text variant="title" tone="accent" center style={styles.lockTitle}>
+            {likeCount > 0
+              ? `${likeCount} ${likeCount === 1 ? 'person likes' : 'people like'} you`
+              : 'See who already likes you'}
+          </Text>
           <Text variant="body" tone="muted" center style={styles.lockBody}>
-            People have shown interest in your profile. Upgrade to Gold to see them and match instantly.
+            {likeCount > 0
+              ? 'Upgrade to Gold to see them and match instantly, without waiting to find each other in Discover.'
+              : 'When someone likes you, upgrade to Gold to see them and match instantly.'}
           </Text>
           <Button label="Upgrade to Gold" variant="primary" onPress={() => router.push('/premium')} style={{ marginTop: spacing.lg }} />
         </View>

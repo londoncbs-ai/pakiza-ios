@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, View } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -121,15 +121,59 @@ export default function Discover() {
     }
   }, [current, busy, advance]);
 
+  const isPremium = !!quota?.is_premium;
+
+  const upsell = useCallback((feature: string) => {
+    haptics.warning();
+    setNotice(`${feature} is a Premium feature.`);
+  }, []);
+
   const onSave = useCallback(async () => {
     if (!current || busy) return;
+    if (!isPremium) return upsell('Save to revisit');
     setBusy(true);
     haptics.light();
     await savedStore.add(current);
     setSavedCount(await savedStore.count());
     advance();
     setBusy(false);
-  }, [current, busy, advance]);
+  }, [current, busy, advance, isPremium, upsell]);
+
+  const onRewind = useCallback(async () => {
+    if (busy) return;
+    if (!isPremium) return upsell('Going back');
+    setBusy(true);
+    try {
+      const profile = await matchesApi.rewind();
+      setProfiles((prev) => {
+        const next = [...prev];
+        next.splice(index, 0, profile);
+        return next;
+      });
+      haptics.light();
+    } catch (err: any) {
+      const sc = err?.response?.status;
+      if (sc === 402) upsell('Going back');
+      else if (sc === 404) Alert.alert('Nothing to undo', 'Make a decision first, then you can go back to it.');
+    } finally {
+      setBusy(false);
+    }
+  }, [busy, isPremium, index, upsell]);
+
+  const onBoost = useCallback(async () => {
+    if (busy) return;
+    if (!isPremium) return upsell('Boost');
+    setBusy(true);
+    try {
+      await matchesApi.boost();
+      haptics.success();
+      Alert.alert('You are boosted', 'Your profile is shown first in Discover for the next 30 minutes.');
+    } catch (err: any) {
+      if (err?.response?.status === 402) upsell('Boost');
+    } finally {
+      setBusy(false);
+    }
+  }, [busy, isPremium, upsell]);
 
   const onInterest = useCallback(async () => {
     if (!current || busy) return;
@@ -207,22 +251,16 @@ export default function Discover() {
             </Animated.View>
 
             <View style={styles.actionBar}>
-              <PressableScale style={[styles.actionPill, styles.notNow, { backgroundColor: c.surface, borderColor: c.borderStrong }]} onPress={onNotNow} disabled={busy}
-                accessibilityRole="button" accessibilityLabel="Not now">
-                <Ionicons name="close" size={20} color={palette.sienna} />
-                <Text variant="subhead" color={palette.sienna}>Not now</Text>
-              </PressableScale>
-
-              <PressableScale style={[styles.saveBtn, { backgroundColor: c.accentFaint, borderColor: c.accent }]} onPress={onSave} disabled={busy}
-                accessibilityRole="button" accessibilityLabel="Save to revisit">
-                <Ionicons name="bookmark-outline" size={22} color={c.accent} />
-              </PressableScale>
-
-              <PressableScale style={[styles.actionPill, styles.interest]} onPress={onInterest} disabled={busy}
-                accessibilityRole="button" accessibilityLabel="Express interest">
-                <Ionicons name="heart" size={20} color={palette.cream} />
-                <Text variant="subhead" color={palette.cream}>Interested</Text>
-              </PressableScale>
+              <ActionCircle icon="arrow-undo-outline" size={48} onPress={onRewind} disabled={busy} locked={!isPremium}
+                iconColor={c.accent} bg={c.surface} borderColor={c.border} label="Go back" />
+              <ActionCircle icon="close" size={56} onPress={onNotNow} disabled={busy}
+                iconColor={palette.sienna} bg={c.surface} borderColor={c.borderStrong} label="Not now" />
+              <ActionCircle icon="bookmark-outline" size={52} onPress={onSave} disabled={busy} locked={!isPremium}
+                iconColor={c.accent} bg={c.surface} borderColor={c.border} label="Save to revisit" />
+              <ActionCircle icon="heart" size={66} onPress={onInterest} disabled={busy} primary
+                iconColor={palette.cream} label="Express interest" />
+              <ActionCircle icon="flash-outline" size={48} onPress={onBoost} disabled={busy} locked={!isPremium}
+                iconColor={c.accent} bg={c.surface} borderColor={c.border} label="Boost your profile" />
             </View>
           </>
         ) : (
@@ -245,6 +283,51 @@ export default function Discover() {
         }}
       />
     </View>
+  );
+}
+
+function ActionCircle({
+  icon,
+  size,
+  onPress,
+  disabled,
+  primary,
+  locked,
+  iconColor,
+  bg,
+  borderColor,
+  label,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  size: number;
+  onPress: () => void;
+  disabled?: boolean;
+  primary?: boolean;
+  locked?: boolean;
+  iconColor: string;
+  bg?: string;
+  borderColor?: string;
+  label: string;
+}) {
+  return (
+    <PressableScale
+      onPress={onPress}
+      disabled={disabled}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      style={[
+        styles.circle,
+        { width: size, height: size, borderRadius: size / 2 },
+        primary ? { backgroundColor: palette.burgundy } : { backgroundColor: bg, borderWidth: 1.5, borderColor },
+      ]}
+    >
+      <Ionicons name={icon} size={Math.round(size * 0.42)} color={iconColor} />
+      {locked ? (
+        <View style={styles.lockDot}>
+          <Ionicons name="lock-closed" size={9} color={palette.cream} />
+        </View>
+      ) : null}
+    </PressableScale>
   );
 }
 
@@ -284,28 +367,21 @@ const styles = StyleSheet.create({
   actionBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.sm,
     paddingTop: spacing.md,
     paddingBottom: spacing.sm,
   },
-  actionPill: {
-    height: 56,
-    borderRadius: 999,
-    flexDirection: 'row',
+  circle: { alignItems: 'center', justifyContent: 'center' },
+  lockDot: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: palette.burgundy,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-  },
-  notNow: { flex: 1, borderWidth: 1.5, borderColor: palette.sienna, backgroundColor: palette.white },
-  interest: { flex: 1.5, backgroundColor: palette.burgundy },
-  saveBtn: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1.5,
-    borderColor: tint.goldSoft,
-    backgroundColor: tint.goldFaint,
   },
 });

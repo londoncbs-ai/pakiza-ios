@@ -27,6 +27,11 @@ export const matchesApi = {
     return api.get<PublicProfile[]>('/matches/likes-received').then((r) => r.data);
   },
 
+  /** How many people have liked you (all tiers) — powers the upsell. */
+  likesCount() {
+    return api.get<{ count: number }>('/matches/likes-count').then((r) => r.data.count);
+  },
+
   /** Premium feature — 402 if no boosts remaining. */
   boost() {
     return api.post('/matches/boost').then((r) => r.data);
