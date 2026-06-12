@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  AppState,
   FlatList,
   KeyboardAvoidingView,
   Modal,
@@ -14,13 +15,15 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 
 import { chatApi, chatSocketUrl } from '@/api/chat';
 import { errorMessage } from '@/api/client';
 import { matchesApi } from '@/api/matches';
 import { REPORT_REASONS, safetyApi, type ReportReason } from '@/api/safety';
 import type { ChatMessage, Conversation } from '@/api/types';
+import { FeatureHint } from '@/components/FeatureHint';
+import { MeetingCard } from '@/components/MeetingCard';
 import { SafetySheet } from '@/components/SafetySheet';
 import { Screen } from '@/components/Screen';
 import { Text } from '@/components/Text';
@@ -29,6 +32,7 @@ import { PressableScale } from '@/components/PressableScale';
 import { haptics } from '@/lib/haptics';
 import { tokenStore } from '@/lib/storage';
 import { useAuth } from '@/store/auth';
+import { useRealtime } from '@/store/realtime';
 import { fonts, palette, radii, spacing, useTheme } from '@/theme';
 
 /** Day key for grouping messages into date separators. */
@@ -58,6 +62,7 @@ export default function ChatThread() {
   const insets = useSafeAreaInsets();
   const { userId } = useAuth();
   const { c, isDark } = useTheme();
+  const { revision, setActiveContext, refreshUnread } = useRealtime();
 
   const [messages, setMessages] = useState<ChatMessage[]>([]); // newest-first (inverted list)
   const [loading, setLoading] = useState(true);
@@ -71,6 +76,7 @@ export default function ChatThread() {
   const [locked, setLocked] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
   const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lockedRef = useRef(false); // no socket / no refetch for a locked chat
 
   // Upsert by id, keeping newest-first order.
   const upsert = useCallback((m: ChatMessage) => {
@@ -80,71 +86,157 @@ export default function ChatThread() {
     });
   }, []);
 
-  // Load history + open the realtime socket.
-  useEffect(() => {
-    let active = true;
-    (async () => {
-      chatApi.getConversation(String(id)).then((conversation) => active && setConv(conversation)).catch(() => {});
-      let isLocked = false;
-      try {
-        const history = await chatApi.getMessages(String(id));
-        if (active) setMessages(history); // already newest-first
-        chatApi.markRead(String(id)).catch(() => {});
-      } catch (err: any) {
-        if (err?.response?.status === 402) {
-          isLocked = true;
-          if (active) setLocked(true);
-        } else if (active) {
-          setError(errorMessage(err, 'Could not load messages'));
-        }
-      } finally {
-        if (active) setLoading(false);
-      }
+  // Reload history (also used as the revision-driven safety net).
+  const reload = useCallback(async () => {
+    if (lockedRef.current) return;
+    try {
+      const history = await chatApi.getMessages(String(id));
+      setMessages(history); // already newest-first
+      chatApi.markRead(String(id)).catch(() => {});
+      refreshUnread();
+    } catch {
+      /* a transient failure leaves the existing list in place */
+    }
+  }, [id, refreshUnread]);
 
-      // No realtime socket for a locked chat.
-      const token = await tokenStore.getAccess();
-      if (!token || !active || isLocked) return;
-      const ws = new WebSocket(chatSocketUrl(String(id), token));
-      wsRef.current = ws;
-      ws.onmessage = (ev) => {
-        try {
-          const { type, payload } = JSON.parse(ev.data);
-          if (type === 'message') {
-            upsert({
-              id: payload.id,
-              conversation_id: payload.conversation_id,
-              sender_id: payload.sender_id,
-              type: payload.type ?? 'text',
-              content: payload.content ?? null,
-              media_url: null,
-              media_duration_secs: null,
-              is_read: false,
-              is_delivered: true,
-              sent_at: payload.sent_at,
-              deleted_at: null,
-            });
-            if (payload.sender_id !== userId) chatApi.markRead(String(id)).catch(() => {});
-          } else if (type === 'typing') {
-            if (payload.sender_id !== userId) {
-              setPeerTyping(!!payload.is_typing);
-              if (typingTimer.current) clearTimeout(typingTimer.current);
-              typingTimer.current = setTimeout(() => setPeerTyping(false), 4000);
-            }
-          }
-        } catch {
-          /* ignore malformed frames */
+  // Load history + open the realtime socket, reconnecting with backoff while
+  // the screen is focused. Mounting on focus also clears the active context on
+  // blur so the global banner stays suppressed only while we are here.
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+      let backoff = 1000;
+      let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+      lockedRef.current = false; // re-determined from the history load below
+      setActiveContext({ kind: 'chat', id: String(id) });
+
+      const clearReconnect = () => {
+        if (reconnectTimer) {
+          clearTimeout(reconnectTimer);
+          reconnectTimer = null;
         }
       };
-      ws.onerror = () => {};
-    })();
 
-    return () => {
-      active = false;
-      wsRef.current?.close();
-      wsRef.current = null;
-      if (typingTimer.current) clearTimeout(typingTimer.current);
-    };
-  }, [id, userId, upsert]);
+      const scheduleReconnect = () => {
+        if (!active || lockedRef.current) return;
+        clearReconnect();
+        const delay = backoff;
+        backoff = Math.min(backoff * 2, 15000);
+        reconnectTimer = setTimeout(() => openSocket(), delay);
+      };
+
+      const openSocket = async () => {
+        if (!active || lockedRef.current) return;
+        const token = await tokenStore.getAccess();
+        if (!token || !active || lockedRef.current) return;
+        let ws: WebSocket;
+        try {
+          ws = new WebSocket(chatSocketUrl(String(id), token));
+        } catch {
+          scheduleReconnect();
+          return;
+        }
+        wsRef.current = ws;
+        ws.onopen = () => {
+          backoff = 1000;
+        };
+        ws.onmessage = (ev) => {
+          try {
+            const { type, payload } = JSON.parse(ev.data);
+            if (type === 'message') {
+              upsert({
+                id: payload.id,
+                conversation_id: payload.conversation_id,
+                sender_id: payload.sender_id,
+                // Keep the real message type (e.g. a booking arrives as 'meeting'),
+                // and carry through any metadata so the live card can render.
+                type: payload.type ?? 'text',
+                content: payload.content ?? null,
+                media_url: null,
+                media_duration_secs: null,
+                is_read: false,
+                is_delivered: true,
+                sent_at: payload.sent_at,
+                deleted_at: null,
+                metadata: payload.metadata ?? null,
+              });
+              if (payload.sender_id !== userId) {
+                chatApi.markRead(String(id)).catch(() => {});
+                refreshUnread();
+              }
+            } else if (type === 'typing') {
+              if (payload.sender_id !== userId) {
+                setPeerTyping(!!payload.is_typing);
+                if (typingTimer.current) clearTimeout(typingTimer.current);
+                typingTimer.current = setTimeout(() => setPeerTyping(false), 4000);
+              }
+            }
+          } catch {
+            /* ignore malformed frames */
+          }
+        };
+        ws.onerror = () => {
+          /* onclose follows; reconnect is scheduled there */
+        };
+        ws.onclose = () => {
+          if (wsRef.current === ws) wsRef.current = null;
+          scheduleReconnect();
+        };
+      };
+
+      (async () => {
+        chatApi.getConversation(String(id)).then((conversation) => active && setConv(conversation)).catch(() => {});
+        let isLocked = false;
+        try {
+          const history = await chatApi.getMessages(String(id));
+          if (active) setMessages(history); // already newest-first
+          chatApi.markRead(String(id)).catch(() => {});
+          refreshUnread();
+        } catch (err: any) {
+          if (err?.response?.status === 402) {
+            isLocked = true;
+            lockedRef.current = true;
+            if (active) setLocked(true);
+          } else if (active) {
+            setError(errorMessage(err, 'Could not load messages'));
+          }
+        } finally {
+          if (active) setLoading(false);
+        }
+        if (!active || isLocked) return;
+        openSocket();
+      })();
+
+      // Reconnect promptly when the app returns to the foreground.
+      const onAppState = (next: string) => {
+        if (next !== 'active' || !active || lockedRef.current) return;
+        const ws = wsRef.current;
+        const live = ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING);
+        if (!live) {
+          backoff = 1000;
+          clearReconnect();
+          openSocket();
+        }
+        reload();
+      };
+      const sub = AppState.addEventListener('change', onAppState);
+
+      return () => {
+        active = false;
+        clearReconnect();
+        sub.remove();
+        wsRef.current?.close();
+        wsRef.current = null;
+        if (typingTimer.current) clearTimeout(typingTimer.current);
+        setActiveContext(null);
+      };
+    }, [id, userId, upsert, reload, refreshUnread, setActiveContext])
+  );
+
+  // A missed socket event still surfaces via the global notification feed.
+  useEffect(() => {
+    if (revision > 0) reload();
+  }, [revision, reload]);
 
   const sendTyping = (isTyping: boolean) => {
     const ws = wsRef.current;
@@ -255,6 +347,21 @@ export default function ChatThread() {
         </Pressable>
       </View>
 
+      {!locked && conv ? (
+        <FeatureHint
+          hintKey="chat-book-meet"
+          icon="shield-checkmark"
+          text="You can add a wali and book a supervised meet from a match."
+          onPress={() =>
+            router.push({
+              pathname: '/book-meet',
+              params: { conversationId: String(id), matchId: conv.match_id, name: peerName },
+            })
+          }
+          style={styles.chatHint}
+        />
+      ) : null}
+
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -307,6 +414,16 @@ export default function ChatThread() {
               // Inverted list: the visually-previous (older) message is at index+1.
               const older = messages[index + 1];
               const showDay = !older || dayKey(older.sent_at) !== dayKey(item.sent_at);
+
+              // A booking renders as a live, centered card (not a chat bubble).
+              if (item.type === 'meeting') {
+                return (
+                  <View>
+                    <MeetingCard meetingId={item.metadata?.meeting_id} />
+                    {showDay ? <DaySeparator iso={item.sent_at} /> : null}
+                  </View>
+                );
+              }
 
               // System / wali messages render as a centered pill, not a bubble.
               if (item.type === 'system' || item.type === 'wali') {
@@ -482,6 +599,8 @@ const styles = StyleSheet.create({
   headerText: { flex: 1 },
   headerName: { marginBottom: 0 },
   kebab: { width: 34, height: 34, alignItems: 'center', justifyContent: 'center' },
+
+  chatHint: { marginHorizontal: spacing.lg, marginTop: spacing.sm },
 
   // Locked state
   lockedWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.xl },

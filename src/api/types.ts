@@ -167,7 +167,12 @@ export type NotificationType =
   | 'profile_view'
   | 'wali_request'
   | 'system'
-  | 'moderation';
+  | 'moderation'
+  | 'meeting_request'
+  | 'meeting_accepted'
+  | 'meeting_declined'
+  | 'meeting_scheduled'
+  | 'meeting_update';
 
 export interface AppNotification {
   id: string;
@@ -179,7 +184,7 @@ export interface AppNotification {
   created_at: string;
 }
 
-export type MessageType = 'text' | 'voice' | 'image' | 'system' | 'wali';
+export type MessageType = 'text' | 'voice' | 'image' | 'system' | 'wali' | 'meeting';
 
 export interface ChatMessage {
   id: string;
@@ -193,6 +198,8 @@ export interface ChatMessage {
   is_delivered: boolean;
   sent_at: string;
   deleted_at: string | null;
+  /** Type-specific extra data. For a `meeting` message: { kind, meeting_id, status }. */
+  metadata?: Record<string, any> | null;
 }
 
 export interface Conversation {
@@ -311,4 +318,105 @@ export interface SupportThread {
   status: SupportThreadStatus;
   last_message_at: string | null;
   messages: SupportChatMessage[];
+}
+
+// ── Book-a-meet (supervised meetings, arranged by the Pakiza team) ───────────
+export type MeetingStatus =
+  | 'pending'
+  | 'accepted'
+  | 'reviewing'
+  | 'scheduled'
+  | 'completed'
+  | 'declined'
+  | 'cancelled';
+
+export type MeetingMode = 'in_person' | 'online';
+
+export type MeetingFeeStatus = 'none' | 'due' | 'paid' | 'waived';
+
+/** Who covers the meeting fee. With "split" each side pays half. */
+export type MeetingFeePayer = 'requester' | 'recipient' | 'split';
+
+/** Member-facing view of a meeting - MeetingResponse. */
+export interface MeetingRequest {
+  id: string;
+  conversation_id: string;
+  match_id: string;
+  requester_id: string;
+  recipient_id: string;
+  status: MeetingStatus;
+  mode: MeetingMode;
+  proposed_at: string | null;
+  proposed_location: string | null;
+  note: string | null;
+  scheduled_at: string | null;
+  confirmed_location: string | null;
+  decline_reason: string | null;
+  cancel_reason: string | null;
+  /** The requester's wali (added at booking). */
+  wali_name: string;
+  wali_relationship: string;
+  wali_verified: boolean;
+  /** The recipient's wali (added when they accept); null until then. */
+  recipient_wali_name: string | null;
+  recipient_wali_relationship: string | null;
+  recipient_wali_verified: boolean;
+  fee_pence: number | null;
+  fee_status: MeetingFeeStatus;
+  created_at: string;
+  updated_at: string;
+  /** Viewer-relative: true when the current user opened the request. */
+  is_requester: boolean;
+  other_party_name: string | null;
+  /** Who covers the fee. */
+  fee_payer: MeetingFeePayer;
+  /** Whether each side has paid their share. */
+  requester_paid: boolean;
+  recipient_paid: boolean;
+  /** The assigned Pakiza team member ("Pakiza team" once assigned), null while unassigned. */
+  organiser_name: string | null;
+  /** What the viewer owes for the fee, given the split. */
+  my_share_pence: number;
+  /** Whether the viewer has paid their share. */
+  i_have_paid: boolean;
+}
+
+/** A coordination-thread message (both members + the Pakiza team). */
+export interface MeetingMessage {
+  id: string;
+  sender_role: 'member' | 'team' | 'system';
+  sender_label: string;
+  is_me: boolean;
+  body: string;
+  created_at: string;
+}
+
+/** Body for POST /meetings. */
+export interface CreateMeetingInput {
+  conversation_id: string;
+  mode: MeetingMode;
+  proposed_at?: string;
+  proposed_location?: string;
+  note?: string;
+  wali_name: string;
+  wali_relationship: string;
+  wali_phone: string;
+  wali_email?: string;
+}
+
+/** Body for POST /meetings/{id}/accept (the recipient adds their own wali). */
+export interface AcceptMeetingInput {
+  wali_name: string;
+  wali_relationship: string;
+  wali_phone: string;
+  wali_email?: string;
+}
+
+/** Response from POST /meetings/{id}/checkout. */
+export interface MeetingCheckout {
+  mode: string;
+  client_secret: string | null;
+  publishable_key: string | null;
+  amount: number | null;
+  currency: string;
 }

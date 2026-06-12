@@ -11,6 +11,7 @@ import { profilesApi } from '@/api/profiles';
 import type { PublicProfile, Quota } from '@/api/types';
 import { EmptyState } from '@/components/EmptyState';
 import { ErrorState } from '@/components/ErrorState';
+import { FeatureHint } from '@/components/FeatureHint';
 import { IntroductionCard } from '@/components/IntroductionCard';
 import { InterestModal } from '@/components/InterestModal';
 import { PressableScale } from '@/components/PressableScale';
@@ -239,6 +240,14 @@ export default function Discover() {
         </Pressable>
       ) : null}
 
+      <FeatureHint
+        hintKey="discover-explore-events"
+        icon="compass"
+        text="Beyond the feed: explore curated events and meet matches in person."
+        onPress={() => router.push('/events')}
+        style={styles.featureHint}
+      />
+
       <View style={styles.body}>
         {loading ? (
           <SkeletonCard />
@@ -364,6 +373,7 @@ const styles = StyleSheet.create({
   },
   body: { flex: 1, paddingHorizontal: spacing.lg, paddingTop: spacing.sm },
   notice: { backgroundColor: palette.sand, marginHorizontal: spacing.lg, padding: spacing.md, borderRadius: 12, marginBottom: spacing.sm },
+  featureHint: { marginHorizontal: spacing.lg, marginBottom: spacing.sm },
   actionBar: {
     flexDirection: 'row',
     alignItems: 'center',

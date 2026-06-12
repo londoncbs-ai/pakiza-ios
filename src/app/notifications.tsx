@@ -22,6 +22,11 @@ const ICON: Record<NotificationType, keyof typeof Ionicons.glyphMap> = {
   wali_request: 'people',
   system: 'megaphone',
   moderation: 'shield',
+  meeting_request: 'calendar',
+  meeting_accepted: 'checkmark-circle',
+  meeting_declined: 'close-circle',
+  meeting_scheduled: 'calendar-outline',
+  meeting_update: 'sync',
 };
 
 function rel(iso: string): string {
@@ -63,9 +68,23 @@ export default function Notifications() {
       notificationsApi.markRead(n.id).catch(() => {});
       setItems((prev) => prev.map((x) => (x.id === n.id ? { ...x, is_read: true } : x)));
     }
+    const meetingId = n.payload?.meeting_id;
     const convId = n.payload?.conversation_id;
-    if (convId) router.push({ pathname: '/chat/[id]', params: { id: String(convId) } });
-    else if (n.payload?.screen === 'match' || n.payload?.screen === 'likes') router.push('/(app)/matches');
+    // A meeting_* notification with tab === "chat" opens the coordination thread.
+    if (meetingId && n.payload?.tab === 'chat') {
+      router.push({ pathname: '/meeting/[id]/chat', params: { id: String(meetingId) } });
+    }
+    // meeting_request lands in the chat (where the booking card lives); the other
+    // meeting_* updates deep-link straight to the meeting detail.
+    else if (n.payload?.screen === 'meeting' && meetingId) {
+      router.push({ pathname: '/meeting/[id]', params: { id: String(meetingId) } });
+    } else if (convId) {
+      router.push({ pathname: '/chat/[id]', params: { id: String(convId) } });
+    } else if (meetingId) {
+      router.push({ pathname: '/meeting/[id]', params: { id: String(meetingId) } });
+    } else if (n.payload?.screen === 'match' || n.payload?.screen === 'likes') {
+      router.push('/(app)/matches');
+    }
   };
 
   const markAll = async () => {

@@ -180,6 +180,8 @@ export default function ProfileTab() {
         {/* Account */}
         <Section title="Account">
           <Surface elevated style={styles.card}>
+            <SettingRow icon="calendar-outline" label="My meetings" onPress={() => router.push('/meetings')} />
+            <Divider />
             <SettingRow icon="options-outline" label="Partner preferences" onPress={() => setPrefsOpen(true)} />
             <Divider />
             <SettingRow icon="diamond-outline" label="Pakiza Premium" onPress={() => router.push('/premium')} />

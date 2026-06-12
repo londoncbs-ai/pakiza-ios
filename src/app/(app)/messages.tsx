@@ -1,17 +1,17 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 
-import { chatApi } from '@/api/chat';
 import { errorMessage } from '@/api/client';
-import type { Conversation } from '@/api/types';
+import { inboxApi, type InboxItem } from '@/api/inbox';
 import { EmptyState } from '@/components/EmptyState';
 import { ErrorState } from '@/components/ErrorState';
 import { SkeletonList } from '@/components/Skeleton';
 import { Text } from '@/components/Text';
+import { useRealtime } from '@/store/realtime';
 import { fonts, palette, radii, shadow, spacing, useTheme } from '@/theme';
 
 function relativeTime(iso: string | null): string {
@@ -26,18 +26,31 @@ function relativeTime(iso: string | null): string {
   return d < 7 ? `${d}d` : new Date(iso).toLocaleDateString();
 }
 
+const KIND_ICON: Record<InboxItem['kind'], keyof typeof Ionicons.glyphMap> = {
+  chat: 'chatbubble',
+  support: 'headset',
+  meeting: 'calendar',
+};
+
+const KIND_LABEL: Record<InboxItem['kind'], string> = {
+  chat: '',
+  support: 'Support',
+  meeting: 'Meeting',
+};
+
 export default function Messages() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { c, isDark } = useTheme();
-  const [items, setItems] = useState<Conversation[]>([]);
+  const { revision } = useRealtime();
+  const [items, setItems] = useState<InboxItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
-      setItems(await chatApi.listConversations());
+      setItems(await inboxApi.list());
       setError(null);
     } catch (err) {
       setError(errorMessage(err));
@@ -56,6 +69,22 @@ export default function Messages() {
     useCallback(() => {
       load();
     }, [load])
+  );
+
+  // A new message / match elsewhere reorders the inbox - refetch on each event.
+  useEffect(() => {
+    if (revision > 0) load();
+  }, [revision, load]);
+
+  const openItem = useCallback(
+    (item: InboxItem) => {
+      router.push(
+        item.param_id
+          ? ({ pathname: item.route, params: { id: item.param_id } } as never)
+          : (item.route as never)
+      );
+    },
+    [router]
   );
 
   return (
@@ -78,51 +107,50 @@ export default function Messages() {
       ) : (
         <FlatList
           data={items}
-          keyExtractor={(c) => c.id}
+          keyExtractor={(item) => `${item.kind}:${item.id}`}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.accent} />}
           contentContainerStyle={{ padding: spacing.lg, paddingBottom: insets.bottom + spacing.xl }}
           renderItem={({ item }) => {
-            const photo =
-              item.other_profile.photos?.find((p) => p.is_primary)?.cdn_url ?? item.other_profile.photos?.[0]?.cdn_url;
+            const kindLabel = KIND_LABEL[item.kind];
             return (
               <Pressable
                 style={[styles.row, { backgroundColor: c.surface, borderColor: c.border }, !isDark && shadow.soft]}
-                onPress={() =>
-                  item.locked
-                    ? router.push('/premium')
-                    : router.push({ pathname: '/chat/[id]', params: { id: item.id, name: item.other_profile.display_name } })
-                }
+                onPress={() => openItem(item)}
               >
-                {photo ? (
-                  <Image source={{ uri: photo }} style={[styles.avatar, item.locked && styles.dim]} contentFit="cover" />
-                ) : (
+                {item.avatar_url ? (
+                  <Image source={{ uri: item.avatar_url }} style={styles.avatar} contentFit="cover" />
+                ) : item.kind === 'chat' ? (
                   <View style={[styles.avatar, styles.placeholder, { backgroundColor: c.surfaceAlt }]}>
-                    <Text style={styles.initial} tone="accent">{item.other_profile.display_name[0]}</Text>
+                    <Text style={styles.initial} tone="accent">{item.title[0]?.toUpperCase() ?? '?'}</Text>
+                  </View>
+                ) : (
+                  <View style={[styles.avatar, styles.placeholder, { backgroundColor: c.accentFaint }]}>
+                    <Ionicons name={KIND_ICON[item.kind]} size={24} color={c.accent} />
                   </View>
                 )}
                 <View style={styles.body}>
-                  <Text variant="subhead" tone="default" style={styles.name}>{item.other_profile.display_name}</Text>
+                  <View style={styles.titleRow}>
+                    <Text variant="subhead" tone="default" style={styles.name} numberOfLines={1}>
+                      {item.title}
+                    </Text>
+                    {kindLabel ? (
+                      <View style={[styles.chip, { backgroundColor: c.accentFaint }]}>
+                        <Ionicons name={KIND_ICON[item.kind]} size={11} color={c.accent} />
+                        <Text variant="label" tone="accent">{kindLabel}</Text>
+                      </View>
+                    ) : null}
+                  </View>
                   <Text variant="footnote" tone="muted" style={styles.preview} numberOfLines={1}>
-                    {item.locked
-                      ? 'Locked — upgrade to keep this chat open'
-                      : item.last_message_at
-                        ? 'Tap to continue your conversation'
-                        : 'New match. Say salaam 👋'}
+                    {item.subtitle}
                   </Text>
                 </View>
                 <View style={styles.meta}>
-                  {item.locked ? (
-                    <Ionicons name="lock-closed" size={18} color={c.accent} />
-                  ) : (
-                    <>
-                      <Text variant="footnote" tone="subtle">{relativeTime(item.last_message_at)}</Text>
-                      {item.unread_count > 0 ? (
-                        <View style={[styles.badge, { backgroundColor: palette.burgundy }]}>
-                          <Text variant="footnote" color={palette.cream} style={styles.badgeText}>{item.unread_count}</Text>
-                        </View>
-                      ) : null}
-                    </>
-                  )}
+                  <Text variant="footnote" tone="subtle">{relativeTime(item.last_at)}</Text>
+                  {item.unread > 0 ? (
+                    <View style={[styles.badge, { backgroundColor: palette.burgundy }]}>
+                      <Text variant="footnote" color={palette.cream} style={styles.badgeText}>{item.unread}</Text>
+                    </View>
+                  ) : null}
                 </View>
               </Pressable>
             );
@@ -145,13 +173,21 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   avatar: { width: 58, height: 58, borderRadius: 29 },
-  dim: { opacity: 0.5 },
   placeholder: { alignItems: 'center', justifyContent: 'center' },
   initial: { fontFamily: fonts.display, fontSize: 24 },
   body: { flex: 1, marginLeft: spacing.md },
-  name: { fontFamily: fonts.displaySemibold },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  name: { fontFamily: fonts.displaySemibold, flexShrink: 1 },
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: radii.pill,
+  },
   preview: { marginTop: 2 },
-  meta: { alignItems: 'flex-end', gap: 6 },
+  meta: { alignItems: 'flex-end', gap: 6, marginLeft: spacing.sm },
   badge: { minWidth: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6 },
   badgeText: { fontFamily: fonts.bodySemibold },
 });

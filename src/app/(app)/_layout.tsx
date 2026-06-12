@@ -2,10 +2,12 @@ import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Platform, StyleSheet } from 'react-native';
 
+import { useRealtime } from '@/store/realtime';
 import { fonts, palette, useTheme } from '@/theme';
 
 export default function AppTabsLayout() {
   const { c } = useTheme();
+  const { unreadCount } = useRealtime();
   return (
     <Tabs
       screenOptions={{
@@ -45,6 +47,7 @@ export default function AppTabsLayout() {
         name="messages"
         options={{
           title: 'Messages',
+          tabBarBadge: unreadCount > 0 ? unreadCount : undefined,
           tabBarIcon: ({ color, focused }) => (
             <Ionicons name={focused ? 'chatbubble' : 'chatbubble-outline'} size={21} color={color} />
           ),

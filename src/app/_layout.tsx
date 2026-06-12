@@ -16,6 +16,7 @@ import {
 } from '@expo-google-fonts/inter';
 
 import { AuthProvider, useAuth } from '@/store/auth';
+import { RealtimeProvider } from '@/store/realtime';
 import { ThemeProvider, useTheme } from '@/theme';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
@@ -49,6 +50,10 @@ function RootNavigator() {
       <Stack.Screen name="(onboarding)" />
       <Stack.Screen name="(app)" />
       <Stack.Screen name="chat/[id]" />
+      <Stack.Screen name="book-meet" />
+      <Stack.Screen name="meeting/[id]" />
+      <Stack.Screen name="meeting/[id]/chat" />
+      <Stack.Screen name="meetings" />
       <Stack.Screen name="notifications" />
       <Stack.Screen name="premium" />
       <Stack.Screen name="change-password" />
@@ -88,7 +93,9 @@ export default function RootLayout() {
         <ThemeProvider>
           <AuthProvider>
             <ThemedStatusBar />
-            <RootNavigator />
+            <RealtimeProvider>
+              <RootNavigator />
+            </RealtimeProvider>
           </AuthProvider>
         </ThemeProvider>
       </SafeAreaProvider>

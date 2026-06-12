@@ -10,8 +10,11 @@ import { matchesApi } from '@/api/matches';
 import type { MatchSummary } from '@/api/types';
 import { EmptyState } from '@/components/EmptyState';
 import { ErrorState } from '@/components/ErrorState';
+import { FeatureHint } from '@/components/FeatureHint';
+import { PressableScale } from '@/components/PressableScale';
 import { SkeletonList } from '@/components/Skeleton';
 import { Text } from '@/components/Text';
+import { haptics } from '@/lib/haptics';
 import { fonts, palette, radii, shadow, spacing, useTheme } from '@/theme';
 
 export default function Matches() {
@@ -84,9 +87,18 @@ export default function Matches() {
           keyExtractor={(m) => m.id}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.accent} />}
           contentContainerStyle={{ padding: spacing.lg, paddingBottom: insets.bottom + spacing.xl }}
+          ListHeaderComponent={
+            <FeatureHint
+              hintKey="matches-book-meet"
+              icon="calendar"
+              text="New: book a supervised meet with your match, with a wali present."
+              style={styles.hintBanner}
+            />
+          }
           renderItem={({ item }) => {
             const photo =
               item.profile.photos?.find((p) => p.is_primary)?.cdn_url ?? item.profile.photos?.[0]?.cdn_url;
+            const canBook = !!item.conversation_id;
             const openChat = () => {
               if (item.conversation_id) {
                 router.push({
@@ -94,6 +106,18 @@ export default function Matches() {
                   params: { id: item.conversation_id, name: item.profile.display_name },
                 });
               }
+            };
+            const bookMeet = () => {
+              if (!canBook) return;
+              haptics.selection();
+              router.push({
+                pathname: '/book-meet',
+                params: {
+                  conversationId: item.conversation_id!,
+                  matchId: item.id,
+                  name: item.profile.display_name,
+                },
+              });
             };
             return (
               <Pressable
@@ -115,8 +139,21 @@ export default function Matches() {
                   <Text variant="footnote" tone="muted" style={styles.cardMeta} numberOfLines={1}>
                     {[item.profile.city, item.profile.occupation].filter(Boolean).join('  ·  ') || 'New match'}
                   </Text>
+                  <Text variant="footnote" tone="accent" style={styles.hello}>Say hello →</Text>
                 </View>
-                <Text variant="footnote" tone="accent" style={styles.hello}>Say hello →</Text>
+                <PressableScale
+                  onPress={bookMeet}
+                  disabled={!canBook}
+                  accessibilityRole="button"
+                  accessibilityLabel="Book a meet"
+                  style={[
+                    styles.bookBtn,
+                    { backgroundColor: c.accentFaint, borderColor: c.border, opacity: canBook ? 1 : 0.4 },
+                  ]}
+                >
+                  <Ionicons name="calendar" size={18} color={c.accent} />
+                  <Text variant="label" tone="accent">Meet</Text>
+                </PressableScale>
               </Pressable>
             );
           }}
@@ -164,5 +201,16 @@ const styles = StyleSheet.create({
   cardBody: { flex: 1, marginLeft: spacing.md },
   cardName: { fontFamily: fonts.displaySemibold },
   cardMeta: { marginTop: 2 },
-  hello: { fontFamily: fonts.bodyMedium },
+  hello: { fontFamily: fonts.bodyMedium, marginTop: spacing.xs },
+  hintBanner: { marginBottom: spacing.md },
+  bookBtn: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 2,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.sm,
+    borderRadius: radii.md,
+    borderWidth: StyleSheet.hairlineWidth,
+    marginLeft: spacing.sm,
+  },
 });

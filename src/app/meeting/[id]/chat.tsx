@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  AppState,
   FlatList,
   KeyboardAvoidingView,
   Platform,
@@ -12,17 +11,35 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 
 import { errorMessage } from '@/api/client';
-import { supportApi, supportSocketUrl } from '@/api/support';
-import type { SupportChatMessage } from '@/api/types';
+import { meetingsApi } from '@/api/meetings';
+import type { MeetingFeePayer, MeetingMessage, MeetingRequest } from '@/api/types';
+import { Button } from '@/components/Button';
+import { MeetingFeeSheet } from '@/components/MeetingFeeSheet';
+import { OptionGroup } from '@/components/OptionGroup';
 import { Screen } from '@/components/Screen';
+import { Surface } from '@/components/Surface';
 import { Text } from '@/components/Text';
 import { PressableScale } from '@/components/PressableScale';
-import { tokenStore } from '@/lib/storage';
+import { formatFee } from '@/lib/meetings';
+import { haptics } from '@/lib/haptics';
 import { useRealtime } from '@/store/realtime';
 import { fonts, palette, radii, spacing, useTheme } from '@/theme';
+
+// Viewer-relative payment choice <-> the absolute requester/recipient the API expects.
+type FeeChoice = 'mine' | 'theirs' | 'split';
+function choiceToPayer(choice: FeeChoice, isRequester: boolean): MeetingFeePayer {
+  if (choice === 'split') return 'split';
+  if (choice === 'mine') return isRequester ? 'requester' : 'recipient';
+  return isRequester ? 'recipient' : 'requester';
+}
+function payerToChoice(payer: MeetingFeePayer, isRequester: boolean): FeeChoice {
+  if (payer === 'split') return 'split';
+  const viewerPays = payer === 'requester' ? isRequester : !isRequester;
+  return viewerPays ? 'mine' : 'theirs';
+}
 
 /** Day key for grouping messages into date separators. */
 function dayKey(iso: string): string {
@@ -45,158 +62,106 @@ function timeLabel(iso: string): string {
   return new Date(iso).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
 }
 
-export default function Support() {
+export default function MeetingChat() {
+  const { id, name } = useLocalSearchParams<{ id: string; name?: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { c, isDark } = useTheme();
   const { revision, setActiveContext, refreshUnread } = useRealtime();
 
-  const [messages, setMessages] = useState<SupportChatMessage[]>([]); // newest-first (inverted list)
+  const [messages, setMessages] = useState<MeetingMessage[]>([]); // newest-first (inverted list)
   const [loading, setLoading] = useState(true);
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const wsRef = useRef<WebSocket | null>(null);
-  const threadIdRef = useRef<string | null>(null);
+  const [matchName, setMatchName] = useState<string | null>(name ?? null);
+  const [meeting, setMeeting] = useState<MeetingRequest | null>(null);
+  const [feeOpen, setFeeOpen] = useState(false);
+  const [savingPayer, setSavingPayer] = useState(false);
+  const firstLoad = useRef(true);
 
   // Upsert by id, keeping newest-first order.
-  const upsert = useCallback((m: SupportChatMessage) => {
+  const upsert = useCallback((m: MeetingMessage) => {
     setMessages((prev) => {
       if (prev.some((x) => x.id === m.id)) return prev;
       return [m, ...prev];
     });
   }, []);
 
-  // Reload the thread (also the revision-driven safety net).
-  const reload = useCallback(async () => {
+  const load = useCallback(async () => {
     try {
-      const thread = await supportApi.thread();
-      threadIdRef.current = thread.id;
+      const history = await meetingsApi.listMessages(String(id));
       // Server returns oldest-first; the inverted list wants newest-first.
-      setMessages([...thread.messages].reverse());
-      supportApi.markRead().catch(() => {});
-      refreshUnread();
-    } catch {
-      /* a transient failure leaves the existing list in place */
+      setMessages([...history].reverse());
+      setError(null);
+      // Each load clears the thread's unread and refreshes the badge.
+      meetingsApi.markThreadRead(String(id)).then(() => refreshUnread()).catch(() => {});
+    } catch (err) {
+      if (firstLoad.current) setError(errorMessage(err, 'Could not load this chat'));
+    } finally {
+      firstLoad.current = false;
+      setLoading(false);
     }
-  }, [refreshUnread]);
+  }, [id, refreshUnread]);
 
-  // Load the thread + open the realtime socket, reconnecting with backoff while
-  // focused. setActiveContext suppresses the global banner only while we are here.
+  // Load the meeting (header name + the live fee/payment state for the pay card).
+  const loadMeeting = useCallback(() => {
+    meetingsApi
+      .get(String(id))
+      .then((m) => {
+        setMeeting(m);
+        if (m.other_party_name) setMatchName(m.other_party_name);
+      })
+      .catch(() => {});
+  }, [id]);
+
+  useEffect(() => {
+    loadMeeting();
+  }, [loadMeeting]);
+
+  // Load on focus + suppress the global banner while we are here.
   useFocusEffect(
     useCallback(() => {
-      let active = true;
-      let backoff = 1000;
-      let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
-      setActiveContext({ kind: 'support' });
-
-      const clearReconnect = () => {
-        if (reconnectTimer) {
-          clearTimeout(reconnectTimer);
-          reconnectTimer = null;
-        }
-      };
-
-      const scheduleReconnect = () => {
-        if (!active) return;
-        clearReconnect();
-        const delay = backoff;
-        backoff = Math.min(backoff * 2, 15000);
-        reconnectTimer = setTimeout(() => openSocket(), delay);
-      };
-
-      const openSocket = async () => {
-        if (!active) return;
-        const threadId = threadIdRef.current;
-        const token = await tokenStore.getAccess();
-        if (!token || !active || !threadId) return;
-        let ws: WebSocket;
-        try {
-          ws = new WebSocket(supportSocketUrl(threadId, token));
-        } catch {
-          scheduleReconnect();
-          return;
-        }
-        wsRef.current = ws;
-        ws.onopen = () => {
-          backoff = 1000;
-        };
-        ws.onmessage = (ev) => {
-          try {
-            const { type, payload } = JSON.parse(ev.data);
-            if (type === 'message') {
-              upsert({
-                id: payload.id,
-                thread_id: payload.thread_id,
-                sender_id: payload.sender_id ?? null,
-                sender_role: payload.sender_role,
-                body: payload.body,
-                read_by_member: false,
-                read_by_admin: false,
-                created_at: payload.created_at,
-              });
-              if (payload.sender_role !== 'member') {
-                supportApi.markRead().catch(() => {});
-                refreshUnread();
-              }
-            }
-          } catch {
-            /* ignore malformed frames */
-          }
-        };
-        ws.onerror = () => {
-          /* onclose follows; reconnect is scheduled there */
-        };
-        ws.onclose = () => {
-          if (wsRef.current === ws) wsRef.current = null;
-          scheduleReconnect();
-        };
-      };
-
-      (async () => {
-        try {
-          const thread = await supportApi.thread();
-          threadIdRef.current = thread.id;
-          if (active) setMessages([...thread.messages].reverse());
-          supportApi.markRead().catch(() => {});
-          refreshUnread();
-        } catch (err) {
-          if (active) setError(errorMessage(err, 'Could not load support chat'));
-        } finally {
-          if (active) setLoading(false);
-        }
-        if (!active) return;
-        openSocket();
-      })();
-
-      const onAppState = (next: string) => {
-        if (next !== 'active' || !active) return;
-        const ws = wsRef.current;
-        const live = ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING);
-        if (!live) {
-          backoff = 1000;
-          clearReconnect();
-          openSocket();
-        }
-        reload();
-      };
-      const sub = AppState.addEventListener('change', onAppState);
-
-      return () => {
-        active = false;
-        clearReconnect();
-        sub.remove();
-        wsRef.current?.close();
-        wsRef.current = null;
-        setActiveContext(null);
-      };
-    }, [upsert, reload, refreshUnread, setActiveContext])
+      setActiveContext({ kind: 'meeting', id: String(id) });
+      load();
+      return () => setActiveContext(null);
+    }, [id, load, setActiveContext])
   );
 
-  // A missed socket event still surfaces via the global notification feed.
+  // A live update (e.g. a team reply or a new fee) bumps revision; refetch both
+  // the messages and the meeting so the thread and the pay card stay current.
   useEffect(() => {
-    if (revision > 0) reload();
-  }, [revision, reload]);
+    if (revision > 0) {
+      load();
+      loadMeeting();
+    }
+  }, [revision, load, loadMeeting]);
+
+  const headerTitle = matchName ? `${matchName} (meeting)` : 'Coordination chat';
+
+  // ── Fee / payment ──
+  const feeDue = !!meeting && meeting.fee_status === 'due';
+  const canChoosePayer = !!meeting && !meeting.requester_paid && !meeting.recipient_paid;
+  const feeChoiceOptions: { label: string; value: FeeChoice }[] = [
+    { label: 'I will pay', value: 'mine' },
+    { label: `${matchName ?? 'They'} pay`, value: 'theirs' },
+    { label: 'Split evenly', value: 'split' },
+  ];
+  const changePayer = async (choice: FeeChoice | null) => {
+    if (!meeting || !choice || savingPayer) return;
+    const payer = choiceToPayer(choice, meeting.is_requester);
+    if (payer === meeting.fee_payer) return;
+    setSavingPayer(true);
+    try {
+      const updated = await meetingsApi.setPayment(meeting.id, payer);
+      setMeeting(updated);
+      haptics.selection();
+    } catch (err) {
+      setError(errorMessage(err, 'Could not update who pays'));
+    } finally {
+      setSavingPayer(false);
+    }
+  };
 
   const send = async () => {
     const body = text.trim();
@@ -204,8 +169,8 @@ export default function Support() {
     setText('');
     setSending(true);
     try {
-      const msg = await supportApi.send(body);
-      upsert(msg); // WS may also echo; upsert dedupes by id
+      const msg = await meetingsApi.postMessage(String(id), body);
+      upsert(msg);
     } catch (err) {
       setError(errorMessage(err, 'Message failed to send'));
       setText(body); // restore so the member can retry
@@ -231,13 +196,46 @@ export default function Support() {
 
         <View style={styles.headerText}>
           <Text variant="subhead" tone="default" numberOfLines={1} style={styles.headerName}>
-            Support
+            {headerTitle}
           </Text>
-          <Text variant="footnote" tone="subtle">We usually reply within a day</Text>
+          <Text variant="footnote" tone="subtle">You, your match and the Pakiza team</Text>
         </View>
 
         <View style={styles.back} />
       </View>
+
+      {/* Interactive fee card: appears the moment the team sets a fee. */}
+      {feeDue && meeting ? (
+        <Surface elevated style={styles.feeCard}>
+          <View style={styles.feeHead}>
+            <Ionicons name="card-outline" size={16} color={c.accent} />
+            <Text variant="subhead" tone="default" style={styles.feeTitle}>Meeting fee</Text>
+            <Text variant="subhead" tone="accent">{formatFee(meeting.fee_pence)}</Text>
+          </View>
+          <Text variant="footnote" tone="muted" style={styles.feeSub}>
+            {meeting.i_have_paid
+              ? 'You have paid your share. Thank you.'
+              : `Your share: ${formatFee(meeting.my_share_pence)}`}
+          </Text>
+          {canChoosePayer ? (
+            <OptionGroup
+              label="Who pays?"
+              options={feeChoiceOptions}
+              value={payerToChoice(meeting.fee_payer, meeting.is_requester)}
+              onChange={changePayer}
+              onDark={false}
+              clearable={false}
+            />
+          ) : null}
+          {!meeting.i_have_paid && meeting.my_share_pence > 0 ? (
+            <Button
+              label={`Pay your share (${formatFee(meeting.my_share_pence)})`}
+              onPress={() => { haptics.selection(); setFeeOpen(true); }}
+              style={styles.feePay}
+            />
+          ) : null}
+        </Surface>
+      ) : null}
 
       <KeyboardAvoidingView
         style={styles.flex}
@@ -261,10 +259,10 @@ export default function Support() {
                   <Ionicons name="chatbubbles-outline" size={30} color={c.accent} />
                 </View>
                 <Text variant="subhead" tone="default" center style={{ marginTop: spacing.md }}>
-                  How can we help?
+                  Coordinate your meeting
                 </Text>
                 <Text variant="body" tone="muted" center style={styles.emptyBody}>
-                  Ask us anything about your account, billing, or how Pakiza works. The team will get back to you soon.
+                  Use this thread to sort out the details with your match and our team. Your wali is kept informed throughout.
                 </Text>
               </View>
             }
@@ -289,11 +287,26 @@ export default function Support() {
                 );
               }
 
-              const mine = item.sender_role === 'member';
+              const mine = item.is_me;
+              const fromTeam = item.sender_role === 'team';
               return (
                 <View>
                   <View style={[styles.bubbleRow, mine ? styles.rowMine : styles.rowTheirs]}>
                     <View style={[mine ? styles.colMine : styles.colTheirs]}>
+                      {!mine ? (
+                        <View style={styles.senderRow}>
+                          {fromTeam ? (
+                            <View style={[styles.teamBadge, { backgroundColor: c.accentFaint }]}>
+                              <Ionicons name="shield-checkmark" size={11} color={c.accent} />
+                              <Text variant="label" tone="accent">Pakiza team</Text>
+                            </View>
+                          ) : (
+                            <Text variant="label" tone="muted" style={styles.senderName}>
+                              {item.sender_label}
+                            </Text>
+                          )}
+                        </View>
+                      ) : null}
                       <View
                         style={[
                           styles.bubble,
@@ -344,7 +357,7 @@ export default function Support() {
             keyboardAppearance={isDark ? 'dark' : 'light'}
           />
           <PressableScale
-            onPress={send}
+            onPress={() => { haptics.selection(); send(); }}
             disabled={!canSend}
             haptic={false}
             style={[styles.sendBtn, { backgroundColor: palette.burgundy, opacity: canSend ? 1 : 0.45 }]}
@@ -353,6 +366,13 @@ export default function Support() {
           </PressableScale>
         </View>
       </KeyboardAvoidingView>
+
+      <MeetingFeeSheet
+        meeting={meeting}
+        visible={feeOpen}
+        onClose={() => setFeeOpen(false)}
+        onPaid={(m) => { setMeeting(m); setFeeOpen(false); }}
+      />
     </Screen>
   );
 }
@@ -369,6 +389,13 @@ function DaySeparator({ iso }: { iso: string }) {
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+
+  // Fee card (sticky above the thread when a fee is due)
+  feeCard: { marginHorizontal: spacing.lg, marginTop: spacing.md, padding: spacing.lg },
+  feeHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  feeTitle: { flex: 1 },
+  feeSub: { marginTop: 2, marginBottom: spacing.sm },
+  feePay: { marginTop: spacing.sm, height: 48 },
 
   // Header
   header: {
@@ -409,6 +436,16 @@ const styles = StyleSheet.create({
   rowTheirs: { justifyContent: 'flex-start' },
   colMine: { maxWidth: '78%', alignItems: 'flex-end' },
   colTheirs: { maxWidth: '78%', alignItems: 'flex-start' },
+  senderRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 3, paddingHorizontal: 2 },
+  senderName: { paddingHorizontal: 2 },
+  teamBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: radii.pill,
+  },
   bubble: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: radii.lg },
   bubbleMine: { borderBottomRightRadius: radii.xs / 2 },
   bubbleTheirs: { borderBottomLeftRadius: radii.xs / 2, borderWidth: StyleSheet.hairlineWidth },
