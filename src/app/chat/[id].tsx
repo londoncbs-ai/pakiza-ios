@@ -15,25 +15,47 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 
 import { chatApi, chatSocketUrl } from '@/api/chat';
+import { wsTicket } from '@/api/ws';
 import { errorMessage } from '@/api/client';
 import { matchesApi } from '@/api/matches';
 import { REPORT_REASONS, safetyApi, type ReportReason } from '@/api/safety';
 import type { ChatMessage, Conversation } from '@/api/types';
+import { ChatImageBubble } from '@/components/ChatImageBubble';
 import { FeatureHint } from '@/components/FeatureHint';
 import { MeetingCard } from '@/components/MeetingCard';
 import { SafetySheet } from '@/components/SafetySheet';
 import { Screen } from '@/components/Screen';
+import { SwipeToReply } from '@/components/SwipeToReply';
 import { Text } from '@/components/Text';
 import { Button } from '@/components/Button';
 import { PressableScale } from '@/components/PressableScale';
+import { VoiceMessage } from '@/components/VoiceMessage';
+import { formatDuration, useAudioRecorder } from '@/hooks/useAudioRecorder';
 import { haptics } from '@/lib/haptics';
-import { tokenStore } from '@/lib/storage';
+import { primaryPhotoUrl } from '@/lib/photos';
 import { useAuth } from '@/store/auth';
 import { useRealtime } from '@/store/realtime';
 import { fonts, palette, radii, spacing, useTheme } from '@/theme';
+
+/** A one-line label for a quoted reply (handles text and media messages). */
+function replySnippet(m: ChatMessage | undefined): string {
+  if (!m) return 'Message';
+  if (m.type === 'image') return 'Photo';
+  if (m.type === 'voice') return 'Voice message';
+  if (m.type === 'meeting') return 'Meeting';
+  return m.content?.trim() || 'Message';
+}
+
+/** Guess a sensible filename + mime for an uploaded image from its uri. */
+function imageUpload(uri: string): { name: string; mime: string } {
+  const name = uri.split('/').pop() || 'photo.jpg';
+  const ext = (name.split('.').pop() || 'jpg').toLowerCase();
+  return { name, mime: ext === 'png' ? 'image/png' : 'image/jpeg' };
+}
 
 /** Day key for grouping messages into date separators. */
 function dayKey(iso: string): string {
@@ -73,7 +95,10 @@ export default function ChatThread() {
   const [conv, setConv] = useState<Conversation | null>(null);
   const [safetyOpen, setSafetyOpen] = useState(false);
   const [reportMsg, setReportMsg] = useState<ChatMessage | null>(null);
+  const [replyTo, setReplyTo] = useState<ChatMessage | null>(null);
+  const [uploading, setUploading] = useState(false);
   const [locked, setLocked] = useState(false);
+  const recorder = useAudioRecorder();
   const wsRef = useRef<WebSocket | null>(null);
   const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lockedRef = useRef(false); // no socket / no refetch for a locked chat
@@ -127,11 +152,17 @@ export default function ChatThread() {
 
       const openSocket = async () => {
         if (!active || lockedRef.current) return;
-        const token = await tokenStore.getAccess();
-        if (!token || !active || lockedRef.current) return;
+        let ticket: string;
+        try {
+          ticket = await wsTicket();
+        } catch {
+          scheduleReconnect();
+          return;
+        }
+        if (!active || lockedRef.current) return;
         let ws: WebSocket;
         try {
-          ws = new WebSocket(chatSocketUrl(String(id), token));
+          ws = new WebSocket(chatSocketUrl(String(id), ticket));
         } catch {
           scheduleReconnect();
           return;
@@ -152,8 +183,10 @@ export default function ChatThread() {
                 // and carry through any metadata so the live card can render.
                 type: payload.type ?? 'text',
                 content: payload.content ?? null,
-                media_url: null,
-                media_duration_secs: null,
+                // Media frames carry a presigned GET url + duration; metadata
+                // carries reply_to_id (and meeting/system extras).
+                media_url: payload.media_url ?? null,
+                media_duration_secs: payload.media_duration_secs ?? null,
                 is_read: false,
                 is_delivered: true,
                 sent_at: payload.sent_at,
@@ -276,18 +309,91 @@ export default function ChatThread() {
   const send = async () => {
     const body = text.trim();
     if (!body || sending) return;
+    const reply = replyTo;
     setText('');
+    setReplyTo(null);
     setSending(true);
     sendTyping(false);
     try {
-      const msg = await chatApi.sendMessage(String(id), body);
+      const msg = await chatApi.sendMessage(String(id), {
+        type: 'text',
+        content: body,
+        reply_to_id: reply?.id ?? null,
+      });
       upsert(msg); // WS will also echo; upsert dedupes by id
     } catch (err) {
       setError(errorMessage(err, 'Message failed to send'));
       setText(body); // restore so the user can retry
+      setReplyTo(reply);
     } finally {
       setSending(false);
     }
+  };
+
+  // Pick an image, upload it, then send an image message (carrying any reply).
+  const pickAndSendImage = async () => {
+    if (uploading || sending || recorder.recording) return;
+    const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.8 });
+    if (res.canceled) return;
+    const uri = res.assets[0].uri;
+    const reply = replyTo;
+    setReplyTo(null);
+    setUploading(true);
+    try {
+      const { name, mime } = imageUpload(uri);
+      const { media_s3_key } = await chatApi.uploadMedia(String(id), uri, mime, name);
+      const msg = await chatApi.sendMessage(String(id), {
+        type: 'image',
+        media_s3_key,
+        reply_to_id: reply?.id ?? null,
+      });
+      upsert(msg);
+    } catch (err) {
+      setError(errorMessage(err, 'Photo failed to send'));
+      setReplyTo(reply);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  // Tap to start recording; tap again to stop, upload and send the voice note.
+  const toggleRecording = async () => {
+    if (uploading || sending) return;
+    if (!recorder.recording) {
+      const ok = await recorder.start();
+      if (!ok) {
+        Alert.alert(
+          'Microphone needed',
+          'Allow microphone access in Settings to record voice messages.',
+        );
+      }
+      return;
+    }
+    const take = await recorder.stop();
+    if (!take) return;
+    const reply = replyTo;
+    setReplyTo(null);
+    setUploading(true);
+    try {
+      const name = take.uri.split('/').pop() || 'voice.m4a';
+      const { media_s3_key } = await chatApi.uploadMedia(String(id), take.uri, 'audio/m4a', name);
+      const msg = await chatApi.sendMessage(String(id), {
+        type: 'voice',
+        media_s3_key,
+        media_duration_secs: take.durationSecs,
+        reply_to_id: reply?.id ?? null,
+      });
+      upsert(msg);
+    } catch (err) {
+      setError(errorMessage(err, 'Voice message failed to send'));
+      setReplyTo(reply);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const cancelRecording = () => {
+    recorder.cancel();
   };
 
   const submitReport = async (reason: ReportReason) => {
@@ -306,7 +412,7 @@ export default function ChatThread() {
 
   const peer = conv?.other_profile;
   const peerName = peer?.display_name ?? name ?? 'Chat';
-  const peerPhoto = peer?.photos?.find((p) => p.is_primary)?.cdn_url ?? peer?.photos?.[0]?.cdn_url;
+  const peerPhoto = primaryPhotoUrl(peer);
   const canSend = !!text.trim() && !sending;
 
   return (
@@ -445,28 +551,78 @@ export default function ChatThread() {
               }
 
               const mine = item.sender_id === userId;
+              const isImage = item.type === 'image';
+              const isVoice = item.type === 'voice';
+              const isMedia = isImage || isVoice;
+
+              // Resolve a quoted reply against the in-memory list.
+              const replyId = item.metadata?.reply_to_id as string | undefined;
+              const quoted = replyId ? messages.find((m) => m.id === replyId) : undefined;
+              const quotedSender =
+                quoted && quoted.sender_id === userId ? 'You' : peerName;
+
+              // Images have no bubble chrome; voice/text keep the padded bubble.
+              const bubbleStyle = isImage
+                ? [styles.imageBubble]
+                : [
+                    styles.bubble,
+                    mine
+                      ? [styles.bubbleMine, { backgroundColor: palette.burgundy }]
+                      : [styles.bubbleTheirs, { backgroundColor: c.surfaceAlt, borderColor: c.border }],
+                  ];
+
               return (
                 <View>
                   <View style={[styles.bubbleRow, mine ? styles.rowMine : styles.rowTheirs]}>
                     <View style={[mine ? styles.colMine : styles.colTheirs]}>
-                      <Pressable
-                        onLongPress={!mine ? () => { haptics.selection(); setReportMsg(item); } : undefined}
-                        delayLongPress={350}
-                        style={[
-                          styles.bubble,
-                          mine
-                            ? [styles.bubbleMine, { backgroundColor: palette.burgundy }]
-                            : [styles.bubbleTheirs, { backgroundColor: c.surfaceAlt, borderColor: c.border }],
-                        ]}
-                      >
-                        <Text
-                          variant="body"
-                          color={mine ? palette.cream : c.text}
-                          style={styles.msgText}
+                      <SwipeToReply mine={mine} onReply={() => setReplyTo(item)}>
+                        {replyId ? (
+                          <View
+                            style={[
+                              styles.quote,
+                              mine ? styles.quoteMine : styles.quoteTheirs,
+                              {
+                                backgroundColor: mine ? 'rgba(251,247,239,0.14)' : c.surfaceAlt,
+                                borderLeftColor: mine ? palette.cream : c.accent,
+                              },
+                            ]}
+                          >
+                            <Text variant="footnote" color={mine ? palette.cream : c.accent} numberOfLines={1}>
+                              {quoted ? quotedSender : 'Reply'}
+                            </Text>
+                            <Text
+                              variant="footnote"
+                              color={mine ? 'rgba(251,247,239,0.85)' : c.textMuted}
+                              numberOfLines={1}
+                            >
+                              {replySnippet(quoted)}
+                            </Text>
+                          </View>
+                        ) : null}
+                        <Pressable
+                          onLongPress={!mine ? () => { haptics.selection(); setReportMsg(item); } : undefined}
+                          delayLongPress={350}
+                          style={bubbleStyle}
                         >
-                          {item.content}
-                        </Text>
-                      </Pressable>
+                          {isImage ? (
+                            <ChatImageBubble url={item.media_url} />
+                          ) : isVoice ? (
+                            <VoiceMessage
+                              url={item.media_url}
+                              durationSecs={item.media_duration_secs}
+                              mine={mine}
+                            />
+                          ) : (
+                            <Text
+                              variant="body"
+                              color={mine ? palette.cream : c.text}
+                              style={styles.msgText}
+                            >
+                              {item.content}
+                            </Text>
+                          )}
+                        </Pressable>
+                      </SwipeToReply>
                       <View style={[styles.metaRow, mine ? styles.metaMine : styles.metaTheirs]}>
                         <Text variant="footnote" tone="subtle">{timeLabel(item.sent_at)}</Text>
                         {mine ? (
@@ -493,37 +649,98 @@ export default function ChatThread() {
         ) : null}
 
         {!locked ? (
-          <View
-            style={[
-              styles.composer,
-              {
-                paddingBottom: insets.bottom + spacing.sm,
-                backgroundColor: c.surface,
-                borderTopColor: c.border,
-              },
-            ]}
-          >
-            <TextInput
-              style={[styles.input, { backgroundColor: c.surfaceAlt, color: c.text, borderColor: c.border }]}
-              value={text}
-              onChangeText={(t) => {
-                setText(t);
-                sendTyping(t.length > 0);
-              }}
-              placeholder="Write a message…"
-              placeholderTextColor={c.textSubtle}
-              multiline
-              onBlur={() => sendTyping(false)}
-              keyboardAppearance={isDark ? 'dark' : 'light'}
-            />
-            <PressableScale
-              onPress={send}
-              disabled={!canSend}
-              haptic={false}
-              style={[styles.sendBtn, { backgroundColor: palette.burgundy, opacity: canSend ? 1 : 0.45 }]}
-            >
-              <Ionicons name="arrow-up" size={22} color={palette.cream} />
-            </PressableScale>
+          <View style={[styles.composerWrap, { backgroundColor: c.surface, borderTopColor: c.border }]}>
+            {/* Reply preview bar */}
+            {replyTo ? (
+              <View style={[styles.replyBar, { borderLeftColor: c.accent, backgroundColor: c.surfaceAlt }]}>
+                <View style={styles.replyBarText}>
+                  <Text variant="footnote" tone="accent" numberOfLines={1}>
+                    Replying to {replyTo.sender_id === userId ? 'yourself' : peerName}
+                  </Text>
+                  <Text variant="footnote" tone="muted" numberOfLines={1}>
+                    {replySnippet(replyTo)}
+                  </Text>
+                </View>
+                <Pressable onPress={() => setReplyTo(null)} hitSlop={10} style={styles.replyClose}>
+                  <Ionicons name="close" size={18} color={c.textMuted} />
+                </Pressable>
+              </View>
+            ) : null}
+
+            <View style={[styles.composer, { paddingBottom: insets.bottom + spacing.sm }]}>
+              {recorder.recording ? (
+                <View style={[styles.recordingBar, { backgroundColor: c.surfaceAlt, borderColor: c.border }]}>
+                  <Pressable onPress={cancelRecording} hitSlop={8} style={styles.recordCancel}>
+                    <Ionicons name="trash-outline" size={20} color={c.danger} />
+                  </Pressable>
+                  <View style={styles.recordingMeta}>
+                    <View style={[styles.recordDot, { backgroundColor: c.danger }]} />
+                    <Text variant="body" tone="default" style={styles.recordTime}>
+                      {formatDuration(recorder.elapsedSecs)}
+                    </Text>
+                    <Text variant="footnote" tone="subtle">Recording…</Text>
+                  </View>
+                </View>
+              ) : (
+                <>
+                  <Pressable
+                    onPress={pickAndSendImage}
+                    disabled={uploading || sending}
+                    hitSlop={6}
+                    style={styles.attachBtn}
+                  >
+                    <Ionicons name="image-outline" size={24} color={c.textMuted} />
+                  </Pressable>
+                  <TextInput
+                    style={[styles.input, { backgroundColor: c.surfaceAlt, color: c.text, borderColor: c.border }]}
+                    value={text}
+                    onChangeText={(t) => {
+                      setText(t);
+                      sendTyping(t.length > 0);
+                    }}
+                    placeholder="Write a message…"
+                    placeholderTextColor={c.textSubtle}
+                    multiline
+                    onBlur={() => sendTyping(false)}
+                    keyboardAppearance={isDark ? 'dark' : 'light'}
+                  />
+                </>
+              )}
+
+              {/* Send a typed message, or - when empty - record / stop a voice note. */}
+              {canSend ? (
+                <PressableScale
+                  onPress={send}
+                  haptic={false}
+                  style={[styles.sendBtn, { backgroundColor: palette.burgundy }]}
+                >
+                  <Ionicons name="arrow-up" size={22} color={palette.cream} />
+                </PressableScale>
+              ) : (
+                <PressableScale
+                  onPress={toggleRecording}
+                  disabled={uploading}
+                  haptic={false}
+                  style={[
+                    styles.sendBtn,
+                    {
+                      backgroundColor: recorder.recording ? palette.burgundy : c.surfaceAlt,
+                      opacity: uploading ? 0.45 : 1,
+                    },
+                  ]}
+                >
+                  {uploading ? (
+                    <ActivityIndicator color={recorder.recording ? palette.cream : c.accent} size="small" />
+                  ) : (
+                    <Ionicons
+                      name={recorder.recording ? 'stop' : 'mic'}
+                      size={22}
+                      color={recorder.recording ? palette.cream : c.accent}
+                    />
+                  )}
+                </PressableScale>
+              )}
+            </View>
           </View>
         ) : null}
       </KeyboardAvoidingView>
@@ -637,7 +854,20 @@ const styles = StyleSheet.create({
   bubble: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: radii.lg },
   bubbleMine: { borderBottomRightRadius: radii.xs / 2 },
   bubbleTheirs: { borderBottomLeftRadius: radii.xs / 2, borderWidth: StyleSheet.hairlineWidth },
+  imageBubble: { borderRadius: radii.lg, overflow: 'hidden' },
   msgText: { fontSize: 15.5, lineHeight: 21 },
+
+  // Quoted reply above a bubble
+  quote: {
+    borderLeftWidth: 2,
+    borderRadius: radii.sm,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 6,
+    marginBottom: 4,
+    maxWidth: '100%',
+  },
+  quoteMine: { alignSelf: 'flex-end' },
+  quoteTheirs: { alignSelf: 'flex-start' },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3, paddingHorizontal: 2 },
   metaMine: { justifyContent: 'flex-end' },
   metaTheirs: { justifyContent: 'flex-start' },
@@ -645,14 +875,46 @@ const styles = StyleSheet.create({
   error: { marginBottom: spacing.xs },
 
   // Composer
+  composerWrap: { borderTopWidth: StyleSheet.hairlineWidth },
   composer: {
     flexDirection: 'row',
     alignItems: 'flex-end',
     gap: spacing.sm,
     paddingHorizontal: spacing.md,
     paddingTop: spacing.sm,
-    borderTopWidth: StyleSheet.hairlineWidth,
   },
+  attachBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+
+  // Reply preview bar
+  replyBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginHorizontal: spacing.md,
+    marginTop: spacing.sm,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderLeftWidth: 3,
+    borderRadius: radii.sm,
+  },
+  replyBarText: { flex: 1 },
+  replyClose: { padding: 2 },
+
+  // Voice recording bar (replaces the text input while recording)
+  recordingBar: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    minHeight: 44,
+    borderRadius: radii.lg,
+    borderWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: spacing.md,
+    gap: spacing.sm,
+  },
+  recordCancel: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
+  recordingMeta: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  recordDot: { width: 9, height: 9, borderRadius: 5 },
+  recordTime: { fontVariant: ['tabular-nums'] },
   input: {
     flex: 1,
     maxHeight: 120,

@@ -60,9 +60,11 @@ export default function SignIn() {
           Create an account
         </Text>
       </Text>
-      <Text variant="footnote" tone="onDarkMuted" center style={styles.demo}>
-        Demo login → +447900000000 · Password123
-      </Text>
+      {__DEV__ && (
+        <Text variant="footnote" tone="onDarkMuted" center style={styles.demo}>
+          Demo login → +447900000000 · Password123
+        </Text>
+      )}
     </AuthScaffold>
   );
 }

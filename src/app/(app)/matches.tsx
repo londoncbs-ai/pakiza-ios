@@ -15,6 +15,7 @@ import { PressableScale } from '@/components/PressableScale';
 import { SkeletonList } from '@/components/Skeleton';
 import { Text } from '@/components/Text';
 import { haptics } from '@/lib/haptics';
+import { primaryPhotoUrl } from '@/lib/photos';
 import { fonts, palette, radii, shadow, spacing, useTheme } from '@/theme';
 
 export default function Matches() {
@@ -96,8 +97,7 @@ export default function Matches() {
             />
           }
           renderItem={({ item }) => {
-            const photo =
-              item.profile.photos?.find((p) => p.is_primary)?.cdn_url ?? item.profile.photos?.[0]?.cdn_url;
+            const photo = primaryPhotoUrl(item.profile);
             const canBook = !!item.conversation_id;
             const openChat = () => {
               if (item.conversation_id) {

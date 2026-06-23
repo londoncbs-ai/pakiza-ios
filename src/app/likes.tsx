@@ -12,6 +12,7 @@ import { EmptyState } from '@/components/EmptyState';
 import { ProfileDetail } from '@/components/ProfileDetail';
 import { SkeletonList } from '@/components/Skeleton';
 import { Text } from '@/components/Text';
+import { primaryPhotoUrl } from '@/lib/photos';
 import { fonts, palette, radii, shadow, spacing, tint, useTheme } from '@/theme';
 
 export default function LikesYou() {
@@ -104,7 +105,7 @@ export default function LikesYou() {
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.accent} />}
         >
           {profiles.map((p) => {
-            const photo = p.photos?.find((x) => x.is_primary)?.cdn_url ?? p.photos?.[0]?.cdn_url;
+            const photo = primaryPhotoUrl(p);
             return (
               <Pressable key={p.user_id} style={[styles.card, !isDark && shadow.soft]} onPress={() => setOpened(p)}>
                 {photo ? (

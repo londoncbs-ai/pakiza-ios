@@ -22,7 +22,7 @@ import { ThemeProvider, useTheme } from '@/theme';
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
 function RootNavigator() {
-  const { status } = useAuth();
+  const { status, block } = useAuth();
   const segments = useSegments();
   const router = useRouter();
   const { c } = useTheme();
@@ -30,7 +30,15 @@ function RootNavigator() {
   useEffect(() => {
     if (status === 'loading') return;
 
-    const root = segments[0]; // '(auth)' | '(app)' | '(onboarding)' | undefined (index)
+    const root = segments[0]; // '(auth)' | '(app)' | '(onboarding)' | 'blocked' | undefined (index)
+
+    // An account-state block (banned / deactivated / deleted) takes precedence:
+    // hold the user on the blocked screen until they choose to return to sign in.
+    if (block) {
+      if (root !== 'blocked') router.replace('/blocked');
+      return;
+    }
+
     const onPublic = root === undefined || root === '(auth)';
 
     if (status === 'signedOut' && !onPublic) {
@@ -41,11 +49,12 @@ function RootNavigator() {
     }
     // When signed-in and inside (onboarding), leave the user there - the
     // onboarding flow itself advances to (app) when complete.
-  }, [status, segments, router]);
+  }, [status, block, segments, router]);
 
   return (
     <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: c.bg } }}>
       <Stack.Screen name="index" />
+      <Stack.Screen name="blocked" />
       <Stack.Screen name="(auth)" />
       <Stack.Screen name="(onboarding)" />
       <Stack.Screen name="(app)" />
@@ -54,6 +63,10 @@ function RootNavigator() {
       <Stack.Screen name="meeting/[id]" />
       <Stack.Screen name="meeting/[id]/chat" />
       <Stack.Screen name="meetings" />
+      <Stack.Screen name="support-fund" />
+      <Stack.Screen name="donate" />
+      <Stack.Screen name="apply-support" />
+      <Stack.Screen name="boost" />
       <Stack.Screen name="notifications" />
       <Stack.Screen name="premium" />
       <Stack.Screen name="change-password" />

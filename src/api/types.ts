@@ -172,7 +172,10 @@ export type NotificationType =
   | 'meeting_accepted'
   | 'meeting_declined'
   | 'meeting_scheduled'
-  | 'meeting_update';
+  | 'meeting_update'
+  | 'donation_received'
+  | 'application_update'
+  | 'boost_active';
 
 export interface AppNotification {
   id: string;
@@ -419,4 +422,147 @@ export interface MeetingCheckout {
   publishable_key: string | null;
   amount: number | null;
   currency: string;
+}
+
+// ── Marriage Support Fund + profile boost ────────────────────────────────────
+// All money is in pence (GBP minor units). The API returns enum .value (lowercase).
+
+/** The shared checkout-session shape returned by every "begin payment" endpoint. */
+export interface CheckoutSession {
+  mode: 'stripe' | 'dev' | string;
+  client_secret: string | null;
+  publishable_key: string | null;
+  amount: number | null;
+  currency: string;
+}
+
+export type DonationStatus = 'pending' | 'succeeded' | 'failed' | 'refunded';
+
+export type ApplicationStatus =
+  | 'submitted'
+  | 'under_review'
+  | 'accepted'
+  | 'approved'
+  | 'funded'
+  | 'completed'
+  | 'declined'
+  | 'withdrawn';
+
+/** A member's gift to the Marriage Support Fund. */
+export interface Donation {
+  id: string;
+  amount_pence: number;
+  currency: string;
+  status: DonationStatus;
+  is_anonymous: boolean;
+  message?: string | null;
+  created_at: string;
+}
+
+/** An anonymised story of a marriage the fund helped support. */
+export interface ImpactEntry {
+  id: string;
+  title?: string | null;
+  blurb: string;
+  image_url?: string | null;
+  amount_pence: number;
+  city?: string | null;
+  supported_at?: string | null;
+}
+
+/** One line on the donor wall - GET /giving/donors. Anonymous gifts carry no name. */
+export interface Donor {
+  name?: string | null;
+  amount_pence: number;
+  is_anonymous: boolean;
+  created_at: string;
+}
+
+/** Fund hub stats - GET /giving/fund. */
+export interface FundSummary {
+  currency: string;
+  total_raised_pence: number;       // gross - the headline donors see
+  total_available_pence: number;    // net of processor fees and payouts
+  total_allocated_pence: number;
+  fund_balance_pence: number;
+  marriages_supported: number;
+  donors_count: number;
+  my_total_pence: number;
+  my_donation_count: number;
+  impact: ImpactEntry[];
+}
+
+/** Country-aware bank/payout details for a support application. */
+export interface PayoutDetails {
+  payout_country?: string | null;
+  account_holder_name?: string | null;
+  bank_name?: string | null;
+  iban?: string | null;
+  swift_bic?: string | null;
+  sort_code?: string | null;
+  account_number?: string | null;
+  routing_number?: string | null;
+  payout_details_other?: string | null;
+}
+
+/** A member-safe milestone in an application's progress. */
+export interface ApplicationTimelineEntry {
+  label: string;
+  status?: ApplicationStatus | null;
+  at: string;
+}
+
+/** A member's application for marriage support (their own view). */
+export interface Application extends PayoutDetails {
+  id: string;
+  status: ApplicationStatus;
+  partner_name?: string | null;
+  story: string;
+  amount_requested_pence?: number | null;
+  amount_awarded_pence?: number | null;
+  decline_reason?: string | null;
+  city?: string | null;
+  terms_accepted_at?: string | null;
+  terms_version?: string | null;
+  payout_details_provided_at?: string | null;
+  created_at: string;
+  updated_at: string;
+  timeline: ApplicationTimelineEntry[];
+}
+
+/** Body for POST /giving/donations/checkout. */
+export interface DonationCheckoutInput {
+  amount_pence: number;
+  is_anonymous: boolean;
+  message?: string;
+}
+
+/** Body for POST /giving/applications. */
+export interface ApplicationInput {
+  story: string;
+  partner_name?: string;
+  amount_requested_pence?: number;
+  contact_phone?: string;
+  city?: string;
+  terms_accepted: boolean;
+  payout?: PayoutDetails;
+}
+
+/** Response from POST /giving/donations/checkout - a checkout session plus the donation id. */
+export interface DonationCheckout extends CheckoutSession {
+  donation_id: string;
+}
+
+/** Response from POST /boosts/checkout - a checkout session plus the boost id. */
+export interface BoostCheckout extends CheckoutSession {
+  boost_id: string;
+}
+
+/** Live boost state - GET /boosts/active and the confirm response. */
+export interface BoostStatus {
+  active: boolean;
+  expires_at?: string | null;
+  seconds_remaining: number;
+  price_pence: number;
+  duration_minutes: number;
 }

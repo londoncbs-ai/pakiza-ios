@@ -10,6 +10,7 @@ import { DetailRow } from './DetailRow';
 import { SafetySheet } from './SafetySheet';
 import { Text } from './Text';
 import { label, titleCase } from '@/lib/format';
+import { sortedPhotos } from '@/lib/photos';
 import { fonts, palette, radii, shadow, spacing, tint, useTheme } from '@/theme';
 
 const { width: W } = Dimensions.get('window');
@@ -28,9 +29,7 @@ export function ProfileDetail({
 }) {
   const insets = useSafeAreaInsets();
   const { c, isDark } = useTheme();
-  const photos = [...(profile.photos ?? [])].sort(
-    (a, b) => Number(b.is_primary) - Number(a.is_primary) || a.order_index - b.order_index
-  );
+  const photos = sortedPhotos(profile.photos);
   const [active, setActive] = useState(0);
   const [safetyOpen, setSafetyOpen] = useState(false);
   const hero = photos[active]?.cdn_url;

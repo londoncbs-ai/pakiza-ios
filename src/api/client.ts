@@ -22,6 +22,13 @@ export function setUnauthorizedHandler(fn: (() => void) | null) {
   onUnauthorized = fn;
 }
 
+// Registered by the AuthProvider so the client can surface an account-state
+// block (banned / deactivated / deleted) as a dedicated screen.
+let onAccountBlocked: ((state: string, message: string) => void) | null = null;
+export function setAccountBlockedHandler(fn: ((state: string, message: string) => void) | null) {
+  onAccountBlocked = fn;
+}
+
 api.interceptors.request.use(async (config) => {
   const token = await tokenStore.getAccess();
   if (token) config.headers.Authorization = `Bearer ${token}`;
@@ -63,6 +70,20 @@ api.interceptors.response.use(
       }
       await tokenStore.clear();
       onUnauthorized?.();
+    }
+
+    // A 403 from an account-state check (banned / deactivated / deleted) means
+    // this session can no longer be used. Surface it globally so the app shows
+    // the blocked screen. Auth endpoints are excluded: the sign-in screen shows
+    // the reason inline there instead of bouncing to a full screen.
+    if (status === 403 && !String(original?.url ?? '').includes('/auth/')) {
+      const headers = error.response?.headers as Record<string, string> | undefined;
+      const headerState = headers?.['x-account-state'];
+      const detail = (error.response?.data as { detail?: unknown } | undefined)?.detail;
+      const detailStr = typeof detail === 'string' ? detail : '';
+      if (headerState || /suspend|deactivat|deleted|banned/i.test(detailStr)) {
+        onAccountBlocked?.(headerState || 'banned', detailStr || 'Your account is no longer active.');
+      }
     }
     return Promise.reject(error);
   }

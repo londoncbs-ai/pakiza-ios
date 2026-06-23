@@ -16,6 +16,7 @@ import { Surface } from '@/components/Surface';
 import { Text } from '@/components/Text';
 import { label, titleCase } from '@/lib/format';
 import { haptics } from '@/lib/haptics';
+import { sortedPhotos } from '@/lib/photos';
 import { useAuth } from '@/store/auth';
 import { fonts, palette, radii, spacing, useTheme, type ThemePreference } from '@/theme';
 
@@ -37,7 +38,7 @@ export default function ProfileTab() {
     try {
       const p = await profilesApi.getMine();
       setProfile(p);
-      const serverPhotos = (p?.photos ?? [])
+      const serverPhotos = sortedPhotos(p?.photos)
         .map((ph) => ph.cdn_url)
         .filter((u) => !u.includes('cdn.example.com'));
       setPhotos((prev) => (prev.length ? prev : serverPhotos));
@@ -185,6 +186,10 @@ export default function ProfileTab() {
             <SettingRow icon="options-outline" label="Partner preferences" onPress={() => setPrefsOpen(true)} />
             <Divider />
             <SettingRow icon="diamond-outline" label="Pakiza Premium" onPress={() => router.push('/premium')} />
+            <Divider />
+            <SettingRow icon="flash-outline" label="Boost my profile" onPress={() => router.push('/boost')} />
+            <Divider />
+            <SettingRow icon="heart-outline" label="Support a marriage" onPress={() => router.push('/fund')} />
             <Divider />
             <SettingRow icon="shield-checkmark-outline" label="Verify identity" onPress={() => router.push('/(onboarding)/id-verify')} />
             <Divider />

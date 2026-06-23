@@ -15,8 +15,8 @@ export const supportApi = {
   },
 };
 
-/** ws://<host>:8000/v1/support-chat/ws/{thread_id}?token=<jwt> */
-export function supportSocketUrl(threadId: string, token: string): string {
+/** ws://<host>:8000/v1/support-chat/ws/{thread_id}?ticket=<single-use ticket> */
+export function supportSocketUrl(threadId: string, ticket: string): string {
   const ws = API_BASE_URL.replace(/^http/, 'ws');
-  return `${ws}/v1/support-chat/ws/${threadId}?token=${encodeURIComponent(token)}`;
+  return `${ws}/v1/support-chat/ws/${threadId}?ticket=${encodeURIComponent(ticket)}`;
 }

@@ -11,7 +11,10 @@
     "runtimeVersion": { "policy": "appVersion" },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "app.pakiza.mobile"
+      "bundleIdentifier": "app.pakiza.mobile",
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "Pakiza needs microphone access so you can record voice messages in chat."
+      }
     },
     "android": {
       "package": "app.pakiza.mobile",
@@ -20,7 +23,8 @@
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": ["android.permission.RECORD_AUDIO"]
     },
     "web": {
       "output": "static",
@@ -44,6 +48,12 @@
         {
           "photosPermission": "Pakiza needs access to your photos so you can add profile pictures.",
           "cameraPermission": "Pakiza needs camera access to take a verification selfie."
+        }
+      ],
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "Pakiza needs microphone access so you can record voice messages in chat."
         }
       ]
     ],

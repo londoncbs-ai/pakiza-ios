@@ -27,6 +27,9 @@ const ICON: Record<NotificationType, keyof typeof Ionicons.glyphMap> = {
   meeting_declined: 'close-circle',
   meeting_scheduled: 'calendar-outline',
   meeting_update: 'sync',
+  donation_received: 'heart',
+  application_update: 'document-text',
+  boost_active: 'flash',
 };
 
 function rel(iso: string): string {
@@ -70,6 +73,25 @@ export default function Notifications() {
     }
     const meetingId = n.payload?.meeting_id;
     const convId = n.payload?.conversation_id;
+    const screen = n.payload?.screen;
+    // Marriage Support Fund + boost deep links.
+    if (screen === 'support-fund' || n.type === 'donation_received') {
+      router.push('/fund');
+      return;
+    }
+    if (screen === 'support-application' || n.type === 'application_update') {
+      const applicationId = n.payload?.application_id;
+      if (applicationId) {
+        router.push({ pathname: '/apply-support', params: { id: String(applicationId) } });
+      } else {
+        router.push('/fund');
+      }
+      return;
+    }
+    if (screen === 'discover' || n.type === 'boost_active') {
+      router.push('/(app)/discover');
+      return;
+    }
     // A meeting_* notification with tab === "chat" opens the coordination thread.
     if (meetingId && n.payload?.tab === 'chat') {
       router.push({ pathname: '/meeting/[id]/chat', params: { id: String(meetingId) } });

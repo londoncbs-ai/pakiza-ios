@@ -18,6 +18,7 @@ import { DetailRow } from './DetailRow';
 import { SafetySheet } from './SafetySheet';
 import { Text } from './Text';
 import { label, titleCase } from '@/lib/format';
+import { sortedPhotos } from '@/lib/photos';
 import { fonts, palette, radii, shadow, spacing, surfaces, tint, useTheme } from '@/theme';
 
 /** Small uppercase section heading in the brand accent. */
@@ -62,9 +63,7 @@ export function IntroductionCard({
   const [photoIdx, setPhotoIdx] = useState(0);
   const [safetyOpen, setSafetyOpen] = useState(false);
 
-  const photos = [...(profile.photos ?? [])].sort(
-    (a, b) => Number(b.is_primary) - Number(a.is_primary) || a.order_index - b.order_index
-  );
+  const photos = sortedPhotos(profile.photos);
   const heroH = width ? Math.min(width * 1.18, 460) : 360;
 
   const faith = [label.religion(profile.religion), profile.denomination].filter(Boolean).join(' · ');

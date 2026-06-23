@@ -6,9 +6,9 @@ import { API_BASE_URL } from './config';
  * where the inner `payload` is the deep-link object (screen, conversation_id,
  * meeting_id, tab, ...). The socket is read-only; any text sent is a keepalive.
  *
- * ws://<host>:8000/v1/ws/user?token=<jwt>
+ * ws://<host>:8000/v1/ws/user?ticket=<single-use ticket>
  */
-export function userSocketUrl(token: string): string {
+export function userSocketUrl(ticket: string): string {
   const ws = API_BASE_URL.replace(/^http/, 'ws');
-  return `${ws}/v1/ws/user?token=${encodeURIComponent(token)}`;
+  return `${ws}/v1/ws/user?ticket=${encodeURIComponent(ticket)}`;
 }

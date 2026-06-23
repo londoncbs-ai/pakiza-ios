@@ -16,11 +16,11 @@ import { useFocusEffect, useRouter } from 'expo-router';
 
 import { errorMessage } from '@/api/client';
 import { supportApi, supportSocketUrl } from '@/api/support';
+import { wsTicket } from '@/api/ws';
 import type { SupportChatMessage } from '@/api/types';
 import { Screen } from '@/components/Screen';
 import { Text } from '@/components/Text';
 import { PressableScale } from '@/components/PressableScale';
-import { tokenStore } from '@/lib/storage';
 import { useRealtime } from '@/store/realtime';
 import { fonts, palette, radii, spacing, useTheme } from '@/theme';
 
@@ -108,11 +108,17 @@ export default function Support() {
       const openSocket = async () => {
         if (!active) return;
         const threadId = threadIdRef.current;
-        const token = await tokenStore.getAccess();
-        if (!token || !active || !threadId) return;
+        let ticket: string;
+        try {
+          ticket = await wsTicket();
+        } catch {
+          scheduleReconnect();
+          return;
+        }
+        if (!active || !threadId) return;
         let ws: WebSocket;
         try {
-          ws = new WebSocket(supportSocketUrl(threadId, token));
+          ws = new WebSocket(supportSocketUrl(threadId, ticket));
         } catch {
           scheduleReconnect();
           return;

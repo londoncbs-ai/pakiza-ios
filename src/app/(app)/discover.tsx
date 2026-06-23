@@ -205,7 +205,7 @@ export default function Discover() {
   return (
     <View style={[styles.root, { backgroundColor: c.bg, paddingTop: insets.top + spacing.sm }]}>
       <View style={styles.header}>
-        <Wordmark size={28} color={palette.burgundy} />
+        <Wordmark size={28} color={palette.burgundy} showMark={false} />
         <Text variant="footnote" tone="muted" style={styles.tagline}>where love finds purpose</Text>
 
         {quota && !quota.is_premium ? (

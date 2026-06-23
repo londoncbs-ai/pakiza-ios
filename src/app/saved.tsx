@@ -14,6 +14,7 @@ import { InterestModal } from '@/components/InterestModal';
 import { PressableScale } from '@/components/PressableScale';
 import { Text } from '@/components/Text';
 import { haptics } from '@/lib/haptics';
+import { primaryPhotoUrl } from '@/lib/photos';
 import { savedStore } from '@/lib/savedStore';
 import { palette, radii, shadow, spacing, surfaces, useTheme } from '@/theme';
 
@@ -81,7 +82,7 @@ export default function Saved() {
             People you've set aside to consider. They won't know you saved them.
           </Text>
           {items.map((p) => {
-            const photo = p.photos?.find((x) => x.is_primary)?.cdn_url ?? p.photos?.[0]?.cdn_url;
+            const photo = primaryPhotoUrl(p);
             return (
               <PressableScale key={p.user_id} style={[styles.row, { backgroundColor: c.surface }]} onPress={() => setOpened(p)} haptic={false}>
                 {photo ? (

@@ -11,7 +11,7 @@ import { AppState, type AppStateStatus } from 'react-native';
 
 import { inboxApi } from '@/api/inbox';
 import { userSocketUrl } from '@/api/realtime';
-import { tokenStore } from '@/lib/storage';
+import { wsTicket } from '@/api/ws';
 import { useAuth } from '@/store/auth';
 import { InAppBanner } from '@/components/InAppBanner';
 
@@ -134,20 +134,20 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
 
     const connect = async () => {
       if (cancelled || closedRef.current) return;
-      let token: string | null = null;
+      let ticket: string | null = null;
       try {
-        token = await tokenStore.getAccess();
+        ticket = await wsTicket();
       } catch {
-        token = null;
+        ticket = null;
       }
-      if (!token || cancelled || closedRef.current) {
-        if (!token) scheduleReconnect();
+      if (!ticket || cancelled || closedRef.current) {
+        if (!ticket) scheduleReconnect();
         return;
       }
 
       let ws: WebSocket;
       try {
-        ws = new WebSocket(userSocketUrl(token));
+        ws = new WebSocket(userSocketUrl(ticket));
       } catch {
         scheduleReconnect();
         return;

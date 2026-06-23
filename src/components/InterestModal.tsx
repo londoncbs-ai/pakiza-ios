@@ -7,6 +7,7 @@ import { Button } from './Button';
 import { Text } from './Text';
 import { Wordmark } from './Wordmark';
 import type { PublicProfile } from '@/api/types';
+import { primaryPhotoUrl } from '@/lib/photos';
 import { palette, spacing, tint } from '@/theme';
 
 /**
@@ -23,7 +24,7 @@ export function InterestModal({
   onClose: () => void;
   onMessage?: () => void;
 }) {
-  const photo = profile?.photos?.find((p) => p.is_primary)?.cdn_url ?? profile?.photos?.[0]?.cdn_url;
+  const photo = primaryPhotoUrl(profile);
   const firstName = profile?.display_name?.split(' ')[0] ?? 'they';
 
   return (

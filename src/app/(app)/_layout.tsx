@@ -53,12 +53,15 @@ export default function AppTabsLayout() {
           ),
         }}
       />
+      {/* Explore stays a full route (/explore) reached from the Discover header,
+          so the bar keeps to five tabs. href:null hides it from the bar. */}
+      <Tabs.Screen name="explore" options={{ href: null }} />
       <Tabs.Screen
-        name="explore"
+        name="fund"
         options={{
-          title: 'Explore',
+          title: 'Fund',
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'compass' : 'compass-outline'} size={23} color={color} />
+            <Ionicons name={focused ? 'heart-circle' : 'heart-circle-outline'} size={24} color={color} />
           ),
         }}
       />

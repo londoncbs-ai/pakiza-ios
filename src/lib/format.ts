@@ -1,5 +1,32 @@
 /** Human-friendly labels for backend enum values. */
 
+/**
+ * Format a pence amount (GBP minor units) as a pounds string. Whole pounds drop
+ * the decimals (2500 -> "£25"); part-pound amounts keep them (2550 -> "£25.50").
+ */
+export function formatPounds(pence?: number | null, currency = 'GBP'): string {
+  if (pence == null) return '';
+  const symbol = currency.toUpperCase() === 'GBP' ? '£' : '';
+  const pounds = pence / 100;
+  return Number.isInteger(pounds) ? `${symbol}${pounds}` : `${symbol}${pounds.toFixed(2)}`;
+}
+
+/** Always-two-decimals variant, e.g. a checkout total: 2500 -> "£25.00". */
+export function formatPoundsExact(pence?: number | null, currency = 'GBP'): string {
+  if (pence == null) return '';
+  const symbol = currency.toUpperCase() === 'GBP' ? '£' : '';
+  return `${symbol}${(pence / 100).toFixed(2)}`;
+}
+
+/** Parse a user-entered pounds string into an integer pence amount, or null. */
+export function poundsToPence(input: string): number | null {
+  const cleaned = input.replace(/[£,\s]/g, '');
+  if (!cleaned) return null;
+  const pounds = Number(cleaned);
+  if (!Number.isFinite(pounds) || pounds < 0) return null;
+  return Math.round(pounds * 100);
+}
+
 export function titleCase(s?: string | null): string | null {
   if (!s) return null;
   return s
