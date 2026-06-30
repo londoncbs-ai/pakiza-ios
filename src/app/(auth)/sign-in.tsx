@@ -6,6 +6,7 @@ import { authApi } from '@/api/auth';
 import { errorMessage } from '@/api/client';
 import { AuthScaffold } from '@/components/AuthScaffold';
 import { Button } from '@/components/Button';
+import { SocialButtons } from '@/components/SocialButtons';
 import { Text } from '@/components/Text';
 import { TextField } from '@/components/TextField';
 import { useAuth } from '@/store/auth';
@@ -62,6 +63,8 @@ export default function SignIn() {
       </Text>
 
       <Button label="Sign in" onPress={onSubmit} loading={loading} style={{ marginTop: spacing.sm }} />
+
+      <SocialButtons />
 
       <Text variant="callout" tone="onDarkMuted" center style={styles.foot}>
         New to Pakiza?{' '}

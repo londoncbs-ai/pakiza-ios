@@ -8,9 +8,12 @@
     "scheme": "pakiza",
     "userInterfaceStyle": "light",
     "backgroundColor": "#800020",
-    "runtimeVersion": { "policy": "appVersion" },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
     "ios": {
       "supportsTablet": true,
+      "usesAppleSignIn": true,
       "bundleIdentifier": "app.pakiza.mobile",
       "infoPlist": {
         "NSMicrophoneUsageDescription": "Pakiza needs microphone access so you can record voice messages in chat."
@@ -24,7 +27,9 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "permissions": ["android.permission.RECORD_AUDIO"]
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "output": "static",
@@ -55,7 +60,9 @@
         {
           "microphonePermission": "Pakiza needs microphone access so you can record voice messages in chat."
         }
-      ]
+      ],
+      "expo-apple-authentication",
+      "@react-native-google-signin/google-signin"
     ],
     "experiments": {
       "typedRoutes": true,

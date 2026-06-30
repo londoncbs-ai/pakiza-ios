@@ -6,6 +6,7 @@ import { authApi } from '@/api/auth';
 import { errorMessage } from '@/api/client';
 import { AuthScaffold } from '@/components/AuthScaffold';
 import { Button } from '@/components/Button';
+import { SocialButtons } from '@/components/SocialButtons';
 import { Text } from '@/components/Text';
 import { TextField } from '@/components/TextField';
 import { fonts, palette, spacing } from '@/theme';
@@ -77,6 +78,8 @@ export default function SignUp() {
       />
 
       <Button label="Continue" onPress={onSubmit} loading={loading} style={{ marginTop: spacing.sm }} />
+
+      <SocialButtons />
 
       <Text variant="callout" tone="onDarkMuted" center style={styles.foot}>
         Already have an account?{' '}
