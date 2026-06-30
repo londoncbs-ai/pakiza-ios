@@ -101,6 +101,8 @@ export interface MyProfile extends PublicProfile {
   hide_from_contacts: boolean;
   incognito_mode: boolean;
   // Account fields (from the User; only present on the /me response)
+  phone?: string | null;
+  phone_verified?: boolean;
   email?: string | null;
   email_verified?: boolean;
   is_id_verified?: boolean;

@@ -23,6 +23,7 @@ export default function VerifyAccount() {
   const { clearVerify, signOut } = useAuth();
 
   const [email, setEmail] = useState<string | null>(null);
+  const [phoneVerified, setPhoneVerified] = useState(false);
   const [emailVerified, setEmailVerified] = useState(false);
   const [idVerified, setIdVerified] = useState(false);
   const [working, setWorking] = useState<null | 'id'>(null);
@@ -31,6 +32,7 @@ export default function VerifyAccount() {
     try {
       const p = await profilesApi.getMine();
       setEmail(p?.email ?? null);
+      setPhoneVerified(!!p?.phone_verified);
       setEmailVerified(!!p?.email_verified);
       setIdVerified(!!p?.is_id_verified);
     } catch {
@@ -73,7 +75,7 @@ export default function VerifyAccount() {
     }
   };
 
-  const allDone = emailVerified && idVerified;
+  const allDone = phoneVerified && emailVerified && idVerified;
   const finish = () => {
     clearVerify();
     router.replace('/(app)/discover');
@@ -92,10 +94,17 @@ export default function VerifyAccount() {
         <Surface elevated style={styles.card}>
           <StepRow
             c={c}
-            done
+            done={phoneVerified}
             icon="call-outline"
             title="Phone number"
-            subtitle="Verified"
+            subtitle={phoneVerified ? 'Verified' : 'Add and verify your phone'}
+            action={
+              phoneVerified ? undefined : (
+                <Pressable onPress={() => router.push('/add-phone')} hitSlop={8}>
+                  <Text variant="callout" tone="accent">Add</Text>
+                </Pressable>
+              )
+            }
           />
           <Divider c={c} />
           <StepRow

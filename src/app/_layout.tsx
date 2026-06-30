@@ -86,6 +86,7 @@ function RootNavigator() {
       <Stack.Screen name="change-email" />
       <Stack.Screen name="verify-email" />
       <Stack.Screen name="verify-account" />
+      <Stack.Screen name="add-phone" />
       <Stack.Screen name="likes" />
       <Stack.Screen name="saved" />
       <Stack.Screen name="events" />

@@ -63,4 +63,13 @@ export const authApi = {
   verifyEmail(token: string) {
     return api.post('/auth/verify-email', { token }).then((r) => r.data);
   },
+
+  // ── Add a phone to an account that has none (e.g. social sign-in) ────────────
+  addPhone(phone: string) {
+    return api.post<RegisterResponse>('/auth/add-phone', { phone }).then((r) => r.data);
+  },
+
+  verifyPhone(phone: string, otp: string) {
+    return api.post('/auth/verify-phone', { phone, otp }).then((r) => r.data);
+  },
 };
