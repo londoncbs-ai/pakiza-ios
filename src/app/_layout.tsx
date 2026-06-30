@@ -17,12 +17,13 @@ import {
 
 import { AuthProvider, useAuth } from '@/store/auth';
 import { RealtimeProvider } from '@/store/realtime';
+import { ScreenshotGuard } from '@/components/ScreenshotGuard';
 import { ThemeProvider, useTheme } from '@/theme';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
 function RootNavigator() {
-  const { status, block } = useAuth();
+  const { status, block, verifyRequired } = useAuth();
   const segments = useSegments();
   const router = useRouter();
   const { c } = useTheme();
@@ -39,6 +40,18 @@ function RootNavigator() {
       return;
     }
 
+    // The email-verify deep-link landing is reachable in any auth state - don't
+    // bounce a signed-out user to '/' or a signed-in user to the app mid-verify.
+    if (root === 'verify-email') return;
+
+    // A signed-in member who hasn't finished phone/email/id verification is held
+    // on the verification hub until all three are complete.
+    if (status === 'signedIn' && verifyRequired && root !== 'verify-account') {
+      router.replace('/verify-account');
+      return;
+    }
+    if (root === 'verify-account') return;
+
     const onPublic = root === undefined || root === '(auth)';
 
     if (status === 'signedOut' && !onPublic) {
@@ -49,7 +62,7 @@ function RootNavigator() {
     }
     // When signed-in and inside (onboarding), leave the user there - the
     // onboarding flow itself advances to (app) when complete.
-  }, [status, block, segments, router]);
+  }, [status, block, verifyRequired, segments, router]);
 
   return (
     <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: c.bg } }}>
@@ -71,6 +84,8 @@ function RootNavigator() {
       <Stack.Screen name="premium" />
       <Stack.Screen name="change-password" />
       <Stack.Screen name="change-email" />
+      <Stack.Screen name="verify-email" />
+      <Stack.Screen name="verify-account" />
       <Stack.Screen name="likes" />
       <Stack.Screen name="saved" />
       <Stack.Screen name="events" />
@@ -109,6 +124,7 @@ export default function RootLayout() {
             <RealtimeProvider>
               <RootNavigator />
             </RealtimeProvider>
+            <ScreenshotGuard />
           </AuthProvider>
         </ThemeProvider>
       </SafeAreaProvider>

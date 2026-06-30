@@ -43,4 +43,24 @@ export const authApi = {
       .post('/auth/change-email', { new_email, current_password })
       .then((r) => r.data);
   },
+
+  // ── Password reset (OTP-based: phone → SMS code → new password) ──────────────
+  forgotPassword(phone: string) {
+    return api.post<RegisterResponse>('/auth/forgot-password', { phone }).then((r) => r.data);
+  },
+
+  resetPassword(phone: string, otp: string, new_password: string) {
+    return api
+      .post('/auth/reset-password', { phone, otp, new_password })
+      .then((r) => r.data);
+  },
+
+  // ── Email verification (link/token based) ───────────────────────────────────
+  sendEmailVerification() {
+    return api.post('/auth/send-email-verification').then((r) => r.data);
+  },
+
+  verifyEmail(token: string) {
+    return api.post('/auth/verify-email', { token }).then((r) => r.data);
+  },
 };

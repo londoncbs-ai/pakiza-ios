@@ -6,6 +6,8 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useFocusEffect, useRouter } from 'expo-router';
 
+import { authApi } from '@/api/auth';
+import { errorMessage } from '@/api/client';
 import { profilesApi } from '@/api/profiles';
 import type { MyProfile } from '@/api/types';
 import { DetailRow } from '@/components/DetailRow';
@@ -64,6 +66,15 @@ export default function ProfileTab() {
   };
 
   const removePhoto = (uri: string) => setPhotos((p) => p.filter((u) => u !== uri));
+
+  const sendEmailVerify = async () => {
+    try {
+      await authApi.sendEmailVerification();
+      Alert.alert('Check your inbox', `We've sent a verification link to ${profile?.email ?? 'your email'}.`);
+    } catch (err) {
+      Alert.alert('Could not send', errorMessage(err, 'Please try again in a moment.'));
+    }
+  };
 
   const confirmSignOut = () => {
     Alert.alert('Sign out', 'Are you sure you want to sign out?', [
@@ -193,6 +204,12 @@ export default function ProfileTab() {
             <Divider />
             <SettingRow icon="shield-checkmark-outline" label="Verify identity" onPress={() => router.push('/(onboarding)/id-verify')} />
             <Divider />
+            {profile?.email && profile.email_verified === false ? (
+              <>
+                <SettingRow icon="alert-circle-outline" label="Verify your email" onPress={sendEmailVerify} />
+                <Divider />
+              </>
+            ) : null}
             <SettingRow icon="mail-outline" label="Change email" onPress={() => router.push('/change-email')} />
             <Divider />
             <SettingRow icon="lock-closed-outline" label="Change password" onPress={() => router.push('/change-password')} />

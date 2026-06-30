@@ -52,6 +52,15 @@ export default function SignIn() {
         error={error}
       />
 
+      <Text
+        variant="footnote"
+        color={palette.rose}
+        style={styles.forgot}
+        onPress={() => router.push('/(auth)/forgot-password')}
+      >
+        Forgot password?
+      </Text>
+
       <Button label="Sign in" onPress={onSubmit} loading={loading} style={{ marginTop: spacing.sm }} />
 
       <Text variant="callout" tone="onDarkMuted" center style={styles.foot}>
@@ -72,5 +81,6 @@ export default function SignIn() {
 const styles = StyleSheet.create({
   foot: { marginTop: spacing.xl },
   link: { fontFamily: fonts.bodySemibold },
+  forgot: { alignSelf: 'flex-end', marginTop: -4, marginBottom: spacing.sm, fontFamily: fonts.bodySemibold },
   demo: { marginTop: spacing.md, opacity: 0.75 },
 });

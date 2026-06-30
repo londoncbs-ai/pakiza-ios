@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import type { PublicProfile } from '@/api/types';
 import { DetailRow } from './DetailRow';
+import { PlanBadge } from './PlanBadge';
 import { SafetySheet } from './SafetySheet';
 import { Text } from './Text';
 import { label, titleCase } from '@/lib/format';
@@ -63,14 +64,17 @@ export function ProfileDetail({
           </Pressable>
 
           <View style={styles.heroInfo} pointerEvents="box-none">
-            {profile.compatibility != null ? (
-              <View style={[styles.matchPill, { backgroundColor: palette.burgundy }]} pointerEvents="none">
-                <Ionicons name="sparkles" size={12} color={palette.cream} />
-                <Text variant="label" color={palette.cream} style={styles.matchPillText}>
-                  {profile.compatibility}% match
-                </Text>
-              </View>
-            ) : null}
+            <View style={styles.heroPills} pointerEvents="none">
+              {profile.compatibility != null ? (
+                <View style={[styles.matchPill, { backgroundColor: palette.burgundy }]}>
+                  <Ionicons name="sparkles" size={12} color={palette.cream} />
+                  <Text variant="label" color={palette.cream} style={styles.matchPillText}>
+                    {profile.compatibility}% match
+                  </Text>
+                </View>
+              ) : null}
+              <PlanBadge plan={profile.plan} />
+            </View>
             <Text variant="display" color={palette.white} style={styles.name}>
               {profile.display_name}
               {profile.age ? <Text variant="title" color={palette.cream}>{`, ${profile.age}`}</Text> : null}
@@ -185,6 +189,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   heroInfo: { padding: spacing.xl },
+  heroPills: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+  },
   matchPill: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -193,7 +204,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 11,
     paddingVertical: 6,
     borderRadius: radii.pill,
-    marginBottom: spacing.md,
   },
   matchPillText: { letterSpacing: 0.3 },
   name: { lineHeight: 46 },

@@ -29,6 +29,13 @@ export function setAccountBlockedHandler(fn: ((state: string, message: string) =
   onAccountBlocked = fn;
 }
 
+// Registered by the AuthProvider: a 403 with X-Verification-Required means the
+// member must finish verifying (phone / email / id) before the core app.
+let onVerificationRequired: ((step: string) => void) | null = null;
+export function setVerificationRequiredHandler(fn: ((step: string) => void) | null) {
+  onVerificationRequired = fn;
+}
+
 api.interceptors.request.use(async (config) => {
   const token = await tokenStore.getAccess();
   if (token) config.headers.Authorization = `Bearer ${token}`;
@@ -78,11 +85,17 @@ api.interceptors.response.use(
     // the reason inline there instead of bouncing to a full screen.
     if (status === 403 && !String(original?.url ?? '').includes('/auth/')) {
       const headers = error.response?.headers as Record<string, string> | undefined;
-      const headerState = headers?.['x-account-state'];
-      const detail = (error.response?.data as { detail?: unknown } | undefined)?.detail;
-      const detailStr = typeof detail === 'string' ? detail : '';
-      if (headerState || /suspend|deactivat|deleted|banned/i.test(detailStr)) {
-        onAccountBlocked?.(headerState || 'banned', detailStr || 'Your account is no longer active.');
+      const verifyStep = headers?.['x-verification-required'];
+      if (verifyStep) {
+        // Phone/email/id not yet complete: route to the verification hub.
+        onVerificationRequired?.(verifyStep);
+      } else {
+        const headerState = headers?.['x-account-state'];
+        const detail = (error.response?.data as { detail?: unknown } | undefined)?.detail;
+        const detailStr = typeof detail === 'string' ? detail : '';
+        if (headerState || /suspend|deactivat|deleted|banned/i.test(detailStr)) {
+          onAccountBlocked?.(headerState || 'banned', detailStr || 'Your account is no longer active.');
+        }
       }
     }
     return Promise.reject(error);

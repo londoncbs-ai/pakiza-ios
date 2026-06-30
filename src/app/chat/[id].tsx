@@ -25,6 +25,7 @@ import { matchesApi } from '@/api/matches';
 import { REPORT_REASONS, safetyApi, type ReportReason } from '@/api/safety';
 import type { ChatMessage, Conversation } from '@/api/types';
 import { ChatImageBubble } from '@/components/ChatImageBubble';
+import { PlanBadge } from '@/components/PlanBadge';
 import { FeatureHint } from '@/components/FeatureHint';
 import { MeetingCard } from '@/components/MeetingCard';
 import { SafetySheet } from '@/components/SafetySheet';
@@ -429,13 +430,16 @@ export default function ChatThread() {
         </Pressable>
 
         <View style={styles.headerCenter}>
-          {peerPhoto ? (
-            <Image source={{ uri: peerPhoto }} style={styles.headerAvatar} contentFit="cover" transition={120} />
-          ) : (
-            <View style={[styles.headerAvatar, styles.headerAvatarFallback, { backgroundColor: c.accentFaint }]}>
-              <Text variant="callout" tone="accent">{peerName[0]?.toUpperCase() ?? '?'}</Text>
-            </View>
-          )}
+          <View style={styles.headerAvatarWrap}>
+            {peerPhoto ? (
+              <Image source={{ uri: peerPhoto }} style={styles.headerAvatar} contentFit="cover" transition={120} />
+            ) : (
+              <View style={[styles.headerAvatar, styles.headerAvatarFallback, { backgroundColor: c.accentFaint }]}>
+                <Text variant="callout" tone="accent">{peerName[0]?.toUpperCase() ?? '?'}</Text>
+              </View>
+            )}
+            <PlanBadge plan={peer?.plan} variant="corner" size={16} style={styles.headerAvatarBadge} />
+          </View>
           <View style={styles.headerText}>
             <Text variant="subhead" tone="default" numberOfLines={1} style={styles.headerName}>
               {peerName}
@@ -811,7 +815,9 @@ const styles = StyleSheet.create({
   },
   back: { width: 34, height: 34, alignItems: 'center', justifyContent: 'center' },
   headerCenter: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingHorizontal: 2 },
+  headerAvatarWrap: { width: 38, height: 38 },
   headerAvatar: { width: 38, height: 38, borderRadius: 19 },
+  headerAvatarBadge: { position: 'absolute', right: -2, bottom: -2 },
   headerAvatarFallback: { alignItems: 'center', justifyContent: 'center' },
   headerText: { flex: 1 },
   headerName: { marginBottom: 0 },

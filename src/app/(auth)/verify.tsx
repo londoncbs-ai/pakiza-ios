@@ -11,6 +11,7 @@ import { useAuth } from '@/store/auth';
 import { fonts, hexA, palette, radii, spacing } from '@/theme';
 
 const LENGTH = 6;
+const RESEND_COOLDOWN = 30; // seconds before "Resend code" is tappable again
 
 export default function Verify() {
   const { phone, debugOtp } = useLocalSearchParams<{ phone: string; debugOtp?: string }>();
@@ -19,12 +20,21 @@ export default function Verify() {
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  // A code was already sent at register, so start the resend cooldown counting.
+  const [cooldown, setCooldown] = useState(RESEND_COOLDOWN);
   const inputRef = useRef<TextInput>(null);
 
   // Auto-fill the dev OTP so verification never blocks local testing.
   useEffect(() => {
     if (debugOtp) setCode(String(debugOtp).slice(0, LENGTH));
   }, [debugOtp]);
+
+  // Tick the resend cooldown down to zero.
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const t = setInterval(() => setCooldown((s) => (s <= 1 ? 0 : s - 1)), 1000);
+    return () => clearInterval(t);
+  }, [cooldown]);
 
   const verify = async (value: string) => {
     if (value.length !== LENGTH) return setError('Enter the 6-digit code');
@@ -40,12 +50,15 @@ export default function Verify() {
   };
 
   const resend = async () => {
+    if (cooldown > 0) return;
     setError(null);
+    setCooldown(RESEND_COOLDOWN);
     try {
       const res = await authApi.resendOtp(String(phone));
       if (res.debug_otp) setCode(res.debug_otp.slice(0, LENGTH));
     } catch (err) {
       setError(errorMessage(err));
+      setCooldown(0); // let them retry immediately if the send failed
     }
   };
 
@@ -92,9 +105,13 @@ export default function Verify() {
 
       <Text variant="callout" tone="onDarkMuted" center style={styles.resend}>
         Didn’t get it?{' '}
-        <Text variant="callout" color={palette.rose} style={styles.link} onPress={resend}>
-          Resend code
-        </Text>
+        {cooldown > 0 ? (
+          <Text variant="callout" tone="onDarkMuted">Resend in {cooldown}s</Text>
+        ) : (
+          <Text variant="callout" color={palette.rose} style={styles.link} onPress={resend}>
+            Resend code
+          </Text>
+        )}
       </Text>
     </AuthScaffold>
   );

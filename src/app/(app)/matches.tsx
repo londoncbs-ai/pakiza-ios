@@ -11,6 +11,7 @@ import type { MatchSummary } from '@/api/types';
 import { EmptyState } from '@/components/EmptyState';
 import { ErrorState } from '@/components/ErrorState';
 import { FeatureHint } from '@/components/FeatureHint';
+import { PlanBadge } from '@/components/PlanBadge';
 import { PressableScale } from '@/components/PressableScale';
 import { SkeletonList } from '@/components/Skeleton';
 import { Text } from '@/components/Text';
@@ -124,13 +125,16 @@ export default function Matches() {
                 style={[styles.card, { backgroundColor: c.surface, borderColor: c.border }, !isDark && shadow.soft]}
                 onPress={openChat}
               >
-                {photo ? (
-                  <Image source={{ uri: photo }} style={styles.avatar} contentFit="cover" />
-                ) : (
-                  <View style={[styles.avatar, styles.avatarPlaceholder, { backgroundColor: c.surfaceAlt }]}>
-                    <Text style={styles.avatarInitial} tone="accent">{item.profile.display_name[0]}</Text>
-                  </View>
-                )}
+                <View style={styles.avatarWrap}>
+                  {photo ? (
+                    <Image source={{ uri: photo }} style={styles.avatar} contentFit="cover" />
+                  ) : (
+                    <View style={[styles.avatar, styles.avatarPlaceholder, { backgroundColor: c.surfaceAlt }]}>
+                      <Text style={styles.avatarInitial} tone="accent">{item.profile.display_name[0]}</Text>
+                    </View>
+                  )}
+                  <PlanBadge plan={item.profile.plan} variant="corner" size={22} style={styles.avatarBadge} />
+                </View>
                 <View style={styles.cardBody}>
                   <Text variant="subhead" tone="default" style={styles.cardName}>
                     {item.profile.display_name}
@@ -195,7 +199,9 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     marginBottom: spacing.md,
   },
+  avatarWrap: { width: 60, height: 60 },
   avatar: { width: 60, height: 60, borderRadius: 30 },
+  avatarBadge: { position: 'absolute', right: -2, bottom: -2 },
   avatarPlaceholder: { alignItems: 'center', justifyContent: 'center' },
   avatarInitial: { fontFamily: fonts.display, fontSize: 26 },
   cardBody: { flex: 1, marginLeft: spacing.md },

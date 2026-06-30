@@ -20,6 +20,7 @@ export default function SignUp() {
 
   const validate = (): string | null => {
     if (!/^\+[1-9]\d{7,14}$/.test(phone)) return 'Enter a valid phone in international format, e.g. +447911123456';
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim())) return 'Enter a valid email address';
     if (password.length < 8) return 'Password must be at least 8 characters';
     if (!/[A-Z]/.test(password)) return 'Password needs an uppercase letter';
     if (!/\d/.test(password)) return 'Password needs a number';
@@ -32,7 +33,7 @@ export default function SignUp() {
     setError(null);
     setLoading(true);
     try {
-      const res = await authApi.register(phone.trim(), password, email.trim() || undefined);
+      const res = await authApi.register(phone.trim(), password, email.trim());
       router.push({
         pathname: '/(auth)/verify',
         params: { phone: phone.trim(), debugOtp: res.debug_otp ?? '' },
@@ -56,7 +57,7 @@ export default function SignUp() {
         placeholder="+44 7911 123456"
       />
       <TextField
-        label="Email (optional)"
+        label="Email"
         onDark
         value={email}
         onChangeText={setEmail}

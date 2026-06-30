@@ -80,6 +80,7 @@ export interface PublicProfile {
   profile_complete_pct: number;
   compatibility: number | null; // 0-100, set by the discovery feed (matching algorithm)
   compatibility_reasons?: string[]; // plain-language "why you match", feed only
+  plan?: SubscriptionPlan | null; // active PAID tier (premium/gold); shown as a badge on their photo. null/absent = free
 }
 
 /** Own full profile - ProfileResponse (includes private fields). */
@@ -99,6 +100,10 @@ export interface MyProfile extends PublicProfile {
   photos_blurred: boolean;
   hide_from_contacts: boolean;
   incognito_mode: boolean;
+  // Account fields (from the User; only present on the /me response)
+  email?: string | null;
+  email_verified?: boolean;
+  is_id_verified?: boolean;
 }
 
 /** Partner preferences - drives the matching algorithm. CSV fields hold comma-separated enum values. */

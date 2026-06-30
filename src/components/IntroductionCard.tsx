@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import type { PublicProfile } from '@/api/types';
 import { DetailRow } from './DetailRow';
+import { PlanBadge } from './PlanBadge';
 import { SafetySheet } from './SafetySheet';
 import { Text } from './Text';
 import { label, titleCase } from '@/lib/format';
@@ -130,6 +131,7 @@ export function IntroductionCard({
           </Pressable>
 
           <View style={styles.heroInfo} pointerEvents="none">
+            <PlanBadge plan={profile.plan} style={styles.planBadge} />
             <Text variant="display" color={palette.white} style={styles.name}>
               {profile.display_name}
               {profile.age ? <Text variant="title" color={palette.cream}>{`, ${profile.age}`}</Text> : null}
@@ -274,6 +276,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   heroInfo: { padding: spacing.xl },
+  planBadge: { marginBottom: spacing.sm },
   name: { lineHeight: 44 },
   locRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 4 },
   body: { paddingHorizontal: spacing.lg, paddingTop: spacing.lg },

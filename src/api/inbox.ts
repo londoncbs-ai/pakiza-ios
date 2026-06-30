@@ -1,4 +1,5 @@
 import { api } from './client';
+import type { SubscriptionPlan } from './types';
 
 /** A unified inbox row: a match chat, the support thread, or a meeting coordination thread. */
 export interface InboxItem {
@@ -8,6 +9,8 @@ export interface InboxItem {
   /** The real last-message preview. */
   subtitle: string;
   avatar_url: string | null;
+  /** The chat partner's active PAID tier (premium/gold) for the badge; chat rows only. */
+  plan?: SubscriptionPlan | null;
   last_at: string | null;
   unread: number;
   /** An expo-router pathname: '/chat/[id]' | '/support' | '/meeting/[id]/chat'. */

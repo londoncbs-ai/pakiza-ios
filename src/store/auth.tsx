@@ -1,7 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
 import { authApi } from '@/api/auth';
-import { setAccountBlockedHandler, setUnauthorizedHandler } from '@/api/client';
+import { setAccountBlockedHandler, setUnauthorizedHandler, setVerificationRequiredHandler } from '@/api/client';
 import { tokenStore } from '@/lib/storage';
 import { jwtSub } from '@/lib/jwt';
 import type { TokenResponse } from '@/api/types';
@@ -18,9 +18,11 @@ interface AuthContextValue {
   status: Status;
   userId: string | null;
   block: AccountBlock | null;
+  verifyRequired: boolean; // phone/email/id not yet all verified
   signIn: (tokens: TokenResponse) => Promise<void>;
   signOut: () => Promise<void>;
   clearBlock: () => void;
+  clearVerify: () => void;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -29,6 +31,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [status, setStatus] = useState<Status>('loading');
   const [userId, setUserId] = useState<string | null>(null);
   const [block, setBlock] = useState<AccountBlock | null>(null);
+  const [verifyRequired, setVerifyRequired] = useState(false);
 
   // Restore session on cold start.
   useEffect(() => {
@@ -58,10 +61,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await tokenStore.clear();
     setUserId(null);
     setBlock(null);
+    setVerifyRequired(false);
     setStatus('signedOut');
   }, []);
 
   const clearBlock = useCallback(() => setBlock(null), []);
+  const clearVerify = useCallback(() => setVerifyRequired(false), []);
 
   // Wire the axios client: force a sign-out when refresh fails, and surface an
   // account-state block (banned / deactivated / deleted) as a blocked screen.
@@ -73,15 +78,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await tokenStore.clear();
       setBlock({ state, message });
     });
+    // The member is signed in but hasn't finished phone/email/id verification.
+    setVerificationRequiredHandler(() => setVerifyRequired(true));
     return () => {
       setUnauthorizedHandler(null);
       setAccountBlockedHandler(null);
+      setVerificationRequiredHandler(null);
     };
   }, []);
 
   const value = useMemo(
-    () => ({ status, userId, block, signIn, signOut, clearBlock }),
-    [status, userId, block, signIn, signOut, clearBlock],
+    () => ({ status, userId, block, verifyRequired, signIn, signOut, clearBlock, clearVerify }),
+    [status, userId, block, verifyRequired, signIn, signOut, clearBlock, clearVerify],
   );
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

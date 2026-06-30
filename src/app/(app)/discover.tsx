@@ -221,6 +221,9 @@ export default function Discover() {
           </View>
         ) : null}
 
+        <Pressable onPress={() => router.push('/explore')} hitSlop={10} style={styles.explore}>
+          <Ionicons name="compass-outline" size={23} color={palette.burgundy} />
+        </Pressable>
         <Pressable onPress={() => router.push('/saved')} hitSlop={10} style={styles.bookmark}>
           <Ionicons name="bookmark-outline" size={22} color={palette.burgundy} />
           {savedCount > 0 ? (
@@ -344,6 +347,7 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: palette.cream },
   header: { alignItems: 'center', paddingBottom: spacing.sm },
   tagline: { letterSpacing: 1, marginTop: -2 },
+  explore: { position: 'absolute', right: spacing.lg + 80, top: 0 },
   bookmark: { position: 'absolute', right: spacing.lg + 40, top: 0 },
   bell: { position: 'absolute', right: spacing.lg, top: 0 },
   badge: {

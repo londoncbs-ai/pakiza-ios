@@ -9,6 +9,7 @@ import { errorMessage } from '@/api/client';
 import { inboxApi, type InboxItem } from '@/api/inbox';
 import { EmptyState } from '@/components/EmptyState';
 import { ErrorState } from '@/components/ErrorState';
+import { PlanBadge } from '@/components/PlanBadge';
 import { SkeletonList } from '@/components/Skeleton';
 import { Text } from '@/components/Text';
 import { useRealtime } from '@/store/realtime';
@@ -117,17 +118,20 @@ export default function Messages() {
                 style={[styles.row, { backgroundColor: c.surface, borderColor: c.border }, !isDark && shadow.soft]}
                 onPress={() => openItem(item)}
               >
-                {item.avatar_url ? (
-                  <Image source={{ uri: item.avatar_url }} style={styles.avatar} contentFit="cover" />
-                ) : item.kind === 'chat' ? (
-                  <View style={[styles.avatar, styles.placeholder, { backgroundColor: c.surfaceAlt }]}>
-                    <Text style={styles.initial} tone="accent">{item.title[0]?.toUpperCase() ?? '?'}</Text>
-                  </View>
-                ) : (
-                  <View style={[styles.avatar, styles.placeholder, { backgroundColor: c.accentFaint }]}>
-                    <Ionicons name={KIND_ICON[item.kind]} size={24} color={c.accent} />
-                  </View>
-                )}
+                <View style={styles.avatarWrap}>
+                  {item.avatar_url ? (
+                    <Image source={{ uri: item.avatar_url }} style={styles.avatar} contentFit="cover" />
+                  ) : item.kind === 'chat' ? (
+                    <View style={[styles.avatar, styles.placeholder, { backgroundColor: c.surfaceAlt }]}>
+                      <Text style={styles.initial} tone="accent">{item.title[0]?.toUpperCase() ?? '?'}</Text>
+                    </View>
+                  ) : (
+                    <View style={[styles.avatar, styles.placeholder, { backgroundColor: c.accentFaint }]}>
+                      <Ionicons name={KIND_ICON[item.kind]} size={24} color={c.accent} />
+                    </View>
+                  )}
+                  <PlanBadge plan={item.plan} variant="corner" size={20} style={styles.avatarBadge} />
+                </View>
                 <View style={styles.body}>
                   <View style={styles.titleRow}>
                     <Text variant="subhead" tone="default" style={styles.name} numberOfLines={1}>
@@ -172,7 +176,9 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     marginBottom: spacing.md,
   },
+  avatarWrap: { width: 58, height: 58 },
   avatar: { width: 58, height: 58, borderRadius: 29 },
+  avatarBadge: { position: 'absolute', right: -2, bottom: -2 },
   placeholder: { alignItems: 'center', justifyContent: 'center' },
   initial: { fontFamily: fonts.display, fontSize: 24 },
   body: { flex: 1, marginLeft: spacing.md },
