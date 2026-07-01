@@ -61,6 +61,12 @@
           "microphonePermission": "Pakiza needs microphone access so you can record voice messages in chat."
         }
       ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Pakiza needs camera access for a quick face verification scan."
+        }
+      ],
       "expo-apple-authentication",
       "@react-native-google-signin/google-signin"
     ],

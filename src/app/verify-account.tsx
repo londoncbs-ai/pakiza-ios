@@ -3,11 +3,9 @@ import { Alert, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
-import * as WebBrowser from 'expo-web-browser';
 
 import { authApi } from '@/api/auth';
 import { errorMessage } from '@/api/client';
-import { identityApi } from '@/api/identity';
 import { profilesApi } from '@/api/profiles';
 import { Button } from '@/components/Button';
 import { Screen } from '@/components/Screen';
@@ -25,8 +23,7 @@ export default function VerifyAccount() {
   const [email, setEmail] = useState<string | null>(null);
   const [phoneVerified, setPhoneVerified] = useState(false);
   const [emailVerified, setEmailVerified] = useState(false);
-  const [idVerified, setIdVerified] = useState(false);
-  const [working, setWorking] = useState<null | 'id'>(null);
+  const [selfieVerified, setSelfieVerified] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -34,7 +31,7 @@ export default function VerifyAccount() {
       setEmail(p?.email ?? null);
       setPhoneVerified(!!p?.phone_verified);
       setEmailVerified(!!p?.email_verified);
-      setIdVerified(!!p?.is_id_verified);
+      setSelfieVerified(!!p?.is_selfie_verified);
     } catch {
       // keep current state
     }
@@ -54,28 +51,7 @@ export default function VerifyAccount() {
     }
   };
 
-  const verifyId = async () => {
-    setWorking('id');
-    try {
-      const session = await identityApi.start();
-      if (session.url) {
-        await WebBrowser.openBrowserAsync(session.url); // Didit-hosted capture
-      }
-      // Wait for the decision (webhook is near-instant; dev auto-approves).
-      for (let i = 0; i < 6; i++) {
-        const st = await identityApi.status();
-        if (st.is_id_verified) break;
-        await new Promise((r) => setTimeout(r, 1500));
-      }
-      await load();
-    } catch (err) {
-      Alert.alert('Verification', errorMessage(err, 'Could not start ID verification.'));
-    } finally {
-      setWorking(null);
-    }
-  };
-
-  const allDone = phoneVerified && emailVerified && idVerified;
+  const allDone = phoneVerified && emailVerified && selfieVerified;
   const finish = () => {
     clearVerify();
     router.replace('/(app)/discover');
@@ -124,14 +100,14 @@ export default function VerifyAccount() {
           <Divider c={c} />
           <StepRow
             c={c}
-            done={idVerified}
-            icon="card-outline"
-            title="ID verification"
-            subtitle={idVerified ? 'Verified' : 'Confirm your identity with a government ID'}
+            done={selfieVerified}
+            icon="scan-outline"
+            title="Face verification"
+            subtitle={selfieVerified ? 'Verified' : 'A quick face scan to confirm it’s you'}
             action={
-              idVerified ? undefined : (
-                <Pressable onPress={verifyId} hitSlop={8} disabled={working === 'id'}>
-                  <Text variant="callout" tone="accent">{working === 'id' ? 'Working…' : 'Verify'}</Text>
+              selfieVerified ? undefined : (
+                <Pressable onPress={() => router.push('/(onboarding)/id-verify')} hitSlop={8}>
+                  <Text variant="callout" tone="accent">Verify</Text>
                 </Pressable>
               )
             }

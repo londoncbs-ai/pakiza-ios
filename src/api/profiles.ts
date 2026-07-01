@@ -62,4 +62,15 @@ export const profilesApi = {
   deletePhoto(photoId: string) {
     return api.delete(`/profiles/me/photos/${photoId}`).then((r) => r.data);
   },
+
+  /** Upload a live selfie to verify it matches the primary profile photo. */
+  verifySelfie(uri: string) {
+    const form = new FormData();
+    const name = uri.split('/').pop() || 'selfie.jpg';
+    const ext = (name.split('.').pop() || 'jpg').toLowerCase();
+    form.append('file', { uri, name, type: ext === 'png' ? 'image/png' : 'image/jpeg' } as any);
+    return api
+      .post('/profiles/me/verify-selfie', form, { headers: { 'Content-Type': 'multipart/form-data' } })
+      .then((r) => r.data);
+  },
 };

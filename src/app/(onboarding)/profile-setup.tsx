@@ -7,6 +7,9 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Image } from 'expo-image';
+import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 
 import { errorMessage } from '@/api/client';
@@ -19,14 +22,17 @@ import type {
   Religion,
   WantsChildren,
 } from '@/api/types';
+import { AcceptCheckbox } from '@/components/AcceptCheckbox';
 import { Button } from '@/components/Button';
+import { ChipMultiSelect } from '@/components/ChipMultiSelect';
 import { DatePickerField } from '@/components/DatePickerField';
 import { OptionGroup } from '@/components/OptionGroup';
+import { PressableScale } from '@/components/PressableScale';
 import { Screen } from '@/components/Screen';
 import { Text } from '@/components/Text';
 import { TextField } from '@/components/TextField';
 import { ToggleRow } from '@/components/ToggleRow';
-import { spacing, radii, useTheme } from '@/theme';
+import { palette, radii, spacing, useTheme } from '@/theme';
 
 const GENDERS = [
   { label: 'Woman', value: 'female' as Gender },
@@ -69,11 +75,18 @@ const WANTS = [
   { label: "Don't want", value: 'no' as WantsChildren },
 ];
 
-const STEPS = ['About you', 'Faith', 'Background'] as const;
+const ETHNICITIES = ['South Asian', 'Arab', 'Turkish', 'Somali', 'Persian', 'African', 'Kurdish', 'Malay', 'Mixed'];
+const CASTES = ['Syed', 'Sheikh', 'Pathan', 'Mughal', 'Jat', 'Rajput', 'Gujjar', 'Arain', 'Awan', 'Ansari'];
+const HOBBIES = ['Reading', 'Travel', 'Fitness', 'Cooking', 'Photography', 'Volunteering', 'Sports', 'Art', 'Music', 'Nature', 'Writing', 'Gardening', 'Calligraphy'];
+
+const MAX_PHOTOS = 6;
+
+const STEPS = ['About you', 'Faith', 'Background', 'Photos'] as const;
 const STEP_HINTS = [
   'Tell us the essentials so we can introduce you well.',
   'Your faith and values guide every match we suggest.',
   'A few final details to round out your profile.',
+  'Add your photos, then we’ll verify it’s really you.',
 ] as const;
 
 export default function ProfileSetup() {
@@ -90,24 +103,38 @@ export default function ProfileSetup() {
   const [gender, setGender] = useState<Gender | null>(null);
   const [dob, setDob] = useState<Date | null>(null);
   const [city, setCity] = useState('');
-  const [ethnicity, setEthnicity] = useState('');
+  const [ethnicity, setEthnicity] = useState('');   // CSV
   const [bio, setBio] = useState('');
   const [religion, setReligion] = useState<Religion | null>(null);
   const [denomination, setDenomination] = useState('');
   const [religiosity, setReligiosity] = useState<number | null>(null);
-  const [caste, setCaste] = useState('');
+  const [caste, setCaste] = useState('');           // CSV
   const [casteVisible, setCasteVisible] = useState(false);
   const [education, setEducation] = useState<EducationLevel | null>(null);
   const [occupation, setOccupation] = useState('');
   const [height, setHeight] = useState('');
   const [marital, setMarital] = useState<MaritalStatus | null>(null);
   const [wants, setWants] = useState<WantsChildren | null>(null);
+  const [hobbies, setHobbies] = useState('');        // CSV
+  const [photos, setPhotos] = useState<string[]>([]);
+  const [terms, setTerms] = useState(false);
+
+  const addPhoto = async () => {
+    if (photos.length >= MAX_PHOTOS) return;
+    const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.8 });
+    if (!res.canceled) setPhotos((p) => [...p, res.assets[0].uri]);
+  };
+  const removePhoto = (uri: string) => setPhotos((p) => p.filter((u) => u !== uri));
 
   const validateStep = (): string | null => {
     if (step === 0) {
       if (name.trim().length < 2) return 'Please enter your name';
       if (!gender) return 'Please tell us who you are';
       if (!dob) return 'Please select your date of birth';
+    }
+    if (step === 3) {
+      if (photos.length < 1) return 'Please add at least one photo of yourself';
+      if (!terms) return 'Please confirm the terms to continue';
     }
     return null;
   };
@@ -130,25 +157,48 @@ export default function ProfileSetup() {
     setError(null);
     setLoading(true);
     try {
+      // Build the date from LOCAL parts (toISOString() would shift the day for
+      // users west of UTC, changing the stored DOB by one).
+      const d = dob!;
+      const dobStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
       const payload: CreateProfileInput = {
         display_name: name.trim(),
-        date_of_birth: dob!.toISOString().slice(0, 10),
+        date_of_birth: dobStr,
         gender: gender!,
         city: city.trim() || undefined,
-        ethnicity: ethnicity.trim() || undefined,
+        ethnicity: ethnicity || undefined,
         bio: bio.trim() || undefined,
         religion: religion ?? undefined,
         denomination: denomination.trim() || undefined,
         religiosity: religiosity ?? undefined,
-        caste: caste.trim() || undefined,
-        caste_is_visible: caste.trim() ? casteVisible : undefined,
+        caste: caste || undefined,
+        caste_is_visible: caste ? casteVisible : undefined,
+        hobbies: hobbies || undefined,
         education_level: education ?? undefined,
         occupation: occupation.trim() || undefined,
         height_cm: height ? Number(height) : undefined,
         marital_status: marital ?? undefined,
         wants_children: wants ?? undefined,
+        terms_accepted: true,
       };
-      await profilesApi.create(payload);
+      try {
+        await profilesApi.create(payload);
+      } catch (err: any) {
+        // 409 = the profile was already created on a previous (failed-upload) attempt.
+        if (err?.response?.status !== 409) throw err;
+      }
+      // Upload photos in order (first becomes the primary + the selfie reference).
+      let uploaded = 0;
+      for (const uri of photos) {
+        try { await profilesApi.uploadPhoto(uri); uploaded += 1; } catch { /* keep going */ }
+      }
+      // The selfie step compares against the primary photo, so we must have at
+      // least one uploaded before advancing - otherwise the scan can never pass.
+      if (uploaded === 0) {
+        setError('We couldn’t upload your photos. Check your connection and try again.');
+        setLoading(false);
+        return;
+      }
       router.replace('/(onboarding)/id-verify');
     } catch (err) {
       setError(errorMessage(err, 'Could not save your profile'));
@@ -188,7 +238,7 @@ export default function ProfileSetup() {
               <OptionGroup label="I am a…" options={GENDERS} value={gender} onChange={setGender} onDark={false} clearable={false} />
               <DatePickerField label="Date of birth" value={dob} onChange={setDob} onDark={false} />
               <TextField label="City (optional)" value={city} onChangeText={setCity} placeholder="e.g. London" />
-              <TextField label="Ethnicity (optional)" value={ethnicity} onChangeText={setEthnicity} placeholder="e.g. South Asian, Arab, Turkish" />
+              <ChipMultiSelect label="Ethnicity (optional)" options={ETHNICITIES} value={ethnicity || null} onChange={(v) => setEthnicity(v ?? '')} placeholder="Add your ethnicity" />
             </>
           )}
 
@@ -202,13 +252,14 @@ export default function ProfileSetup() {
                 placeholder="e.g. Sunni, Catholic, Reform"
               />
               <OptionGroup label="How religious are you?" options={RELIGIOSITY} value={religiosity} onChange={setReligiosity} onDark={false} />
-              <TextField
+              <ChipMultiSelect
                 label="Caste / biradari (optional)"
-                value={caste}
-                onChangeText={setCaste}
-                placeholder="e.g. Jat, Rajput, Syed, Gotra…"
+                options={CASTES}
+                value={caste || null}
+                onChange={(v) => setCaste(v ?? '')}
+                placeholder="e.g. Syed, Jat, Gotra…"
               />
-              {caste.trim() ? (
+              {caste ? (
                 <ToggleRow
                   label="Show caste on my profile"
                   hint="Off by default. When off, your caste stays private and is used only for matching."
@@ -227,6 +278,7 @@ export default function ProfileSetup() {
               <TextField label="Height in cm (optional)" value={height} onChangeText={setHeight} keyboardType="number-pad" placeholder="e.g. 170" />
               <OptionGroup label="Marital status" options={MARITAL} value={marital} onChange={setMarital} onDark={false} />
               <OptionGroup label="Children" options={WANTS} value={wants} onChange={setWants} onDark={false} />
+              <ChipMultiSelect label="Hobbies & interests (optional)" options={HOBBIES} value={hobbies || null} onChange={(v) => setHobbies(v ?? '')} placeholder="Add a hobby" />
               <TextField
                 label="About you (optional)"
                 value={bio}
@@ -235,6 +287,40 @@ export default function ProfileSetup() {
                 multiline
                 style={{ height: 100, paddingTop: 14, textAlignVertical: 'top' }}
               />
+            </>
+          )}
+
+          {step === 3 && (
+            <>
+              <Text variant="callout" tone="muted" style={{ marginBottom: spacing.md }}>
+                Add at least one clear photo of yourself. Your first photo is your main picture — we’ll use it to verify your selfie next.
+              </Text>
+              <View style={styles.photoGrid}>
+                {photos.map((uri) => (
+                  <View key={uri} style={styles.photoCell}>
+                    <Image source={{ uri }} style={styles.photo} contentFit="cover" />
+                    <PressableScale onPress={() => removePhoto(uri)} style={styles.photoRemove}>
+                      <Ionicons name="close" size={14} color={palette.cream} />
+                    </PressableScale>
+                  </View>
+                ))}
+                {photos.length < MAX_PHOTOS ? (
+                  <PressableScale
+                    onPress={addPhoto}
+                    style={[styles.photoCell, styles.photoAdd, { borderColor: c.borderStrong, backgroundColor: c.surfaceAlt }]}
+                  >
+                    <Ionicons name="add" size={28} color={c.accent} />
+                  </PressableScale>
+                ) : null}
+              </View>
+              <View style={{ marginTop: spacing.lg }}>
+                <AcceptCheckbox checked={terms} onToggle={setTerms}>
+                  <Text variant="footnote" tone="muted">
+                    I confirm the details I’ve provided are true and accurate, I am 18 or older, and I agree to the{' '}
+                    <Text variant="footnote" tone="accent" onPress={() => router.push('/terms')}>Terms of Use</Text>.
+                  </Text>
+                </AcceptCheckbox>
+              </View>
             </>
           )}
 
@@ -257,7 +343,7 @@ export default function ProfileSetup() {
         >
           <Button label="Back" variant="ghost" onPress={back} style={{ flex: 1 }} />
           <Button
-            label={isLast ? 'Finish' : 'Continue'}
+            label={isLast ? 'Verify me' : 'Continue'}
             onPress={isLast ? submit : next}
             loading={loading}
             style={{ flex: 1.4 }}
@@ -276,6 +362,14 @@ const styles = StyleSheet.create({
   fill: { height: 4, borderRadius: radii.pill },
   content: { paddingHorizontal: spacing.xl, paddingTop: spacing.lg },
   error: { marginTop: spacing.sm },
+  photoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },
+  photoCell: { width: 96, height: 128, borderRadius: radii.md, overflow: 'hidden' },
+  photo: { width: '100%', height: '100%' },
+  photoAdd: { alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderStyle: 'dashed' },
+  photoRemove: {
+    position: 'absolute', top: 4, right: 4, width: 24, height: 24, borderRadius: 12,
+    backgroundColor: 'rgba(61,0,16,0.7)', alignItems: 'center', justifyContent: 'center',
+  },
   footer: {
     position: 'absolute',
     bottom: 0,

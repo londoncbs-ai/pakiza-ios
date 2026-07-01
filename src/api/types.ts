@@ -100,12 +100,13 @@ export interface MyProfile extends PublicProfile {
   photos_blurred: boolean;
   hide_from_contacts: boolean;
   incognito_mode: boolean;
+  hobbies?: string | null;
   // Account fields (from the User; only present on the /me response)
   phone?: string | null;
   phone_verified?: boolean;
   email?: string | null;
   email_verified?: boolean;
-  is_id_verified?: boolean;
+  is_selfie_verified?: boolean;
 }
 
 /** Partner preferences - drives the matching algorithm. CSV fields hold comma-separated enum values. */
@@ -234,8 +235,9 @@ export interface CreateProfileInput {
   religion?: Religion;
   denomination?: string;
   religiosity?: number; // 1-5
-  caste?: string; // caste / biradari / jati / gotra
+  caste?: string; // caste / biradari / jati / gotra (comma-separated)
   caste_is_visible?: boolean; // hidden from others unless true
+  hobbies?: string; // comma-separated hobbies/interests
   occupation?: string;
   education_level?: EducationLevel;
   education_field?: string;
@@ -253,6 +255,8 @@ export interface CreateProfileInput {
   photos_blurred?: boolean;
   hide_from_contacts?: boolean;
   incognito_mode?: boolean;
+  // The member must confirm their details are accurate and they are 18+.
+  terms_accepted: boolean;
 }
 
 export type UpdateProfileInput = Partial<CreateProfileInput>;
