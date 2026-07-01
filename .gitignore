@@ -45,3 +45,6 @@ example
 # local API URL override (machine-specific)
 .env
 .env.local
+
+# Claude Code local settings
+.claude/
