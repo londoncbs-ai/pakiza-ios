@@ -202,7 +202,7 @@ export default function ProfileTab() {
             <Divider />
             <SettingRow icon="heart-outline" label="Support a marriage" onPress={() => router.push('/fund')} />
             <Divider />
-            <SettingRow icon="scan-outline" label="Face verification" onPress={() => router.push('/(onboarding)/id-verify')} />
+            <SettingRow icon="scan-outline" label="Face verification" onPress={() => router.push('/(onboarding)/face-verify')} />
             <Divider />
             {profile?.email && profile.email_verified === false ? (
               <>

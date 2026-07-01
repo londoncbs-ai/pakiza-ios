@@ -29,7 +29,7 @@ type Phase = 'camera' | 'analyzing' | 'error';
 
 /** Non-skippable AI-style face scan: verifies the live selfie matches the
  * member's uploaded profile photos (POST /profiles/me/verify-selfie). */
-export default function IdVerify() {
+export default function FaceVerify() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { signOut } = useAuth();

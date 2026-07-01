@@ -48,3 +48,8 @@ example
 
 # Claude Code local settings
 .claude/
+
+# Editor + AI assistant files
+.vscode/
+CLAUDE.md
+AGENTS.md

@@ -106,7 +106,7 @@ export default function VerifyAccount() {
             subtitle={selfieVerified ? 'Verified' : 'A quick face scan to confirm it’s you'}
             action={
               selfieVerified ? undefined : (
-                <Pressable onPress={() => router.push('/(onboarding)/id-verify')} hitSlop={8}>
+                <Pressable onPress={() => router.push('/(onboarding)/face-verify')} hitSlop={8}>
                   <Text variant="callout" tone="accent">Verify</Text>
                 </Pressable>
               )

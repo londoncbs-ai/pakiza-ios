@@ -199,7 +199,7 @@ export default function ProfileSetup() {
         setLoading(false);
         return;
       }
-      router.replace('/(onboarding)/id-verify');
+      router.replace('/(onboarding)/face-verify');
     } catch (err) {
       setError(errorMessage(err, 'Could not save your profile'));
       setLoading(false);

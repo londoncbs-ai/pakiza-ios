@@ -48,6 +48,3 @@ function resolveBaseUrl(): string {
 
 export const API_BASE_URL = resolveBaseUrl();
 export const API_V1 = `${API_BASE_URL}/v1`;
-
-// Visible in the Metro/Expo terminal logs - confirms which host the app is calling.
-console.log('[Pakiza] API base URL →', API_BASE_URL);
