@@ -15,7 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import type { PublicProfile } from '@/api/types';
 import { DetailRow } from './DetailRow';
-import { PlanBadge } from './PlanBadge';
+import { ProfileBadges } from './PlanBadge';
 import { SafetySheet } from './SafetySheet';
 import { Text } from './Text';
 import { label, titleCase } from '@/lib/format';
@@ -131,7 +131,7 @@ export function IntroductionCard({
           </Pressable>
 
           <View style={styles.heroInfo} pointerEvents="none">
-            <PlanBadge plan={profile.plan} style={styles.planBadge} />
+            <ProfileBadges profile={profile} style={styles.planBadge} />
             <Text variant="display" color={palette.white} style={styles.name}>
               {profile.display_name}
               {profile.age ? <Text variant="title" color={palette.cream}>{`, ${profile.age}`}</Text> : null}

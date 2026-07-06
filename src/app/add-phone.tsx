@@ -13,7 +13,8 @@ import { spacing } from '@/theme';
 
 const E164 = /^\+[1-9]\d{7,14}$/;
 
-/** Add + verify a phone for an account created without one (e.g. social sign-in). */
+/** Add + verify a phone for an account created without one (registration allows
+ * skipping the number while SMS verification is disabled). */
 export default function AddPhone() {
   const router = useRouter();
   const insets = useSafeAreaInsets();

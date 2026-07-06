@@ -438,12 +438,14 @@ export default function ChatThread() {
                 <Text variant="callout" tone="accent">{peerName[0]?.toUpperCase() ?? '?'}</Text>
               </View>
             )}
-            <PlanBadge plan={peer?.plan} variant="corner" size={16} style={styles.headerAvatarBadge} />
           </View>
           <View style={styles.headerText}>
-            <Text variant="subhead" tone="default" numberOfLines={1} style={styles.headerName}>
-              {peerName}
-            </Text>
+            <View style={styles.headerNameRow}>
+              <Text variant="subhead" tone="default" numberOfLines={1} style={styles.headerName}>
+                {peerName}
+              </Text>
+              <PlanBadge plan={peer?.plan} />
+            </View>
             {peerTyping ? (
               <Text variant="footnote" tone="accent">typing…</Text>
             ) : conv ? (
@@ -817,10 +819,10 @@ const styles = StyleSheet.create({
   headerCenter: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingHorizontal: 2 },
   headerAvatarWrap: { width: 38, height: 38 },
   headerAvatar: { width: 38, height: 38, borderRadius: 19 },
-  headerAvatarBadge: { position: 'absolute', right: -2, bottom: -2 },
+  headerNameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   headerAvatarFallback: { alignItems: 'center', justifyContent: 'center' },
   headerText: { flex: 1 },
-  headerName: { marginBottom: 0 },
+  headerName: { marginBottom: 0, flexShrink: 1 },
   kebab: { width: 34, height: 34, alignItems: 'center', justifyContent: 'center' },
 
   chatHint: { marginHorizontal: spacing.lg, marginTop: spacing.sm },

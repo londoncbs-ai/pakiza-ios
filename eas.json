@@ -14,13 +14,13 @@
     "preview": {
       "distribution": "internal",
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://api.pakiza.app"
+        "EXPO_PUBLIC_API_URL": "https://api.pakiza.co.uk"
       }
     },
     "production": {
       "autoIncrement": true,
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://api.pakiza.app"
+        "EXPO_PUBLIC_API_URL": "https://api.pakiza.co.uk"
       }
     }
   },

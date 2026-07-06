@@ -7,7 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import type { PublicProfile } from '@/api/types';
 import { DetailRow } from './DetailRow';
-import { PlanBadge } from './PlanBadge';
+import { DonatedBadge, PlanBadge, VerifiedBadge } from './PlanBadge';
 import { SafetySheet } from './SafetySheet';
 import { Text } from './Text';
 import { label, titleCase } from '@/lib/format';
@@ -73,7 +73,9 @@ export function ProfileDetail({
                   </Text>
                 </View>
               ) : null}
+              <VerifiedBadge show={profile.is_selfie_verified} />
               <PlanBadge plan={profile.plan} />
+              <DonatedBadge show={profile.has_donated} />
             </View>
             <Text variant="display" color={palette.white} style={styles.name}>
               {profile.display_name}

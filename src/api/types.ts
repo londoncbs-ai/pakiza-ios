@@ -41,6 +41,7 @@ export interface TokenResponse {
 
 export interface RegisterResponse {
   message: string;
+  otp_required?: boolean; // false = no OTP step; sign the member in directly
   debug_otp?: string | null; // present only when backend DEBUG=true
 }
 
@@ -81,6 +82,8 @@ export interface PublicProfile {
   compatibility: number | null; // 0-100, set by the discovery feed (matching algorithm)
   compatibility_reasons?: string[]; // plain-language "why you match", feed only
   plan?: SubscriptionPlan | null; // active PAID tier (premium/gold); shown as a badge on their photo. null/absent = free
+  is_selfie_verified?: boolean; // verified badge (selfie check passed)
+  has_donated?: boolean; // "Donated" badge (succeeded, non-anonymous fund donation)
 }
 
 /** Own full profile - ProfileResponse (includes private fields). */
@@ -104,6 +107,7 @@ export interface MyProfile extends PublicProfile {
   // Account fields (from the User; only present on the /me response)
   phone?: string | null;
   phone_verified?: boolean;
+  phone_verification_required?: boolean; // false while SMS verification is disabled
   email?: string | null;
   email_verified?: boolean;
   is_selfie_verified?: boolean;

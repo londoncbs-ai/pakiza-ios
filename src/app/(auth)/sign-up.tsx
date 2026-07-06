@@ -6,21 +6,24 @@ import { authApi } from '@/api/auth';
 import { errorMessage } from '@/api/client';
 import { AuthScaffold } from '@/components/AuthScaffold';
 import { Button } from '@/components/Button';
-import { SocialButtons } from '@/components/SocialButtons';
 import { Text } from '@/components/Text';
 import { TextField } from '@/components/TextField';
+import { useAuth } from '@/store/auth';
 import { fonts, palette, spacing } from '@/theme';
 
 export default function SignUp() {
   const router = useRouter();
-  const [phone, setPhone] = useState('+44');
+  const { signIn } = useAuth();
+  const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const validate = (): string | null => {
-    if (!/^\+[1-9]\d{7,14}$/.test(phone)) return 'Enter a valid phone in international format, e.g. +447911123456';
+    // Phone is optional; validate the format only when one is entered.
+    if (phone.trim() && !/^\+[1-9]\d{7,14}$/.test(phone.trim()))
+      return 'Enter a valid phone in international format, e.g. +447911123456';
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim())) return 'Enter a valid email address';
     if (password.length < 8) return 'Password must be at least 8 characters';
     if (!/[A-Z]/.test(password)) return 'Password needs an uppercase letter';
@@ -34,7 +37,13 @@ export default function SignUp() {
     setError(null);
     setLoading(true);
     try {
-      const res = await authApi.register(phone.trim(), password, email.trim());
+      const res = await authApi.register(phone.trim() || null, password, email.trim());
+      if (res.otp_required === false) {
+        // No OTP step (SMS verification disabled): sign straight in.
+        const tokens = await authApi.login(email.trim(), password);
+        await signIn(tokens);
+        return;
+      }
       router.push({
         pathname: '/(auth)/verify',
         params: { phone: phone.trim(), debugOtp: res.debug_otp ?? '' },
@@ -49,7 +58,7 @@ export default function SignUp() {
   return (
     <AuthScaffold title="Create your account" subtitle="Begin your journey to a purposeful match.">
       <TextField
-        label="Phone number"
+        label="Phone number (optional)"
         onDark
         value={phone}
         onChangeText={setPhone}
@@ -78,8 +87,6 @@ export default function SignUp() {
       />
 
       <Button label="Continue" onPress={onSubmit} loading={loading} style={{ marginTop: spacing.sm }} />
-
-      <SocialButtons />
 
       <Text variant="callout" tone="onDarkMuted" center style={styles.foot}>
         Already have an account?{' '}

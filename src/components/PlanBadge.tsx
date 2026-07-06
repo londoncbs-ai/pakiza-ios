@@ -2,44 +2,65 @@ import React from 'react';
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
-import type { SubscriptionPlan } from '@/api/types';
+import type { PublicProfile, SubscriptionPlan } from '@/api/types';
 import { palette, radii } from '@/theme';
 import { Text } from './Text';
 
 /**
- * A small badge marking a member's PAID subscription tier, shown to other
- * members on their profile photo. Free / no plan renders nothing.
+ * Small profile badges shown to other members on a profile photo:
  *
- *  - `pill`  : icon + label, for the hero photo (ProfileDetail).
+ *  - PlanBadge      : PAID subscription tier (gold diamond / premium star).
+ *                     Free / no plan renders nothing.
+ *  - VerifiedBadge  : the member passed the selfie verification check.
+ *  - DonatedBadge   : the member made a (non-anonymous) Marriage Support Fund
+ *                     donation. Label reads "Donated".
+ *  - ProfileBadges  : convenience row composing all three from a profile.
+ *
+ * Variants:
+ *  - `pill`  : icon + label, for the hero photo (cards / ProfileDetail).
  *  - `corner`: compact icon-only disc, for small circular list avatars.
  */
 type Variant = 'pill' | 'corner';
 
-const CONFIG: Record<
-  'gold' | 'premium',
-  { label: string; icon: keyof typeof Ionicons.glyphMap; bg: string; fg: string }
-> = {
+interface BadgeConfig {
+  label: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  bg: string;
+  fg: string;
+}
+
+const PLAN_CONFIG: Record<'gold' | 'premium', BadgeConfig> = {
   // Gold is the top tier - a diamond on the gold accent.
   gold: { label: 'Gold', icon: 'diamond', bg: palette.gold, fg: palette.burgundyDeep },
   // Premium - a star on brand burgundy.
   premium: { label: 'Premium', icon: 'star', bg: palette.burgundy, fg: palette.cream },
 };
 
-export function PlanBadge({
-  plan,
+const VERIFIED_CONFIG: BadgeConfig = {
+  label: 'Verified',
+  icon: 'shield-checkmark',
+  bg: palette.navy,
+  fg: palette.cream,
+};
+
+const DONATED_CONFIG: BadgeConfig = {
+  label: 'Donated',
+  icon: 'heart',
+  bg: palette.sienna,
+  fg: palette.cream,
+};
+
+function Badge({
+  cfg,
   variant = 'pill',
   size = 18,
   style,
 }: {
-  plan?: SubscriptionPlan | null;
+  cfg: BadgeConfig;
   variant?: Variant;
-  /** Diameter of the icon disc for the `corner` variant. */
   size?: number;
   style?: StyleProp<ViewStyle>;
 }) {
-  if (plan !== 'gold' && plan !== 'premium') return null;
-  const cfg = CONFIG[plan];
-
   if (variant === 'corner') {
     return (
       <View
@@ -69,7 +90,78 @@ export function PlanBadge({
   );
 }
 
+export function PlanBadge({
+  plan,
+  variant = 'pill',
+  size = 18,
+  style,
+}: {
+  plan?: SubscriptionPlan | null;
+  variant?: Variant;
+  /** Diameter of the icon disc for the `corner` variant. */
+  size?: number;
+  style?: StyleProp<ViewStyle>;
+}) {
+  if (plan !== 'gold' && plan !== 'premium') return null;
+  return <Badge cfg={PLAN_CONFIG[plan]} variant={variant} size={size} style={style} />;
+}
+
+export function VerifiedBadge({
+  show,
+  variant = 'pill',
+  size = 18,
+  style,
+}: {
+  show?: boolean;
+  variant?: Variant;
+  size?: number;
+  style?: StyleProp<ViewStyle>;
+}) {
+  if (!show) return null;
+  return <Badge cfg={VERIFIED_CONFIG} variant={variant} size={size} style={style} />;
+}
+
+export function DonatedBadge({
+  show,
+  variant = 'pill',
+  size = 18,
+  style,
+}: {
+  show?: boolean;
+  variant?: Variant;
+  size?: number;
+  style?: StyleProp<ViewStyle>;
+}) {
+  if (!show) return null;
+  return <Badge cfg={DONATED_CONFIG} variant={variant} size={size} style={style} />;
+}
+
+/** All profile badges in one wrapping row. Renders nothing when none apply. */
+export function ProfileBadges({
+  profile,
+  style,
+}: {
+  profile: Pick<PublicProfile, 'plan' | 'is_selfie_verified' | 'has_donated'>;
+  style?: StyleProp<ViewStyle>;
+}) {
+  const hasPlan = profile.plan === 'gold' || profile.plan === 'premium';
+  if (!hasPlan && !profile.is_selfie_verified && !profile.has_donated) return null;
+  return (
+    <View style={[styles.row, style]}>
+      <VerifiedBadge show={profile.is_selfie_verified} />
+      <PlanBadge plan={profile.plan} />
+      <DonatedBadge show={profile.has_donated} />
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
+  row: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    alignItems: 'center',
+  },
   pill: {
     flexDirection: 'row',
     alignItems: 'center',

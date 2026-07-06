@@ -44,10 +44,10 @@ function RootNavigator() {
     // bounce a signed-out user to '/' or a signed-in user to the app mid-verify.
     if (root === 'verify-email') return;
 
-    // A signed-in member who hasn't finished phone/email/selfie verification is
-    // held on the verification hub - but must be able to REACH the screens that
-    // complete each step (the hub, the add-phone flow, and onboarding: profile +
-    // the selfie scan). Bouncing those back to the hub would make them unreachable.
+    // A signed-in member who hasn't finished the verification steps is held on
+    // the verification hub - but must be able to REACH the screens that complete
+    // each step (the hub, the add-phone flow, and onboarding: profile + the
+    // selfie scan). Bouncing those back to the hub would make them unreachable.
     const onVerifyRoute = root === 'verify-account' || root === 'add-phone' || root === '(onboarding)';
     if (status === 'signedIn' && verifyRequired && !onVerifyRoute) {
       router.replace('/verify-account');

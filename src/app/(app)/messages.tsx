@@ -130,13 +130,13 @@ export default function Messages() {
                       <Ionicons name={KIND_ICON[item.kind]} size={24} color={c.accent} />
                     </View>
                   )}
-                  <PlanBadge plan={item.plan} variant="corner" size={20} style={styles.avatarBadge} />
                 </View>
                 <View style={styles.body}>
                   <View style={styles.titleRow}>
                     <Text variant="subhead" tone="default" style={styles.name} numberOfLines={1}>
                       {item.title}
                     </Text>
+                    <PlanBadge plan={item.plan} />
                     {kindLabel ? (
                       <View style={[styles.chip, { backgroundColor: c.accentFaint }]}>
                         <Ionicons name={KIND_ICON[item.kind]} size={11} color={c.accent} />
@@ -178,7 +178,6 @@ const styles = StyleSheet.create({
   },
   avatarWrap: { width: 58, height: 58 },
   avatar: { width: 58, height: 58, borderRadius: 29 },
-  avatarBadge: { position: 'absolute', right: -2, bottom: -2 },
   placeholder: { alignItems: 'center', justifyContent: 'center' },
   initial: { fontFamily: fonts.display, fontSize: 24 },
   body: { flex: 1, marginLeft: spacing.md },

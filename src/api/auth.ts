@@ -2,10 +2,10 @@ import { api } from './client';
 import type { RegisterResponse, TokenResponse } from './types';
 
 export const authApi = {
-  register(phone: string, password: string, email?: string) {
+  register(phone: string | null, password: string, email?: string) {
     return api
       .post<RegisterResponse>('/auth/register', {
-        phone,
+        phone: phone || undefined, // optional while SMS verification is disabled
         password,
         email: email || undefined,
       })
@@ -55,6 +55,22 @@ export const authApi = {
       .then((r) => r.data);
   },
 
+  /** Account-level verification state; never 404s (works before the profile exists). */
+  me() {
+    return api
+      .get<{
+        phone: string | null;
+        phone_verified: boolean;
+        phone_verification_required: boolean;
+        email: string | null;
+        email_verified: boolean;
+        is_selfie_verified: boolean;
+        profile_complete: boolean;
+        has_primary_photo: boolean;
+      }>('/auth/me')
+      .then((r) => r.data);
+  },
+
   // ── Email verification (link/token based) ───────────────────────────────────
   sendEmailVerification() {
     return api.post('/auth/send-email-verification').then((r) => r.data);
@@ -64,7 +80,7 @@ export const authApi = {
     return api.post('/auth/verify-email', { token }).then((r) => r.data);
   },
 
-  // ── Add a phone to an account that has none (e.g. social sign-in) ────────────
+  // ── Add a phone to an account that has none (signup allows skipping it) ──────
   addPhone(phone: string) {
     return api.post<RegisterResponse>('/auth/add-phone', { phone }).then((r) => r.data);
   },

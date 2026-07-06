@@ -6,7 +6,6 @@ import { useFocusEffect, useRouter } from 'expo-router';
 
 import { authApi } from '@/api/auth';
 import { errorMessage } from '@/api/client';
-import { profilesApi } from '@/api/profiles';
 import { Button } from '@/components/Button';
 import { Screen } from '@/components/Screen';
 import { Surface } from '@/components/Surface';
@@ -21,17 +20,23 @@ export default function VerifyAccount() {
   const { clearVerify, signOut } = useAuth();
 
   const [email, setEmail] = useState<string | null>(null);
+  const [phoneRequired, setPhoneRequired] = useState(false);
   const [phoneVerified, setPhoneVerified] = useState(false);
   const [emailVerified, setEmailVerified] = useState(false);
   const [selfieVerified, setSelfieVerified] = useState(false);
+  const [photoReady, setPhotoReady] = useState(true);
 
   const load = useCallback(async () => {
     try {
-      const p = await profilesApi.getMine();
-      setEmail(p?.email ?? null);
-      setPhoneVerified(!!p?.phone_verified);
-      setEmailVerified(!!p?.email_verified);
-      setSelfieVerified(!!p?.is_selfie_verified);
+      // /auth/me never 404s, so the checklist renders correctly even before
+      // the profile exists (unlike /profiles/me).
+      const a = await authApi.me();
+      setEmail(a.email);
+      setPhoneRequired(a.phone_verification_required);
+      setPhoneVerified(a.phone_verified);
+      setEmailVerified(a.email_verified);
+      setSelfieVerified(a.is_selfie_verified);
+      setPhotoReady(a.profile_complete && a.has_primary_photo);
     } catch {
       // keep current state
     }
@@ -51,7 +56,7 @@ export default function VerifyAccount() {
     }
   };
 
-  const allDone = phoneVerified && emailVerified && selfieVerified;
+  const allDone = (!phoneRequired || phoneVerified) && emailVerified && selfieVerified;
   const finish = () => {
     clearVerify();
     router.replace('/(app)/discover');
@@ -64,25 +69,29 @@ export default function VerifyAccount() {
           Finish verifying your account
         </Text>
         <Text variant="callout" tone="muted" style={styles.subtitle}>
-          Pakiza is a verified-only community. Complete all three steps to start matching.
+          Pakiza is a verified-only community. Complete the steps below to start matching.
         </Text>
 
         <Surface elevated style={styles.card}>
-          <StepRow
-            c={c}
-            done={phoneVerified}
-            icon="call-outline"
-            title="Phone number"
-            subtitle={phoneVerified ? 'Verified' : 'Add and verify your phone'}
-            action={
-              phoneVerified ? undefined : (
-                <Pressable onPress={() => router.push('/add-phone')} hitSlop={8}>
-                  <Text variant="callout" tone="accent">Add</Text>
-                </Pressable>
-              )
-            }
-          />
-          <Divider c={c} />
+          {phoneRequired ? (
+            <>
+              <StepRow
+                c={c}
+                done={phoneVerified}
+                icon="call-outline"
+                title="Phone number"
+                subtitle={phoneVerified ? 'Verified' : 'Add and verify your phone'}
+                action={
+                  phoneVerified ? undefined : (
+                    <Pressable onPress={() => router.push('/add-phone')} hitSlop={8}>
+                      <Text variant="callout" tone="accent">Add</Text>
+                    </Pressable>
+                  )
+                }
+              />
+              <Divider c={c} />
+            </>
+          ) : null}
           <StepRow
             c={c}
             done={emailVerified}
@@ -103,11 +112,24 @@ export default function VerifyAccount() {
             done={selfieVerified}
             icon="scan-outline"
             title="Face verification"
-            subtitle={selfieVerified ? 'Verified' : 'A quick face scan to confirm it’s you'}
+            subtitle={
+              selfieVerified
+                ? 'Verified'
+                : photoReady
+                  ? 'A quick face scan to confirm it’s you'
+                  : 'Add your profile and photos first'
+            }
             action={
               selfieVerified ? undefined : (
-                <Pressable onPress={() => router.push('/(onboarding)/face-verify')} hitSlop={8}>
-                  <Text variant="callout" tone="accent">Verify</Text>
+                <Pressable
+                  onPress={() =>
+                    // The selfie is compared against the primary profile photo,
+                    // so route through profile setup until one exists.
+                    router.push(photoReady ? '/(onboarding)/face-verify' : '/(onboarding)/profile-setup')
+                  }
+                  hitSlop={8}
+                >
+                  <Text variant="callout" tone="accent">{photoReady ? 'Verify' : 'Set up'}</Text>
                 </Pressable>
               )
             }

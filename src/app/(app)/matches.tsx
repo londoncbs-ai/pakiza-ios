@@ -11,7 +11,7 @@ import type { MatchSummary } from '@/api/types';
 import { EmptyState } from '@/components/EmptyState';
 import { ErrorState } from '@/components/ErrorState';
 import { FeatureHint } from '@/components/FeatureHint';
-import { PlanBadge } from '@/components/PlanBadge';
+import { ProfileBadges } from '@/components/PlanBadge';
 import { PressableScale } from '@/components/PressableScale';
 import { SkeletonList } from '@/components/Skeleton';
 import { Text } from '@/components/Text';
@@ -133,13 +133,13 @@ export default function Matches() {
                       <Text style={styles.avatarInitial} tone="accent">{item.profile.display_name[0]}</Text>
                     </View>
                   )}
-                  <PlanBadge plan={item.profile.plan} variant="corner" size={22} style={styles.avatarBadge} />
                 </View>
                 <View style={styles.cardBody}>
                   <Text variant="subhead" tone="default" style={styles.cardName}>
                     {item.profile.display_name}
                     {item.profile.age ? `, ${item.profile.age}` : ''}
                   </Text>
+                  <ProfileBadges profile={item.profile} style={styles.cardBadges} />
                   <Text variant="footnote" tone="muted" style={styles.cardMeta} numberOfLines={1}>
                     {[item.profile.city, item.profile.occupation].filter(Boolean).join('  ·  ') || 'New match'}
                   </Text>
@@ -201,7 +201,7 @@ const styles = StyleSheet.create({
   },
   avatarWrap: { width: 60, height: 60 },
   avatar: { width: 60, height: 60, borderRadius: 30 },
-  avatarBadge: { position: 'absolute', right: -2, bottom: -2 },
+  cardBadges: { marginTop: 4 },
   avatarPlaceholder: { alignItems: 'center', justifyContent: 'center' },
   avatarInitial: { fontFamily: fonts.display, fontSize: 26 },
   cardBody: { flex: 1, marginLeft: spacing.md },
