@@ -262,16 +262,19 @@ export default function Support() {
             contentContainerStyle={styles.listContent}
             keyboardDismissMode="interactive"
             ListEmptyComponent={
-              <View style={styles.emptyWrap}>
-                <View style={[styles.emptyBadge, { backgroundColor: c.accentFaint }]}>
-                  <Ionicons name="chatbubbles-outline" size={30} color={c.accent} />
+              // Counter-flip: the inverted list mirrors its empty component, so flip it back.
+              <View style={{ transform: [{ scaleY: -1 }] }}>
+                <View style={styles.emptyWrap}>
+                  <View style={[styles.emptyBadge, { backgroundColor: c.accentFaint }]}>
+                    <Ionicons name="chatbubbles-outline" size={30} color={c.accent} />
+                  </View>
+                  <Text variant="subhead" tone="default" center style={{ marginTop: spacing.md }}>
+                    How can we help?
+                  </Text>
+                  <Text variant="body" tone="muted" center style={styles.emptyBody}>
+                    Ask us anything about your account, billing, or how Pakiza works. The team will get back to you soon.
+                  </Text>
                 </View>
-                <Text variant="subhead" tone="default" center style={{ marginTop: spacing.md }}>
-                  How can we help?
-                </Text>
-                <Text variant="body" tone="muted" center style={styles.emptyBody}>
-                  Ask us anything about your account, billing, or how Pakiza works. The team will get back to you soon.
-                </Text>
               </View>
             }
             renderItem={({ item, index }) => {

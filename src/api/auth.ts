@@ -44,15 +44,9 @@ export const authApi = {
       .then((r) => r.data);
   },
 
-  // ── Password reset (OTP-based: phone → SMS code → new password) ──────────────
-  forgotPassword(phone: string) {
-    return api.post<RegisterResponse>('/auth/forgot-password', { phone }).then((r) => r.data);
-  },
-
-  resetPassword(phone: string, otp: string, new_password: string) {
-    return api
-      .post('/auth/reset-password', { phone, otp, new_password })
-      .then((r) => r.data);
+  // ── Password reset (email link based: the new password is set on the web page) ──
+  forgotPassword(email: string) {
+    return api.post<{ message: string }>('/auth/forgot-password', { email }).then((r) => r.data);
   },
 
   /** Account-level verification state; never 404s (works before the profile exists). */

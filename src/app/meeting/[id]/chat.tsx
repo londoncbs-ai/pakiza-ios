@@ -254,16 +254,19 @@ export default function MeetingChat() {
             contentContainerStyle={styles.listContent}
             keyboardDismissMode="interactive"
             ListEmptyComponent={
-              <View style={styles.emptyWrap}>
-                <View style={[styles.emptyBadge, { backgroundColor: c.accentFaint }]}>
-                  <Ionicons name="chatbubbles-outline" size={30} color={c.accent} />
+              // Counter-flip: the inverted list mirrors its empty component, so flip it back.
+              <View style={{ transform: [{ scaleY: -1 }] }}>
+                <View style={styles.emptyWrap}>
+                  <View style={[styles.emptyBadge, { backgroundColor: c.accentFaint }]}>
+                    <Ionicons name="chatbubbles-outline" size={30} color={c.accent} />
+                  </View>
+                  <Text variant="subhead" tone="default" center style={{ marginTop: spacing.md }}>
+                    Coordinate your meeting
+                  </Text>
+                  <Text variant="body" tone="muted" center style={styles.emptyBody}>
+                    Use this thread to sort out the details with your match and our team. Your wali is kept informed throughout.
+                  </Text>
                 </View>
-                <Text variant="subhead" tone="default" center style={{ marginTop: spacing.md }}>
-                  Coordinate your meeting
-                </Text>
-                <Text variant="body" tone="muted" center style={styles.emptyBody}>
-                  Use this thread to sort out the details with your match and our team. Your wali is kept informed throughout.
-                </Text>
               </View>
             }
             renderItem={({ item, index }) => {

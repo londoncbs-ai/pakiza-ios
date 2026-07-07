@@ -10,49 +10,64 @@ import { Text } from '@/components/Text';
 import { TextField } from '@/components/TextField';
 import { fonts, palette, spacing } from '@/theme';
 
-const E164 = /^\+[1-9]\d{7,14}$/;
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function ForgotPassword() {
   const router = useRouter();
-  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
+  const [sentTo, setSentTo] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const onSubmit = async () => {
-    const value = phone.trim();
-    if (!E164.test(value)) return setError('Enter your phone in full format, e.g. +447911123456');
+    const value = email.trim().toLowerCase();
+    if (!EMAIL.test(value)) return setError('Enter the email address on your account');
     setError(null);
     setLoading(true);
     try {
-      // Always succeeds generically (the server never reveals whether the number exists).
-      const res = await authApi.forgotPassword(value);
-      router.push({
-        pathname: '/(auth)/reset-password',
-        params: { phone: value, debugOtp: res.debug_otp ?? undefined },
-      });
+      // Always succeeds generically (the server never reveals whether the email exists).
+      await authApi.forgotPassword(value);
+      setSentTo(value);
     } catch (err) {
-      setError(errorMessage(err, 'Could not send a reset code'));
+      setError(errorMessage(err, 'Could not send the reset link'));
+    } finally {
       setLoading(false);
     }
   };
 
+  if (sentTo) {
+    return (
+      <AuthScaffold
+        title="Check your inbox"
+        subtitle={`We sent a password reset link to ${sentTo}. Open it, choose a new password, then sign in here.`}
+      >
+        <Button
+          label="Back to sign in"
+          onPress={() => router.replace('/(auth)/sign-in')}
+          style={{ marginTop: spacing.sm }}
+        />
+      </AuthScaffold>
+    );
+  }
+
   return (
     <AuthScaffold
       title="Reset your password"
-      subtitle="Enter your phone number and we’ll text you a 6-digit code to set a new password."
+      subtitle="Enter the email on your account and we'll send you a link to set a new password."
     >
       <TextField
-        label="Phone number"
+        label="Email"
         onDark
-        value={phone}
-        onChangeText={setPhone}
-        keyboardType="phone-pad"
+        value={email}
+        onChangeText={setEmail}
+        keyboardType="email-address"
         autoCapitalize="none"
-        placeholder="+447911123456"
+        autoComplete="email"
+        placeholder="you@example.com"
         error={error}
       />
 
-      <Button label="Send reset code" onPress={onSubmit} loading={loading} style={{ marginTop: spacing.sm }} />
+      <Button label="Send reset link" onPress={onSubmit} loading={loading} style={{ marginTop: spacing.sm }} />
 
       <Text variant="callout" tone="onDarkMuted" center style={styles.foot}>
         Remembered it?{' '}
