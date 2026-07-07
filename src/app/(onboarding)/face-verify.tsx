@@ -12,7 +12,7 @@ import Animated, {
   withRepeat,
   withTiming,
 } from 'react-native-reanimated';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import { errorMessage } from '@/api/client';
 import { profilesApi } from '@/api/profiles';
@@ -25,13 +25,14 @@ import { hexA, palette, spacing } from '@/theme';
 const FRAME = 288;
 const RADIUS = 30;
 
-type Phase = 'camera' | 'analyzing' | 'error';
+type Phase = 'camera' | 'analyzing' | 'success' | 'error';
 
 /** Non-skippable AI-style face scan: verifies the live selfie matches the
  * member's uploaded profile photos (POST /profiles/me/verify-selfie). */
 export default function FaceVerify() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { from } = useLocalSearchParams<{ from?: string }>();
   const { signOut } = useAuth();
   const [permission, requestPermission] = useCameraPermissions();
   const cameraRef = useRef<CameraView>(null);
@@ -64,7 +65,12 @@ export default function FaceVerify() {
       if (!shot?.uri) throw new Error('Could not capture your photo');
       await profilesApi.verifySelfie(shot.uri);
       haptics.success();
-      router.replace('/(app)/discover');
+      // Show the verified moment before moving on; back to the checklist when
+      // the scan was opened from there, otherwise into the app.
+      setPhase('success');
+      setTimeout(() => {
+        router.replace(from === 'hub' ? '/verify-account' : '/(app)/discover');
+      }, 1600);
     } catch (err) {
       haptics.error();
       setError(errorMessage(err, "We couldn't verify your selfie. Make sure your face is well lit and centred, then try again."));
@@ -135,6 +141,19 @@ export default function FaceVerify() {
                 <Text variant="footnote" tone="onDark" style={{ marginTop: spacing.sm }}>Analysing…</Text>
               </View>
             ) : null}
+            {phase === 'success' ? (
+              <View style={styles.analyzing}>
+                <View style={styles.successBadge}>
+                  <Ionicons name="checkmark" size={44} color={palette.burgundyDeep} />
+                </View>
+                <Text variant="title" tone="onDark" center style={{ marginTop: spacing.md }}>
+                  Verified
+                </Text>
+                <Text variant="footnote" tone="onDarkMuted" center style={{ marginTop: spacing.xs }}>
+                  It matches. You now carry the verified badge.
+                </Text>
+              </View>
+            ) : null}
           </View>
 
           <View style={[styles.corner, styles.tl]} />
@@ -147,7 +166,11 @@ export default function FaceVerify() {
           {error ? (
             <Text variant="footnote" color={palette.rose} center style={{ marginBottom: spacing.md }}>{error}</Text>
           ) : null}
-          <Button label={phase === 'error' ? 'Try again' : 'Scan my face'} onPress={capture} loading={phase === 'analyzing'} />
+          {phase === 'success' ? (
+            <Text variant="callout" tone="onDark" center>Taking you back...</Text>
+          ) : (
+            <Button label={phase === 'error' ? 'Try again' : 'Scan my face'} onPress={capture} loading={phase === 'analyzing'} />
+          )}
           {phase === 'error' ? (
             <Pressable onPress={signOut} hitSlop={10} style={styles.escape}>
               <Text variant="footnote" tone="onDarkMuted">Having trouble? Sign out</Text>
@@ -177,6 +200,11 @@ const styles = StyleSheet.create({
   },
   scanLine: { position: 'absolute', left: 8, right: 8, height: 3, borderRadius: 2 },
   analyzing: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center', backgroundColor: hexA(palette.burgundyDeep, 0.4) },
+  successBadge: {
+    width: 84, height: 84, borderRadius: 42,
+    backgroundColor: palette.gold,
+    alignItems: 'center', justifyContent: 'center',
+  },
   corner: { position: 'absolute', width: 36, height: 36, borderColor: palette.gold, borderWidth: 3 },
   tl: { top: 0, left: 0, borderRightWidth: 0, borderBottomWidth: 0, borderTopLeftRadius: RADIUS },
   tr: { top: 0, right: 0, borderLeftWidth: 0, borderBottomWidth: 0, borderTopRightRadius: RADIUS },
