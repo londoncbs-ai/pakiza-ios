@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { Alert, Pressable, StyleSheet, View } from 'react-native';
+import { Alert, AppState, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -42,14 +42,30 @@ export default function VerifyAccount() {
     }
   }, []);
 
-  useFocusEffect(useCallback(() => { load(); }, [load]));
+  // The email link is opened in the mail app/browser, so this screen cannot
+  // know when verification lands. While focused: poll every 5s, and reload
+  // immediately when the app returns to the foreground - the tick appears by
+  // itself, no manual refresh needed.
+  useFocusEffect(
+    useCallback(() => {
+      load();
+      const poll = setInterval(load, 5000);
+      const sub = AppState.addEventListener('change', (s) => {
+        if (s === 'active') load();
+      });
+      return () => {
+        clearInterval(poll);
+        sub.remove();
+      };
+    }, [load]),
+  );
 
   const sendEmail = async () => {
     try {
       await authApi.sendEmailVerification();
       Alert.alert(
         'Check your inbox',
-        `We've sent a verification link to ${email ?? 'your email'}. Open it, then come back and tap “Refresh”.`,
+        `We've sent a verification link to ${email ?? 'your email'}. Open it and this screen will update by itself.`,
       );
     } catch (err) {
       Alert.alert('Could not send', errorMessage(err, 'Please try again.'));
