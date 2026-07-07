@@ -247,28 +247,15 @@ export default function MeetingChat() {
             <ActivityIndicator color={c.accent} size="large" />
           </View>
         ) : (
+          // Empty state is an overlay OUTSIDE the inverted list: inverted
+          // lists transform their children differently per platform.
+          <View style={{ flex: 1 }}>
           <FlatList
             data={messages}
             inverted
             keyExtractor={(m) => m.id}
             contentContainerStyle={styles.listContent}
             keyboardDismissMode="interactive"
-            ListEmptyComponent={
-              // Counter-flip: the inverted list mirrors its empty component, so flip it back.
-              <View style={{ transform: [{ scaleY: -1 }] }}>
-                <View style={styles.emptyWrap}>
-                  <View style={[styles.emptyBadge, { backgroundColor: c.accentFaint }]}>
-                    <Ionicons name="chatbubbles-outline" size={30} color={c.accent} />
-                  </View>
-                  <Text variant="subhead" tone="default" center style={{ marginTop: spacing.md }}>
-                    Coordinate your meeting
-                  </Text>
-                  <Text variant="body" tone="muted" center style={styles.emptyBody}>
-                    Use this thread to sort out the details with your match and our team. Your wali is kept informed throughout.
-                  </Text>
-                </View>
-              </View>
-            }
             renderItem={({ item, index }) => {
               // Inverted list: the visually-previous (older) message is at index+1.
               const older = messages[index + 1];
@@ -332,6 +319,22 @@ export default function MeetingChat() {
               );
             }}
           />
+          {messages.length === 0 && !loading ? (
+            <View style={styles.emptyOverlay} pointerEvents="none">
+              <View style={styles.emptyWrap}>
+                <View style={[styles.emptyBadge, { backgroundColor: c.accentFaint }]}>
+                  <Ionicons name="chatbubbles-outline" size={30} color={c.accent} />
+                </View>
+                <Text variant="subhead" tone="default" center style={{ marginTop: spacing.md }}>
+                  Coordinate your meeting
+                </Text>
+                <Text variant="body" tone="muted" center style={styles.emptyBody}>
+                  Use this thread to sort out the details with your match and our team. Your wali is kept informed throughout.
+                </Text>
+              </View>
+            </View>
+          ) : null}
+          </View>
         )}
 
         {error ? (
@@ -414,7 +417,8 @@ const styles = StyleSheet.create({
 
   // List
   listContent: { paddingHorizontal: spacing.lg, paddingVertical: spacing.md },
-  emptyWrap: { transform: [{ scaleY: -1 }], paddingTop: 96, paddingHorizontal: spacing.xl, alignItems: 'center' },
+  emptyOverlay: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center' },
+  emptyWrap: { paddingHorizontal: spacing.xl, alignItems: 'center' },
   emptyBadge: { width: 64, height: 64, borderRadius: 32, alignItems: 'center', justifyContent: 'center' },
   emptyBody: { marginTop: spacing.xs, lineHeight: 22 },
 
