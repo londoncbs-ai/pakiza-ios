@@ -120,9 +120,20 @@ export default function ProfileSetup() {
   const [terms, setTerms] = useState(false);
 
   const addPhoto = async () => {
-    if (photos.length >= MAX_PHOTOS) return;
-    const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.8 });
-    if (!res.canceled) setPhotos((p) => [...p, res.assets[0].uri]);
+    const remaining = MAX_PHOTOS - photos.length;
+    if (remaining <= 0) return;
+    const res = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      quality: 0.8,
+      allowsMultipleSelection: true,
+      selectionLimit: remaining,
+      orderedSelection: true,
+    });
+    if (res.canceled) return;
+    setPhotos((p) => {
+      const fresh = res.assets.map((a) => a.uri).filter((u, i, arr) => arr.indexOf(u) === i && !p.includes(u));
+      return [...p, ...fresh].slice(0, MAX_PHOTOS);
+    });
   };
   const removePhoto = (uri: string) => setPhotos((p) => p.filter((u) => u !== uri));
 

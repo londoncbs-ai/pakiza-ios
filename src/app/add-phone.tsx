@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 
@@ -54,8 +54,12 @@ export default function AddPhone() {
   };
 
   return (
-    <Screen>
-      <View style={[styles.wrap, { paddingTop: insets.top + spacing.xl }]}>
+    <Screen keyboard>
+      <ScrollView
+        contentContainerStyle={[styles.wrap, { paddingTop: insets.top + spacing.xl, paddingBottom: insets.bottom + spacing.xl }]}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
         <Text variant="title" tone="default" style={styles.title}>
           {step === 'phone' ? 'Add your phone' : 'Enter the code'}
         </Text>
@@ -101,13 +105,13 @@ export default function AddPhone() {
             </Text>
           </>
         )}
-      </View>
+      </ScrollView>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  wrap: { flex: 1, paddingHorizontal: spacing.xl },
+  wrap: { flexGrow: 1, paddingHorizontal: spacing.xl },
   title: { marginBottom: spacing.sm },
   subtitle: { marginBottom: spacing.xl },
   change: { marginTop: spacing.lg },

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, Pressable, StyleSheet, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -37,7 +37,7 @@ export default function ChangeEmail() {
   };
 
   return (
-    <Screen>
+    <Screen keyboard>
       <View style={[styles.header, { paddingTop: insets.top + 6 }]}>
         <Pressable onPress={() => router.back()} hitSlop={12} style={{ width: 30 }}>
           <Ionicons name="chevron-back" size={26} color={palette.burgundy} />
@@ -46,30 +46,28 @@ export default function ChangeEmail() {
         <View style={{ width: 30 }} />
       </View>
 
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <View style={styles.body}>
-          <Text variant="callout" tone="muted" style={{ marginBottom: spacing.lg }}>
-            Your email is private and never shown on your profile. We'll send a verification link to your new address.
-          </Text>
-          <TextField
-            label="New email"
-            value={email}
-            onChangeText={setEmail}
-            placeholder="you@example.com"
-            autoCapitalize="none"
-            keyboardType="email-address"
-          />
-          <TextField
-            label="Current password"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            placeholder="Confirm with your password"
-            error={error}
-          />
-          <Button label="Update email" onPress={submit} loading={saving} style={{ marginTop: spacing.sm }} />
-        </View>
-      </KeyboardAvoidingView>
+      <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        <Text variant="callout" tone="muted" style={{ marginBottom: spacing.lg }}>
+          Your email is private and never shown on your profile. We'll send a verification link to your new address.
+        </Text>
+        <TextField
+          label="New email"
+          value={email}
+          onChangeText={setEmail}
+          placeholder="you@example.com"
+          autoCapitalize="none"
+          keyboardType="email-address"
+        />
+        <TextField
+          label="Current password"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+          placeholder="Confirm with your password"
+          error={error}
+        />
+        <Button label="Update email" onPress={submit} loading={saving} style={{ marginTop: spacing.sm }} />
+      </ScrollView>
     </Screen>
   );
 }

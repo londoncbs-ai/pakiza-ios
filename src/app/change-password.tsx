@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, Pressable, StyleSheet, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -38,7 +38,7 @@ export default function ChangePassword() {
   };
 
   return (
-    <Screen>
+    <Screen keyboard>
       <View style={[styles.header, { paddingTop: insets.top + 6 }]}>
         <Pressable onPress={() => router.back()} hitSlop={12} style={{ width: 30 }}>
           <Ionicons name="chevron-back" size={26} color={palette.burgundy} />
@@ -47,14 +47,12 @@ export default function ChangePassword() {
         <View style={{ width: 30 }} />
       </View>
 
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <View style={styles.body}>
-          <TextField label="Current password" value={current} onChangeText={setCurrent} secureTextEntry placeholder="Current password" />
-          <TextField label="New password" value={next} onChangeText={setNext} secureTextEntry placeholder="At least 8 chars, 1 capital, 1 number" />
-          <TextField label="Confirm new password" value={confirm} onChangeText={setConfirm} secureTextEntry placeholder="Re-enter new password" error={error} />
-          <Button label="Update password" onPress={submit} loading={saving} style={{ marginTop: spacing.sm }} />
-        </View>
-      </KeyboardAvoidingView>
+      <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        <TextField label="Current password" value={current} onChangeText={setCurrent} secureTextEntry placeholder="Current password" />
+        <TextField label="New password" value={next} onChangeText={setNext} secureTextEntry placeholder="At least 8 chars, 1 capital, 1 number" />
+        <TextField label="Confirm new password" value={confirm} onChangeText={setConfirm} secureTextEntry placeholder="Re-enter new password" error={error} />
+        <Button label="Update password" onPress={submit} loading={saving} style={{ marginTop: spacing.sm }} />
+      </ScrollView>
     </Screen>
   );
 }

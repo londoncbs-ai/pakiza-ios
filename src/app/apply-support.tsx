@@ -219,7 +219,7 @@ export default function ApplySupport() {
       ? ['completed', 'declined', 'withdrawn'].includes(application.status)
       : false;
     return (
-      <Screen>
+      <Screen keyboard>
         <Header title="Your application" onBack={() => router.back()} />
         {loading ? (
           <View style={styles.center}>
@@ -231,6 +231,7 @@ export default function ApplySupport() {
           <ScrollView
             contentContainerStyle={{ padding: spacing.lg, paddingBottom: insets.bottom + spacing.xxxl }}
             showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
           >
             <View style={[styles.statusCard, { backgroundColor: c.accentFaint }]}>
               <Text variant="label" tone="accent">{APPLICATION_STATUS_LABEL[application.status]}</Text>
@@ -307,7 +308,7 @@ export default function ApplySupport() {
 
   // ── Form mode: submit a new application ────────────────────────────────────
   return (
-    <Screen>
+    <Screen keyboard>
       <Header title="Apply for support" onBack={() => router.back()} />
       <ScrollView
         contentContainerStyle={{ padding: spacing.lg, paddingBottom: insets.bottom + 120 }}

@@ -59,7 +59,7 @@ export default function Donate() {
   };
 
   return (
-    <Screen>
+    <Screen keyboard>
       <View style={[styles.header, { paddingTop: insets.top + spacing.sm, borderBottomColor: c.border }]}>
         <Pressable onPress={() => router.back()} hitSlop={12} style={styles.headerBtn}>
           <Ionicons name="chevron-back" size={26} color={c.text} />

@@ -54,15 +54,26 @@ export default function ProfileTab() {
   useFocusEffect(useCallback(() => { load(); }, [load]));
 
   const addPhoto = async () => {
-    if (photos.length >= MAX_PHOTOS) {
+    const remaining = MAX_PHOTOS - photos.length;
+    if (remaining <= 0) {
       Alert.alert('Photo limit', `You can add up to ${MAX_PHOTOS} photos.`);
       return;
     }
-    const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.8 });
+    const res = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      quality: 0.8,
+      allowsMultipleSelection: true,
+      selectionLimit: remaining,
+      orderedSelection: true,
+    });
     if (res.canceled) return;
-    const uri = res.assets[0].uri;
-    setPhotos((p) => [...p, uri]);
-    profilesApi.uploadPhoto(uri).catch(() => {});
+    const fresh = res.assets
+      .map((a) => a.uri)
+      .filter((u, i, arr) => arr.indexOf(u) === i && !photos.includes(u))
+      .slice(0, remaining);
+    if (fresh.length === 0) return;
+    setPhotos((p) => [...p, ...fresh]);
+    for (const uri of fresh) profilesApi.uploadPhoto(uri).catch(() => {});
   };
 
   const removePhoto = (uri: string) => setPhotos((p) => p.filter((u) => u !== uri));
