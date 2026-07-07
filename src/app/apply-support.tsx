@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -10,6 +10,7 @@ import type { Application, ApplicationTimelineEntry, PayoutDetails } from '@/api
 import { Button } from '@/components/Button';
 import { DetailRow } from '@/components/DetailRow';
 import { ErrorState } from '@/components/ErrorState';
+import { FormScroll } from '@/components/FormScroll';
 import { Screen } from '@/components/Screen';
 import { Surface } from '@/components/Surface';
 import { Text } from '@/components/Text';
@@ -219,7 +220,7 @@ export default function ApplySupport() {
       ? ['completed', 'declined', 'withdrawn'].includes(application.status)
       : false;
     return (
-      <Screen keyboard>
+      <Screen>
         <Header title="Your application" onBack={() => router.back()} />
         {loading ? (
           <View style={styles.center}>
@@ -228,10 +229,8 @@ export default function ApplySupport() {
         ) : loadError || !application ? (
           <ErrorState message={loadError ?? 'Application not found'} onRetry={() => { setLoading(true); load(id); }} />
         ) : (
-          <ScrollView
+          <FormScroll
             contentContainerStyle={{ padding: spacing.lg, paddingBottom: insets.bottom + spacing.xxxl }}
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
           >
             <View style={[styles.statusCard, { backgroundColor: c.accentFaint }]}>
               <Text variant="label" tone="accent">{APPLICATION_STATUS_LABEL[application.status]}</Text>
@@ -300,7 +299,7 @@ export default function ApplySupport() {
                 </Surface>
               </>
             ) : null}
-          </ScrollView>
+          </FormScroll>
         )}
       </Screen>
     );
@@ -308,13 +307,9 @@ export default function ApplySupport() {
 
   // ── Form mode: submit a new application ────────────────────────────────────
   return (
-    <Screen keyboard>
+    <Screen>
       <Header title="Apply for support" onBack={() => router.back()} />
-      <ScrollView
-        contentContainerStyle={{ padding: spacing.lg, paddingBottom: insets.bottom + 120 }}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-      >
+      <FormScroll contentContainerStyle={{ padding: spacing.lg, paddingBottom: insets.bottom + 120 }}>
         <Text variant="display" tone="default" style={styles.lead}>Ask for help</Text>
         <Text variant="callout" tone="muted" style={styles.sub}>
           If the cost of marriage is a barrier, the Marriage Support Fund may be able to help. Tell us
@@ -368,7 +363,7 @@ export default function ApplySupport() {
             , and confirm the information I have given is true.
           </Text>
         </Pressable>
-      </ScrollView>
+      </FormScroll>
 
       <View style={[styles.ctaBar, { backgroundColor: c.surface, borderTopColor: c.border, paddingBottom: insets.bottom + spacing.md }]}>
         <Button label="Submit application" onPress={submit} loading={submitting} disabled={!canSubmit} />

@@ -1,12 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
-import {
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  useWindowDimensions,
-  View,
-} from 'react-native';
+import { ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -16,6 +9,7 @@ import { meetingsApi } from '@/api/meetings';
 import type { CreateMeetingInput, MeetingMode } from '@/api/types';
 import { Button } from '@/components/Button';
 import { DateTimeField } from '@/components/DateTimeField';
+import { FormScroll } from '@/components/FormScroll';
 import { OptionGroup } from '@/components/OptionGroup';
 import { Screen } from '@/components/Screen';
 import { Surface } from '@/components/Surface';
@@ -207,212 +201,206 @@ export default function BookMeet() {
 
   return (
     <Screen>
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <View style={[styles.header, { paddingTop: insets.top + spacing.md }]}>
-          <Text variant="label" tone="accent">
-            Step {step + 1} of {STEPS.length}
+      <View style={[styles.header, { paddingTop: insets.top + spacing.md }]}>
+        <Text variant="label" tone="accent">
+          Step {step + 1} of {STEPS.length}
+        </Text>
+        <Text variant="title" tone="default" style={styles.title}>
+          {step === 0 ? 'Book a meet' : STEPS[step]}
+        </Text>
+        {name && step > 0 ? (
+          <Text variant="callout" tone="muted" style={styles.hint}>
+            With {name}
           </Text>
-          <Text variant="title" tone="default" style={styles.title}>
-            {step === 0 ? 'Book a meet' : STEPS[step]}
-          </Text>
-          {name && step > 0 ? (
-            <Text variant="callout" tone="muted" style={styles.hint}>
-              With {name}
+        ) : null}
+        <View style={[styles.track, { backgroundColor: c.surfaceAlt }]}>
+          <View style={[styles.fill, { width: `${progress * 100}%`, backgroundColor: c.accent }]} />
+        </View>
+      </View>
+
+      {step === 0 ? (
+        <View style={styles.carouselWrap}>
+          <ScrollView
+            ref={slidesRef}
+            horizontal
+            pagingEnabled
+            scrollEnabled={false}
+            showsHorizontalScrollIndicator={false}
+            style={styles.carousel}
+          >
+            {SLIDES.map((s) => (
+              <View key={s.title} style={[styles.slide, { width: winW, height: slideHeight }]}>
+                <View style={[styles.slideIcon, { backgroundColor: c.accentFaint }]}>
+                  <Ionicons name={s.icon} size={56} color={c.accent} />
+                </View>
+                <Text variant="heading" tone="default" center style={styles.slideTitle}>
+                  {s.title}
+                </Text>
+                <Text variant="body" tone="muted" center style={styles.slideLine}>
+                  {s.line}
+                </Text>
+              </View>
+            ))}
+          </ScrollView>
+          <View style={styles.dots}>
+            {SLIDES.map((s, i) => (
+              <View
+                key={s.title}
+                style={[
+                  styles.dot,
+                  { backgroundColor: i === slideIdx ? c.accent : c.borderStrong },
+                ]}
+              />
+            ))}
+          </View>
+        </View>
+      ) : (
+        <FormScroll contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 120 }]}>
+          {step === 1 ? (
+            <>
+              <OptionGroup
+                label="How would you like to meet?"
+                options={MODES}
+                value={mode}
+                onChange={setMode}
+                onDark={false}
+                clearable={false}
+              />
+              <DateTimeField
+                label="Preferred time (optional)"
+                value={preferredAt}
+                onChange={setPreferredAt}
+                onDark={false}
+              />
+              <TextField
+                label="Preferred location or city (optional)"
+                value={location}
+                onChangeText={setLocation}
+                placeholder={mode === 'online' ? 'e.g. a video call' : 'e.g. a cafe in London'}
+              />
+              <TextField
+                label="Note for the team (optional)"
+                value={note}
+                onChangeText={setNote}
+                placeholder="Anything we should know to arrange this well?"
+                multiline
+                style={styles.multiline}
+              />
+            </>
+          ) : null}
+
+          {step === 2 ? (
+            <>
+              <Surface elevated style={styles.waliNote}>
+                <View style={styles.waliNoteHead}>
+                  <Ionicons name="shield-checkmark" size={18} color={c.accent} />
+                  <Text variant="subhead" tone="default">A wali is required</Text>
+                </View>
+                <Text variant="footnote" tone="muted" style={styles.waliNoteBody}>
+                  A wali (guardian) is required. Our team personally verifies these details and may contact your wali
+                  before arranging the meeting.
+                </Text>
+              </Surface>
+
+              <TextField
+                label="Wali full name"
+                value={waliName}
+                onChangeText={setWaliName}
+                placeholder="e.g. Yusuf Khan"
+              />
+              <TextField
+                label="Relationship to you"
+                value={waliRelationship}
+                onChangeText={setWaliRelationship}
+                placeholder="e.g. Father, Brother, Uncle"
+              />
+              <TextField
+                label="Wali phone"
+                value={waliPhone}
+                onChangeText={setWaliPhone}
+                placeholder="e.g. +44 7700 900000"
+                keyboardType="phone-pad"
+              />
+              <TextField
+                label="Wali email (optional)"
+                value={waliEmail}
+                onChangeText={setWaliEmail}
+                placeholder="e.g. wali@email.com"
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+            </>
+          ) : null}
+
+          {isReview ? (
+            <Surface elevated style={styles.reviewCard}>
+              <ReviewRow label="With" value={name ?? 'Your match'} />
+              <Divider />
+              <ReviewRow label="Mode" value={mode ? MEETING_MODE_LABEL[mode] : '-'} />
+              <Divider />
+              <ReviewRow label="Preferred time" value={formatMeetingDateTime(preferredAt?.toISOString()) ?? 'No preference'} />
+              <Divider />
+              <ReviewRow label="Location" value={location.trim() || 'To be arranged'} />
+              {note.trim() ? (
+                <>
+                  <Divider />
+                  <ReviewRow label="Note" value={note.trim()} />
+                </>
+              ) : null}
+              <Divider />
+              <ReviewRow label="Wali" value={waliName.trim()} />
+              <Divider />
+              <ReviewRow label="Relationship" value={waliRelationship.trim()} />
+              <Divider />
+              <ReviewRow label="Wali phone" value={waliPhone.trim()} />
+              {waliEmail.trim() ? (
+                <>
+                  <Divider />
+                  <ReviewRow label="Wali email" value={waliEmail.trim()} />
+                </>
+              ) : null}
+            </Surface>
+          ) : null}
+
+          {error ? (
+            <Text variant="footnote" tone="danger" center style={styles.error}>
+              {error}
             </Text>
           ) : null}
-          <View style={[styles.track, { backgroundColor: c.surfaceAlt }]}>
-            <View style={[styles.fill, { width: `${progress * 100}%`, backgroundColor: c.accent }]} />
-          </View>
-        </View>
+        </FormScroll>
+      )}
 
-        {step === 0 ? (
-          <View style={styles.carouselWrap}>
-            <ScrollView
-              ref={slidesRef}
-              horizontal
-              pagingEnabled
-              scrollEnabled={false}
-              showsHorizontalScrollIndicator={false}
-              style={styles.carousel}
-            >
-              {SLIDES.map((s) => (
-                <View key={s.title} style={[styles.slide, { width: winW, height: slideHeight }]}>
-                  <View style={[styles.slideIcon, { backgroundColor: c.accentFaint }]}>
-                    <Ionicons name={s.icon} size={56} color={c.accent} />
-                  </View>
-                  <Text variant="heading" tone="default" center style={styles.slideTitle}>
-                    {s.title}
-                  </Text>
-                  <Text variant="body" tone="muted" center style={styles.slideLine}>
-                    {s.line}
-                  </Text>
-                </View>
-              ))}
-            </ScrollView>
-            <View style={styles.dots}>
-              {SLIDES.map((s, i) => (
-                <View
-                  key={s.title}
-                  style={[
-                    styles.dot,
-                    { backgroundColor: i === slideIdx ? c.accent : c.borderStrong },
-                  ]}
-                />
-              ))}
-            </View>
-          </View>
-        ) : (
-          <ScrollView
-            contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 120 }]}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
-          >
-            {step === 1 ? (
-              <>
-                <OptionGroup
-                  label="How would you like to meet?"
-                  options={MODES}
-                  value={mode}
-                  onChange={setMode}
-                  onDark={false}
-                  clearable={false}
-                />
-                <DateTimeField
-                  label="Preferred time (optional)"
-                  value={preferredAt}
-                  onChange={setPreferredAt}
-                  onDark={false}
-                />
-                <TextField
-                  label="Preferred location or city (optional)"
-                  value={location}
-                  onChangeText={setLocation}
-                  placeholder={mode === 'online' ? 'e.g. a video call' : 'e.g. a cafe in London'}
-                />
-                <TextField
-                  label="Note for the team (optional)"
-                  value={note}
-                  onChangeText={setNote}
-                  placeholder="Anything we should know to arrange this well?"
-                  multiline
-                  style={styles.multiline}
-                />
-              </>
-            ) : null}
-
-            {step === 2 ? (
-              <>
-                <Surface elevated style={styles.waliNote}>
-                  <View style={styles.waliNoteHead}>
-                    <Ionicons name="shield-checkmark" size={18} color={c.accent} />
-                    <Text variant="subhead" tone="default">A wali is required</Text>
-                  </View>
-                  <Text variant="footnote" tone="muted" style={styles.waliNoteBody}>
-                    A wali (guardian) is required. Our team personally verifies these details and may contact your wali
-                    before arranging the meeting.
-                  </Text>
-                </Surface>
-
-                <TextField
-                  label="Wali full name"
-                  value={waliName}
-                  onChangeText={setWaliName}
-                  placeholder="e.g. Yusuf Khan"
-                />
-                <TextField
-                  label="Relationship to you"
-                  value={waliRelationship}
-                  onChangeText={setWaliRelationship}
-                  placeholder="e.g. Father, Brother, Uncle"
-                />
-                <TextField
-                  label="Wali phone"
-                  value={waliPhone}
-                  onChangeText={setWaliPhone}
-                  placeholder="e.g. +44 7700 900000"
-                  keyboardType="phone-pad"
-                />
-                <TextField
-                  label="Wali email (optional)"
-                  value={waliEmail}
-                  onChangeText={setWaliEmail}
-                  placeholder="e.g. wali@email.com"
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                />
-              </>
-            ) : null}
-
-            {isReview ? (
-              <Surface elevated style={styles.reviewCard}>
-                <ReviewRow label="With" value={name ?? 'Your match'} />
-                <Divider />
-                <ReviewRow label="Mode" value={mode ? MEETING_MODE_LABEL[mode] : '-'} />
-                <Divider />
-                <ReviewRow label="Preferred time" value={formatMeetingDateTime(preferredAt?.toISOString()) ?? 'No preference'} />
-                <Divider />
-                <ReviewRow label="Location" value={location.trim() || 'To be arranged'} />
-                {note.trim() ? (
-                  <>
-                    <Divider />
-                    <ReviewRow label="Note" value={note.trim()} />
-                  </>
-                ) : null}
-                <Divider />
-                <ReviewRow label="Wali" value={waliName.trim()} />
-                <Divider />
-                <ReviewRow label="Relationship" value={waliRelationship.trim()} />
-                <Divider />
-                <ReviewRow label="Wali phone" value={waliPhone.trim()} />
-                {waliEmail.trim() ? (
-                  <>
-                    <Divider />
-                    <ReviewRow label="Wali email" value={waliEmail.trim()} />
-                  </>
-                ) : null}
-              </Surface>
-            ) : null}
-
-            {error ? (
-              <Text variant="footnote" tone="danger" center style={styles.error}>
-                {error}
-              </Text>
-            ) : null}
-          </ScrollView>
-        )}
-
-        <View
-          style={[
-            styles.footer,
-            {
-              backgroundColor: c.bg,
-              borderTopColor: c.border,
-              paddingBottom: insets.bottom + spacing.md,
-            },
-          ]}
-        >
-          <Button label="Back" variant="ghost" onPress={back} style={{ flex: 1 }} />
-          <Button
-            label={step === 0 ? (lastSlide ? 'Get started' : 'Next') : isReview ? 'Send request' : 'Continue'}
-            onPress={() => {
-              if (step === 0) {
-                if (lastSlide) {
-                  haptics.selection();
-                  setStep(1);
-                } else {
-                  goToSlide(slideIdx + 1);
-                }
-              } else if (isReview) {
-                submit();
+      <View
+        style={[
+          styles.footer,
+          {
+            backgroundColor: c.bg,
+            borderTopColor: c.border,
+            paddingBottom: insets.bottom + spacing.md,
+          },
+        ]}
+      >
+        <Button label="Back" variant="ghost" onPress={back} style={{ flex: 1 }} />
+        <Button
+          label={step === 0 ? (lastSlide ? 'Get started' : 'Next') : isReview ? 'Send request' : 'Continue'}
+          onPress={() => {
+            if (step === 0) {
+              if (lastSlide) {
+                haptics.selection();
+                setStep(1);
               } else {
-                next();
+                goToSlide(slideIdx + 1);
               }
-            }}
-            loading={loading}
-            style={{ flex: 1.4 }}
-          />
-        </View>
-      </KeyboardAvoidingView>
+            } else if (isReview) {
+              submit();
+            } else {
+              next();
+            }
+          }}
+          loading={loading}
+          style={{ flex: 1.4 }}
+        />
+      </View>
     </Screen>
   );
 }

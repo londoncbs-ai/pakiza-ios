@@ -1,13 +1,5 @@
 import React, { useState } from 'react';
-import {
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  View,
-} from 'react-native';
+import { Modal, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { errorMessage } from '@/api/client';
@@ -23,6 +15,7 @@ import type {
   WantsChildren,
 } from '@/api/types';
 import { Button } from './Button';
+import { FormScroll } from './FormScroll';
 import { OptionGroup } from './OptionGroup';
 import { Surface } from './Surface';
 import { Text } from './Text';
@@ -155,7 +148,7 @@ export function EditProfileSheet({
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <KeyboardAvoidingView style={[styles.root, { backgroundColor: c.bg }]} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <View style={[styles.root, { backgroundColor: c.bg }]}>
         <View style={[styles.header, { borderBottomColor: c.border }]}>
           <Pressable onPress={onClose} hitSlop={10} style={styles.headerSide}>
             <Text variant="subhead" tone="muted">Cancel</Text>
@@ -164,10 +157,8 @@ export function EditProfileSheet({
           <View style={styles.headerSide} />
         </View>
 
-        <ScrollView
+        <FormScroll
           contentContainerStyle={{ padding: spacing.lg, paddingBottom: insets.bottom + 120, gap: spacing.lg }}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
         >
           <Section title="About you">
             <TextField label="Bio" value={bio} onChangeText={setBio} multiline placeholder="What are you looking for?" style={{ height: 100, paddingTop: 14, textAlignVertical: 'top' }} />
@@ -212,8 +203,8 @@ export function EditProfileSheet({
 
           {error ? <Text variant="footnote" tone="danger" center>{error}</Text> : null}
           <Button label="Save changes" onPress={save} loading={saving} style={{ marginTop: spacing.xs }} />
-        </ScrollView>
-      </KeyboardAvoidingView>
+        </FormScroll>
+      </View>
     </Modal>
   );
 }

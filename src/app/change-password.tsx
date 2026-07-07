@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -7,6 +7,7 @@ import { useRouter } from 'expo-router';
 import { authApi } from '@/api/auth';
 import { errorMessage } from '@/api/client';
 import { Button } from '@/components/Button';
+import { FormScroll } from '@/components/FormScroll';
 import { Screen } from '@/components/Screen';
 import { Text } from '@/components/Text';
 import { TextField } from '@/components/TextField';
@@ -38,7 +39,7 @@ export default function ChangePassword() {
   };
 
   return (
-    <Screen keyboard>
+    <Screen>
       <View style={[styles.header, { paddingTop: insets.top + 6 }]}>
         <Pressable onPress={() => router.back()} hitSlop={12} style={{ width: 30 }}>
           <Ionicons name="chevron-back" size={26} color={palette.burgundy} />
@@ -47,12 +48,12 @@ export default function ChangePassword() {
         <View style={{ width: 30 }} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+      <FormScroll contentContainerStyle={styles.body}>
         <TextField label="Current password" value={current} onChangeText={setCurrent} secureTextEntry placeholder="Current password" />
         <TextField label="New password" value={next} onChangeText={setNext} secureTextEntry placeholder="At least 8 chars, 1 capital, 1 number" />
         <TextField label="Confirm new password" value={confirm} onChangeText={setConfirm} secureTextEntry placeholder="Re-enter new password" error={error} />
         <Button label="Update password" onPress={submit} loading={saving} style={{ marginTop: spacing.sm }} />
-      </ScrollView>
+      </FormScroll>
     </Screen>
   );
 }

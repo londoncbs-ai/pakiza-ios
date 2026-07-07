@@ -1,11 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  KeyboardAvoidingView,
   Modal,
-  Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   View,
 } from 'react-native';
@@ -16,6 +13,7 @@ import { errorMessage } from '@/api/client';
 import { profilesApi } from '@/api/profiles';
 import type { EducationLevel, PartnerPreferences } from '@/api/types';
 import { Button } from './Button';
+import { FormScroll } from './FormScroll';
 import { MultiOptionGroup } from './MultiOptionGroup';
 import { OptionGroup } from './OptionGroup';
 import { Stepper } from './Stepper';
@@ -89,10 +87,7 @@ export function PreferencesSheet({ visible, onClose }: { visible: boolean; onClo
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <KeyboardAvoidingView
-        style={[styles.root, { backgroundColor: c.bg }]}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
+      <View style={[styles.root, { backgroundColor: c.bg }]}>
         <View style={[styles.header, { borderBottomColor: c.border }]}>
           <Pressable onPress={onClose} hitSlop={10} style={styles.headerSide}>
             <Text variant="callout" tone="muted">Close</Text>
@@ -106,10 +101,8 @@ export function PreferencesSheet({ visible, onClose }: { visible: boolean; onClo
             <ActivityIndicator color={c.accent} size="large" />
           </View>
         ) : (
-          <ScrollView
+          <FormScroll
             contentContainerStyle={{ padding: spacing.lg, paddingBottom: insets.bottom + 100 }}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
           >
             <View style={[styles.hintCard, { backgroundColor: c.accentFaint }]}>
               <Ionicons name="sparkles-outline" size={18} color={c.accent} style={styles.hintIcon} />
@@ -170,9 +163,9 @@ export function PreferencesSheet({ visible, onClose }: { visible: boolean; onClo
 
             {error ? <Text variant="footnote" tone="danger" center style={styles.error}>{error}</Text> : null}
             <Button label="Save preferences" onPress={save} loading={saving} style={{ marginTop: spacing.sm }} />
-          </ScrollView>
+          </FormScroll>
         )}
-      </KeyboardAvoidingView>
+      </View>
     </Modal>
   );
 }

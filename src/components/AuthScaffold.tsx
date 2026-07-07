@@ -1,17 +1,11 @@
 import React from 'react';
-import {
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  View,
-} from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
 import { BrandBackground } from './BrandBackground';
+import { FormScroll } from './FormScroll';
 import { Text } from './Text';
 import { Wordmark } from './Wordmark';
 import { palette, spacing } from '@/theme';
@@ -30,47 +24,40 @@ export function AuthScaffold({ title, subtitle, children, showBack = true, showW
 
   return (
     <BrandBackground>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      <FormScroll
+        contentContainerStyle={[
+          styles.content,
+          { paddingTop: insets.top + spacing.sm, paddingBottom: insets.bottom + spacing.xl },
+        ]}
       >
-        <ScrollView
-          contentContainerStyle={[
-            styles.content,
-            { paddingTop: insets.top + spacing.sm, paddingBottom: insets.bottom + spacing.xl },
-          ]}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
-          {showBack && router.canGoBack() ? (
-            <Pressable onPress={() => router.back()} hitSlop={12} style={styles.back}>
-              <Ionicons name="chevron-back" size={20} color={palette.cream} />
-              <Text variant="callout" tone="onDark" style={styles.backText}>
-                Back
-              </Text>
-            </Pressable>
-          ) : (
-            <View style={{ height: 28 }} />
-          )}
-
-          {showWordmark ? (
-            <View style={styles.brand}>
-              <Wordmark size={40} />
-            </View>
-          ) : null}
-
-          <Text variant="display" tone="onDark" style={styles.title}>
-            {title}
-          </Text>
-          {subtitle ? (
-            <Text variant="callout" tone="onDarkMuted" style={styles.subtitle}>
-              {subtitle}
+        {showBack && router.canGoBack() ? (
+          <Pressable onPress={() => router.back()} hitSlop={12} style={styles.back}>
+            <Ionicons name="chevron-back" size={20} color={palette.cream} />
+            <Text variant="callout" tone="onDark" style={styles.backText}>
+              Back
             </Text>
-          ) : null}
+          </Pressable>
+        ) : (
+          <View style={{ height: 28 }} />
+        )}
 
-          <View style={styles.form}>{children}</View>
-        </ScrollView>
-      </KeyboardAvoidingView>
+        {showWordmark ? (
+          <View style={styles.brand}>
+            <Wordmark size={40} />
+          </View>
+        ) : null}
+
+        <Text variant="display" tone="onDark" style={styles.title}>
+          {title}
+        </Text>
+        {subtitle ? (
+          <Text variant="callout" tone="onDarkMuted" style={styles.subtitle}>
+            {subtitle}
+          </Text>
+        ) : null}
+
+        <View style={styles.form}>{children}</View>
+      </FormScroll>
     </BrandBackground>
   );
 }

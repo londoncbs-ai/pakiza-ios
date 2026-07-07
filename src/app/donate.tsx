@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -7,6 +7,7 @@ import { useRouter } from 'expo-router';
 import type { DonationCheckoutInput } from '@/api/types';
 import { Button } from '@/components/Button';
 import { DonationSheet } from '@/components/DonationSheet';
+import { FormScroll } from '@/components/FormScroll';
 import { PressableScale } from '@/components/PressableScale';
 import { Screen } from '@/components/Screen';
 import { Text } from '@/components/Text';
@@ -59,7 +60,7 @@ export default function Donate() {
   };
 
   return (
-    <Screen keyboard>
+    <Screen>
       <View style={[styles.header, { paddingTop: insets.top + spacing.sm, borderBottomColor: c.border }]}>
         <Pressable onPress={() => router.back()} hitSlop={12} style={styles.headerBtn}>
           <Ionicons name="chevron-back" size={26} color={c.text} />
@@ -68,11 +69,7 @@ export default function Donate() {
         <View style={styles.headerBtn} />
       </View>
 
-      <ScrollView
-        contentContainerStyle={{ padding: spacing.lg, paddingBottom: insets.bottom + 120 }}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-      >
+      <FormScroll contentContainerStyle={{ padding: spacing.lg, paddingBottom: insets.bottom + 120 }}>
         <Text variant="display" tone="default" style={styles.lead}>Give to the fund</Text>
         <Text variant="callout" tone="muted" style={styles.sub}>
           Your gift helps a couple in need start their married life with dignity. Choose an amount.
@@ -139,7 +136,7 @@ export default function Donate() {
             to couples in genuine need.
           </Text>
         </View>
-      </ScrollView>
+      </FormScroll>
 
       <View style={[styles.ctaBar, { backgroundColor: c.surface, borderTopColor: c.border, paddingBottom: insets.bottom + spacing.md }]}>
         <Button

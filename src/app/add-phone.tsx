@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { ScrollView, StyleSheet } from 'react-native';
+import { StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 
 import { authApi } from '@/api/auth';
 import { errorMessage } from '@/api/client';
 import { Button } from '@/components/Button';
+import { FormScroll } from '@/components/FormScroll';
 import { Screen } from '@/components/Screen';
 import { Text } from '@/components/Text';
 import { TextField } from '@/components/TextField';
@@ -54,11 +55,9 @@ export default function AddPhone() {
   };
 
   return (
-    <Screen keyboard>
-      <ScrollView
+    <Screen>
+      <FormScroll
         contentContainerStyle={[styles.wrap, { paddingTop: insets.top + spacing.xl, paddingBottom: insets.bottom + spacing.xl }]}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
       >
         <Text variant="title" tone="default" style={styles.title}>
           {step === 'phone' ? 'Add your phone' : 'Enter the code'}
@@ -105,7 +104,7 @@ export default function AddPhone() {
             </Text>
           </>
         )}
-      </ScrollView>
+      </FormScroll>
     </Screen>
   );
 }

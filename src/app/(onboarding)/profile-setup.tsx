@@ -1,11 +1,5 @@
 import { useMemo, useState } from 'react';
-import {
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  View,
-} from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
@@ -26,6 +20,7 @@ import { AcceptCheckbox } from '@/components/AcceptCheckbox';
 import { Button } from '@/components/Button';
 import { ChipMultiSelect } from '@/components/ChipMultiSelect';
 import { DatePickerField } from '@/components/DatePickerField';
+import { FormScroll } from '@/components/FormScroll';
 import { OptionGroup } from '@/components/OptionGroup';
 import { PressableScale } from '@/components/PressableScale';
 import { Screen } from '@/components/Screen';
@@ -222,145 +217,139 @@ export default function ProfileSetup() {
 
   return (
     <Screen>
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <View style={[styles.header, { paddingTop: insets.top + spacing.md }]}>
-          <Text variant="label" tone="accent">
-            Step {step + 1} of {STEPS.length}
-          </Text>
-          <Text variant="title" tone="default" style={styles.title}>
-            {STEPS[step]}
-          </Text>
-          <Text variant="callout" tone="muted" style={styles.hint}>
-            {STEP_HINTS[step]}
-          </Text>
-          <View style={[styles.track, { backgroundColor: c.surfaceAlt }]}>
-            <View style={[styles.fill, { width: `${progress * 100}%`, backgroundColor: c.accent }]} />
-          </View>
+      <View style={[styles.header, { paddingTop: insets.top + spacing.md }]}>
+        <Text variant="label" tone="accent">
+          Step {step + 1} of {STEPS.length}
+        </Text>
+        <Text variant="title" tone="default" style={styles.title}>
+          {STEPS[step]}
+        </Text>
+        <Text variant="callout" tone="muted" style={styles.hint}>
+          {STEP_HINTS[step]}
+        </Text>
+        <View style={[styles.track, { backgroundColor: c.surfaceAlt }]}>
+          <View style={[styles.fill, { width: `${progress * 100}%`, backgroundColor: c.accent }]} />
         </View>
+      </View>
 
-        <ScrollView
-          contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 120 }]}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
-          {step === 0 && (
-            <>
-              <TextField label="Your name" value={name} onChangeText={setName} placeholder="e.g. Aisha" />
-              <OptionGroup label="I am a…" options={GENDERS} value={gender} onChange={setGender} onDark={false} clearable={false} />
-              <DatePickerField label="Date of birth" value={dob} onChange={setDob} onDark={false} />
-              <TextField label="City (optional)" value={city} onChangeText={setCity} placeholder="e.g. London" />
-              <ChipMultiSelect label="Ethnicity (optional)" options={ETHNICITIES} value={ethnicity || null} onChange={(v) => setEthnicity(v ?? '')} placeholder="Add your ethnicity" />
-            </>
-          )}
+      <FormScroll contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 120 }]}>
+        {step === 0 && (
+          <>
+            <TextField label="Your name" value={name} onChangeText={setName} placeholder="e.g. Aisha" />
+            <OptionGroup label="I am a…" options={GENDERS} value={gender} onChange={setGender} onDark={false} clearable={false} />
+            <DatePickerField label="Date of birth" value={dob} onChange={setDob} onDark={false} />
+            <TextField label="City (optional)" value={city} onChangeText={setCity} placeholder="e.g. London" />
+            <ChipMultiSelect label="Ethnicity (optional)" options={ETHNICITIES} value={ethnicity || null} onChange={(v) => setEthnicity(v ?? '')} placeholder="Add your ethnicity" />
+          </>
+        )}
 
-          {step === 1 && (
-            <>
-              <OptionGroup label="Faith" options={RELIGIONS} value={religion} onChange={setReligion} onDark={false} />
-              <TextField
-                label="Denomination / sect (optional)"
-                value={denomination}
-                onChangeText={setDenomination}
-                placeholder="e.g. Sunni, Catholic, Reform"
+        {step === 1 && (
+          <>
+            <OptionGroup label="Faith" options={RELIGIONS} value={religion} onChange={setReligion} onDark={false} />
+            <TextField
+              label="Denomination / sect (optional)"
+              value={denomination}
+              onChangeText={setDenomination}
+              placeholder="e.g. Sunni, Catholic, Reform"
+            />
+            <OptionGroup label="How religious are you?" options={RELIGIOSITY} value={religiosity} onChange={setReligiosity} onDark={false} />
+            <ChipMultiSelect
+              label="Caste / biradari (optional)"
+              options={CASTES}
+              value={caste || null}
+              onChange={(v) => setCaste(v ?? '')}
+              placeholder="e.g. Syed, Jat, Gotra…"
+            />
+            {caste ? (
+              <ToggleRow
+                label="Show caste on my profile"
+                hint="Off by default. When off, your caste stays private and is used only for matching."
+                value={casteVisible}
+                onValueChange={setCasteVisible}
+                onDark={false}
               />
-              <OptionGroup label="How religious are you?" options={RELIGIOSITY} value={religiosity} onChange={setReligiosity} onDark={false} />
-              <ChipMultiSelect
-                label="Caste / biradari (optional)"
-                options={CASTES}
-                value={caste || null}
-                onChange={(v) => setCaste(v ?? '')}
-                placeholder="e.g. Syed, Jat, Gotra…"
-              />
-              {caste ? (
-                <ToggleRow
-                  label="Show caste on my profile"
-                  hint="Off by default. When off, your caste stays private and is used only for matching."
-                  value={casteVisible}
-                  onValueChange={setCasteVisible}
-                  onDark={false}
-                />
-              ) : null}
-            </>
-          )}
+            ) : null}
+          </>
+        )}
 
-          {step === 2 && (
-            <>
-              <OptionGroup label="Education" options={EDUCATION} value={education} onChange={setEducation} onDark={false} />
-              <TextField label="Profession (optional)" value={occupation} onChangeText={setOccupation} placeholder="e.g. Pharmacist" />
-              <TextField label="Height in cm (optional)" value={height} onChangeText={setHeight} keyboardType="number-pad" placeholder="e.g. 170" />
-              <OptionGroup label="Marital status" options={MARITAL} value={marital} onChange={setMarital} onDark={false} />
-              <OptionGroup label="Children" options={WANTS} value={wants} onChange={setWants} onDark={false} />
-              <ChipMultiSelect label="Hobbies & interests (optional)" options={HOBBIES} value={hobbies || null} onChange={(v) => setHobbies(v ?? '')} placeholder="Add a hobby" />
-              <TextField
-                label="About you (optional)"
-                value={bio}
-                onChangeText={setBio}
-                placeholder="What are you looking for in a partner?"
-                multiline
-                style={{ height: 100, paddingTop: 14, textAlignVertical: 'top' }}
-              />
-            </>
-          )}
+        {step === 2 && (
+          <>
+            <OptionGroup label="Education" options={EDUCATION} value={education} onChange={setEducation} onDark={false} />
+            <TextField label="Profession (optional)" value={occupation} onChangeText={setOccupation} placeholder="e.g. Pharmacist" />
+            <TextField label="Height in cm (optional)" value={height} onChangeText={setHeight} keyboardType="number-pad" placeholder="e.g. 170" />
+            <OptionGroup label="Marital status" options={MARITAL} value={marital} onChange={setMarital} onDark={false} />
+            <OptionGroup label="Children" options={WANTS} value={wants} onChange={setWants} onDark={false} />
+            <ChipMultiSelect label="Hobbies & interests (optional)" options={HOBBIES} value={hobbies || null} onChange={(v) => setHobbies(v ?? '')} placeholder="Add a hobby" />
+            <TextField
+              label="About you (optional)"
+              value={bio}
+              onChangeText={setBio}
+              placeholder="What are you looking for in a partner?"
+              multiline
+              style={{ height: 100, paddingTop: 14, textAlignVertical: 'top' }}
+            />
+          </>
+        )}
 
-          {step === 3 && (
-            <>
-              <Text variant="callout" tone="muted" style={{ marginBottom: spacing.md }}>
-                Add at least one clear photo of yourself. Your first photo is your main picture — we’ll use it to verify your selfie next.
-              </Text>
-              <View style={styles.photoGrid}>
-                {photos.map((uri) => (
-                  <View key={uri} style={styles.photoCell}>
-                    <Image source={{ uri }} style={styles.photo} contentFit="cover" />
-                    <PressableScale onPress={() => removePhoto(uri)} style={styles.photoRemove}>
-                      <Ionicons name="close" size={14} color={palette.cream} />
-                    </PressableScale>
-                  </View>
-                ))}
-                {photos.length < MAX_PHOTOS ? (
-                  <PressableScale
-                    onPress={addPhoto}
-                    style={[styles.photoCell, styles.photoAdd, { borderColor: c.borderStrong, backgroundColor: c.surfaceAlt }]}
-                  >
-                    <Ionicons name="add" size={28} color={c.accent} />
-                  </PressableScale>
-                ) : null}
-              </View>
-              <View style={{ marginTop: spacing.lg }}>
-                <AcceptCheckbox checked={terms} onToggle={setTerms}>
-                  <Text variant="footnote" tone="muted">
-                    I confirm the details I’ve provided are true and accurate, I am 18 or older, and I agree to the{' '}
-                    <Text variant="footnote" tone="accent" onPress={() => router.push('/terms')}>Terms of Use</Text>.
-                  </Text>
-                </AcceptCheckbox>
-              </View>
-            </>
-          )}
-
-          {error ? (
-            <Text variant="footnote" tone="danger" center style={styles.error}>
-              {error}
+        {step === 3 && (
+          <>
+            <Text variant="callout" tone="muted" style={{ marginBottom: spacing.md }}>
+              Add at least one clear photo of yourself. Your first photo is your main picture — we’ll use it to verify your selfie next.
             </Text>
-          ) : null}
-        </ScrollView>
+            <View style={styles.photoGrid}>
+              {photos.map((uri) => (
+                <View key={uri} style={styles.photoCell}>
+                  <Image source={{ uri }} style={styles.photo} contentFit="cover" />
+                  <PressableScale onPress={() => removePhoto(uri)} style={styles.photoRemove}>
+                    <Ionicons name="close" size={14} color={palette.cream} />
+                  </PressableScale>
+                </View>
+              ))}
+              {photos.length < MAX_PHOTOS ? (
+                <PressableScale
+                  onPress={addPhoto}
+                  style={[styles.photoCell, styles.photoAdd, { borderColor: c.borderStrong, backgroundColor: c.surfaceAlt }]}
+                >
+                  <Ionicons name="add" size={28} color={c.accent} />
+                </PressableScale>
+              ) : null}
+            </View>
+            <View style={{ marginTop: spacing.lg }}>
+              <AcceptCheckbox checked={terms} onToggle={setTerms}>
+                <Text variant="footnote" tone="muted">
+                  I confirm the details I’ve provided are true and accurate, I am 18 or older, and I agree to the{' '}
+                  <Text variant="footnote" tone="accent" onPress={() => router.push('/terms')}>Terms of Use</Text>.
+                </Text>
+              </AcceptCheckbox>
+            </View>
+          </>
+        )}
 
-        <View
-          style={[
-            styles.footer,
-            {
-              backgroundColor: c.bg,
-              borderTopColor: c.border,
-              paddingBottom: insets.bottom + spacing.md,
-            },
-          ]}
-        >
-          <Button label="Back" variant="ghost" onPress={back} style={{ flex: 1 }} />
-          <Button
-            label={isLast ? 'Verify me' : 'Continue'}
-            onPress={isLast ? submit : next}
-            loading={loading}
-            style={{ flex: 1.4 }}
-          />
-        </View>
-      </KeyboardAvoidingView>
+        {error ? (
+          <Text variant="footnote" tone="danger" center style={styles.error}>
+            {error}
+          </Text>
+        ) : null}
+      </FormScroll>
+
+      <View
+        style={[
+          styles.footer,
+          {
+            backgroundColor: c.bg,
+            borderTopColor: c.border,
+            paddingBottom: insets.bottom + spacing.md,
+          },
+        ]}
+      >
+        <Button label="Back" variant="ghost" onPress={back} style={{ flex: 1 }} />
+        <Button
+          label={isLast ? 'Verify me' : 'Continue'}
+          onPress={isLast ? submit : next}
+          loading={loading}
+          style={{ flex: 1.4 }}
+        />
+      </View>
     </Screen>
   );
 }
