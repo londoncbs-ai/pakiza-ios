@@ -36,6 +36,7 @@ import { Button } from '@/components/Button';
 import { PressableScale } from '@/components/PressableScale';
 import { VoiceMessage } from '@/components/VoiceMessage';
 import { formatDuration, useAudioRecorder } from '@/hooks/useAudioRecorder';
+import { PAYMENTS_ENABLED } from '@/lib/features';
 import { haptics } from '@/lib/haptics';
 import { primaryPhotoUrl } from '@/lib/photos';
 import { useAuth } from '@/store/auth';
@@ -492,15 +493,18 @@ export default function ChatThread() {
               This chat is locked
             </Text>
             <Text variant="body" tone="muted" center style={styles.lockedBody}>
-              On the free plan you can keep a few chats open at once. Upgrade to message all your matches, or unmatch
-              someone to free up a slot.
+              {PAYMENTS_ENABLED
+                ? 'On the free plan you can keep a few chats open at once. Upgrade to message all your matches, or unmatch someone to free up a slot.'
+                : 'You can keep a few chats open at once. Unmatch someone to free up a slot for this conversation.'}
             </Text>
-            <Button
-              label="Upgrade to Premium"
-              variant="primary"
-              onPress={() => router.replace('/premium')}
-              style={{ marginTop: spacing.lg, alignSelf: 'stretch' }}
-            />
+            {PAYMENTS_ENABLED ? (
+              <Button
+                label="Upgrade to Premium"
+                variant="primary"
+                onPress={() => router.replace('/premium')}
+                style={{ marginTop: spacing.lg, alignSelf: 'stretch' }}
+              />
+            ) : null}
           </View>
         ) : (
           // The empty state lives OUTSIDE the inverted list as an overlay:

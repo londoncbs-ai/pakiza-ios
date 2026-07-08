@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { Redirect, useFocusEffect, useRouter } from 'expo-router';
 
 import { errorMessage } from '@/api/client';
 import { boostsApi } from '@/api/boosts';
@@ -13,6 +13,7 @@ import { ErrorState } from '@/components/ErrorState';
 import { Screen } from '@/components/Screen';
 import { Surface } from '@/components/Surface';
 import { Text } from '@/components/Text';
+import { PAYMENTS_ENABLED } from '@/lib/features';
 import { formatPoundsExact } from '@/lib/format';
 import { formatCountdown } from '@/lib/giving';
 import { haptics } from '@/lib/haptics';
@@ -29,6 +30,12 @@ const PERKS = [
 ] as const;
 
 export default function Boost() {
+  // Purchases are disabled until native IAP ships (see lib/features.ts).
+  if (!PAYMENTS_ENABLED) return <Redirect href="/(app)/profile" />;
+  return <BoostScreen />;
+}
+
+function BoostScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { c, isDark } = useTheme();

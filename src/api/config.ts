@@ -40,6 +40,10 @@ function resolveBaseUrl(): string {
   const override = process.env.EXPO_PUBLIC_API_URL;
   if (override) return override.replace(/\/$/, '');
 
+  // Release builds must never guess a LAN address. eas.json sets the env for
+  // preview/production; if it's ever missing, fall back to the live API.
+  if (!__DEV__) return 'https://api.pakiza.co.uk';
+
   const host = hostFromExpo();
   if (host) return `http://${host}:${BACKEND_PORT}`;
 

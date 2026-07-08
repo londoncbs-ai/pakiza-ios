@@ -44,6 +44,15 @@ export const authApi = {
       .then((r) => r.data);
   },
 
+  /** Permanent self-serve account deletion (password re-confirmed server-side). */
+  deleteAccount(password: string, reason?: string) {
+    return api
+      .delete<{ message: string }>('/auth/me', {
+        data: { password, reason: reason || undefined },
+      })
+      .then((r) => r.data);
+  },
+
   // ── Password reset (email link based: the new password is set on the web page) ──
   forgotPassword(email: string) {
     return api.post<{ message: string }>('/auth/forgot-password', { email }).then((r) => r.data);

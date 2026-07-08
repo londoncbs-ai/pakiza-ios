@@ -39,6 +39,11 @@ export const safetyApi = {
   },
 
   listBlocks() {
-    return api.get<string[]>('/safety/blocks').then((r) => r.data);
+    return api.get<BlockedMember[]>('/safety/blocks').then((r) => r.data);
   },
 };
+
+export interface BlockedMember {
+  user_id: string;
+  name: string | null;
+}

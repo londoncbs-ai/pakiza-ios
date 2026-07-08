@@ -44,6 +44,10 @@ function RootNavigator() {
     // bounce a signed-out user to '/' or a signed-in user to the app mid-verify.
     if (root === 'verify-email') return;
 
+    // Legal pages are public: the sign-up consent line links to them before an
+    // account exists, and stores require them to be readable pre-registration.
+    if (root === 'terms' || root === 'privacy' || root === 'community') return;
+
     // A signed-in member who hasn't finished the verification steps is held on
     // the verification hub - but must be able to REACH the screens that complete
     // each step (the hub, the add-phone flow, and onboarding: profile + the

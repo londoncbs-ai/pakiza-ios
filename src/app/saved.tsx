@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
@@ -13,6 +13,7 @@ import { IntroductionCard } from '@/components/IntroductionCard';
 import { InterestModal } from '@/components/InterestModal';
 import { PressableScale } from '@/components/PressableScale';
 import { Text } from '@/components/Text';
+import { PAYMENTS_ENABLED } from '@/lib/features';
 import { haptics } from '@/lib/haptics';
 import { primaryPhotoUrl } from '@/lib/photos';
 import { savedStore } from '@/lib/savedStore';
@@ -55,7 +56,11 @@ export default function Saved() {
       if (sc === 429 || sc === 403 || sc === 402) {
         haptics.warning();
         setOpened(null);
-        router.push('/premium');
+        if (PAYMENTS_ENABLED) {
+          router.push('/premium');
+        } else {
+          Alert.alert('Limit reached', err?.response?.data?.detail ?? 'You have reached your limit for now. Please check back later.');
+        }
       }
     }
   }, [refresh, router]);

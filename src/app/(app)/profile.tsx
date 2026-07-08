@@ -16,6 +16,7 @@ import { PreferencesSheet } from '@/components/PreferencesSheet';
 import { Screen } from '@/components/Screen';
 import { Surface } from '@/components/Surface';
 import { Text } from '@/components/Text';
+import { PAYMENTS_ENABLED } from '@/lib/features';
 import { label, titleCase } from '@/lib/format';
 import { haptics } from '@/lib/haptics';
 import { sortedPhotos } from '@/lib/photos';
@@ -207,10 +208,14 @@ export default function ProfileTab() {
             <Divider />
             <SettingRow icon="options-outline" label="Partner preferences" onPress={() => setPrefsOpen(true)} />
             <Divider />
-            <SettingRow icon="diamond-outline" label="Pakiza Premium" onPress={() => router.push('/premium')} />
-            <Divider />
-            <SettingRow icon="flash-outline" label="Boost my profile" onPress={() => router.push('/boost')} />
-            <Divider />
+            {PAYMENTS_ENABLED ? (
+              <>
+                <SettingRow icon="diamond-outline" label="Pakiza Premium" onPress={() => router.push('/premium')} />
+                <Divider />
+                <SettingRow icon="flash-outline" label="Boost my profile" onPress={() => router.push('/boost')} />
+                <Divider />
+              </>
+            ) : null}
             <SettingRow icon="heart-outline" label="Support a marriage" onPress={() => router.push('/fund')} />
             <Divider />
             <SettingRow icon="scan-outline" label="Face verification" onPress={() => router.push('/(onboarding)/face-verify')} />
@@ -227,7 +232,11 @@ export default function ProfileTab() {
             <Divider />
             <SettingRow icon="chatbubbles-outline" label="Help and support" onPress={() => router.push('/support')} />
             <Divider />
+            <SettingRow icon="remove-circle-outline" label="Blocked members" onPress={() => router.push('/blocked-members')} />
+            <Divider />
             <SettingRow icon="log-out-outline" label="Sign out" danger onPress={confirmSignOut} />
+            <Divider />
+            <SettingRow icon="trash-outline" label="Delete account" danger onPress={() => router.push('/delete-account')} />
           </Surface>
         </Section>
 

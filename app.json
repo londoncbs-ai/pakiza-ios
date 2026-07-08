@@ -12,10 +12,11 @@
       "policy": "appVersion"
     },
     "ios": {
-      "supportsTablet": true,
+      "supportsTablet": false,
       "bundleIdentifier": "app.pakiza.mobile",
       "infoPlist": {
-        "NSMicrophoneUsageDescription": "Pakiza needs microphone access so you can record voice messages in chat."
+        "NSMicrophoneUsageDescription": "Pakiza needs microphone access so you can record voice messages in chat.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {

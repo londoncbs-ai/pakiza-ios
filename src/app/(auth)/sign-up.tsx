@@ -88,6 +88,18 @@ export default function SignUp() {
 
       <Button label="Continue" onPress={onSubmit} loading={loading} style={{ marginTop: spacing.sm }} />
 
+      <Text variant="footnote" tone="onDarkMuted" center style={styles.legal}>
+        By continuing you confirm you are 18 or older and agree to our{' '}
+        <Text variant="footnote" color={palette.rose} style={styles.link} onPress={() => router.push('/terms')}>
+          Terms of Use
+        </Text>
+        {' '}and{' '}
+        <Text variant="footnote" color={palette.rose} style={styles.link} onPress={() => router.push('/privacy')}>
+          Privacy Policy
+        </Text>
+        .
+      </Text>
+
       <Text variant="callout" tone="onDarkMuted" center style={styles.foot}>
         Already have an account?{' '}
         <Text variant="callout" color={palette.rose} style={styles.link} onPress={() => router.replace('/(auth)/sign-in')}>
@@ -100,5 +112,6 @@ export default function SignUp() {
 
 const styles = StyleSheet.create({
   foot: { marginTop: spacing.xl },
+  legal: { marginTop: spacing.md },
   link: { fontFamily: fonts.bodySemibold },
 });

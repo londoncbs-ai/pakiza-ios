@@ -318,7 +318,9 @@ export default function ProfileSetup() {
               <AcceptCheckbox checked={terms} onToggle={setTerms}>
                 <Text variant="footnote" tone="muted">
                   I confirm the details I’ve provided are true and accurate, I am 18 or older, and I agree to the{' '}
-                  <Text variant="footnote" tone="accent" onPress={() => router.push('/terms')}>Terms of Use</Text>.
+                  <Text variant="footnote" tone="accent" onPress={() => router.push('/terms')}>Terms of Use</Text>
+                  {' '}and{' '}
+                  <Text variant="footnote" tone="accent" onPress={() => router.push('/privacy')}>Privacy Policy</Text>.
                 </Text>
               </AcceptCheckbox>
             </View>

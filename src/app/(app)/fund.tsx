@@ -14,6 +14,7 @@ import { FeatureHint } from '@/components/FeatureHint';
 import { Screen } from '@/components/Screen';
 import { Surface } from '@/components/Surface';
 import { Text } from '@/components/Text';
+import { PAYMENTS_ENABLED } from '@/lib/features';
 import { formatPounds } from '@/lib/format';
 import {
   APPLICATION_STATUS_HINT,
@@ -124,8 +125,11 @@ export default function Fund() {
             />
           </View>
 
-          {/* CTAs */}
-          <Button label="Donate" onPress={() => router.push('/donate')} style={styles.cta} />
+          {/* CTAs. In-app donations are hidden until payments ship; donors can
+              still give on the website and the fund page stays informational. */}
+          {PAYMENTS_ENABLED ? (
+            <Button label="Donate" onPress={() => router.push('/donate')} style={styles.cta} />
+          ) : null}
           <Button
             label="Apply for support"
             variant="secondary"
@@ -256,13 +260,15 @@ export default function Fund() {
             </Section>
           ) : null}
 
-          <FeatureHint
-            hintKey="support-fund-boost"
-            icon="flash"
-            text="New: boost your profile to the top of discovery for an hour."
-            onPress={() => router.push('/boost')}
-            style={styles.hint}
-          />
+          {PAYMENTS_ENABLED ? (
+            <FeatureHint
+              hintKey="support-fund-boost"
+              icon="flash"
+              text="New: boost your profile to the top of discovery for an hour."
+              onPress={() => router.push('/boost')}
+              style={styles.hint}
+            />
+          ) : null}
         </ScrollView>
       )}
     </Screen>

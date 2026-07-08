@@ -2,7 +2,7 @@ import { useCallback, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { Redirect, useFocusEffect, useRouter } from 'expo-router';
 
 import { errorMessage } from '@/api/client';
 import { subscriptionsApi } from '@/api/subscriptions';
@@ -11,6 +11,7 @@ import { Button } from '@/components/Button';
 import { CheckoutSheet } from '@/components/CheckoutSheet';
 import { Screen } from '@/components/Screen';
 import { Text } from '@/components/Text';
+import { PAYMENTS_ENABLED } from '@/lib/features';
 import { haptics } from '@/lib/haptics';
 import { palette, radii, spacing, useTheme } from '@/theme';
 
@@ -43,6 +44,13 @@ const PLANS: { plan: SubscriptionPlan; name: string; price: string; period: stri
 ];
 
 export default function Premium() {
+  // Purchases are disabled until native IAP ships; the screen is unreachable
+  // from the UI, and any stray deep link lands back on the profile tab.
+  if (!PAYMENTS_ENABLED) return <Redirect href="/(app)/profile" />;
+  return <PremiumScreen />;
+}
+
+function PremiumScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { c, isDark } = useTheme();

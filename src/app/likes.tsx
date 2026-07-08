@@ -12,6 +12,7 @@ import { EmptyState } from '@/components/EmptyState';
 import { ProfileDetail } from '@/components/ProfileDetail';
 import { SkeletonList } from '@/components/Skeleton';
 import { Text } from '@/components/Text';
+import { PAYMENTS_ENABLED } from '@/lib/features';
 import { primaryPhotoUrl } from '@/lib/photos';
 import { fonts, palette, radii, shadow, spacing, tint, useTheme } from '@/theme';
 
@@ -87,11 +88,15 @@ export default function LikesYou() {
               : 'See who already likes you'}
           </Text>
           <Text variant="body" tone="muted" center style={styles.lockBody}>
-            {likeCount > 0
-              ? 'Upgrade to Gold to see them and match instantly, without waiting to find each other in Discover.'
-              : 'When someone likes you, upgrade to Gold to see them and match instantly.'}
+            {PAYMENTS_ENABLED
+              ? likeCount > 0
+                ? 'Upgrade to Gold to see them and match instantly, without waiting to find each other in Discover.'
+                : 'When someone likes you, upgrade to Gold to see them and match instantly.'
+              : 'Keep discovering. When you like each other, you match instantly and they appear here.'}
           </Text>
-          <Button label="Upgrade to Gold" variant="primary" onPress={() => router.push('/premium')} style={{ marginTop: spacing.lg }} />
+          {PAYMENTS_ENABLED ? (
+            <Button label="Upgrade to Gold" variant="primary" onPress={() => router.push('/premium')} style={{ marginTop: spacing.lg }} />
+          ) : null}
         </View>
       ) : profiles.length === 0 ? (
         <EmptyState

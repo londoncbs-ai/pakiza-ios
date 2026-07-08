@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Alert, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { Redirect, useRouter } from 'expo-router';
 
 import type { DonationCheckoutInput } from '@/api/types';
 import { Button } from '@/components/Button';
@@ -13,6 +13,7 @@ import { Screen } from '@/components/Screen';
 import { Text } from '@/components/Text';
 import { TextField } from '@/components/TextField';
 import { ToggleRow } from '@/components/ToggleRow';
+import { PAYMENTS_ENABLED } from '@/lib/features';
 import { formatPounds, poundsToPence } from '@/lib/format';
 import { haptics } from '@/lib/haptics';
 import { spacing, radii, useTheme } from '@/theme';
@@ -23,6 +24,12 @@ const MAX_PENCE = 1000000;
 const MESSAGE_MAX = 280;
 
 export default function Donate() {
+  // In-app donations are disabled until payments ship; give on the website.
+  if (!PAYMENTS_ENABLED) return <Redirect href="/(app)/fund" />;
+  return <DonateScreen />;
+}
+
+function DonateScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { c } = useTheme();
