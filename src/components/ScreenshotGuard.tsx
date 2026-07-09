@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Modal, StyleSheet, View } from 'react-native';
+import { Modal, Platform, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ScreenCapture from 'expo-screen-capture';
 import { Ionicons } from '@expo/vector-icons';
@@ -26,6 +26,9 @@ export function ScreenshotGuard() {
   const insets = useSafeAreaInsets();
 
   useEffect(() => {
+    // expo-screen-capture has no web implementation - calling it there
+    // crashes the whole app at the root layout.
+    if (Platform.OS === 'web') return;
     ScreenCapture.preventScreenCaptureAsync().catch(() => {});
     const sub = ScreenCapture.addScreenshotListener(() => setWarned(true));
     return () => {

@@ -1,0 +1,411 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=430, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  :root {
+    --burgundy:#800020; --deep:#30000c; --mid:#57001a;
+    --gold:#C79F5E; --gold-soft:#D9BC8C; --cream:#F7F0E6; --ink:#2A2024;
+    --surface:#FDFAF4; --line:#E8DECE;
+  }
+  html,body { width:430px; height:932px; overflow:hidden; }
+  /* Google Play needs <= 2:1 aspect; ?c=1 renders a 430x860 compact layout */
+  body.compact { height:860px; }
+  body.compact .panel { height:860px; }
+  body.compact .brand { margin-top:28px; }
+  body.compact h1 { font-size:33px; margin-top:10px; }
+  body.compact .sub { font-size:13.5px; margin-top:8px; }
+  body.compact .phone { margin-top:20px; height:636px; }
+  body {
+    font-family:'Inter',sans-serif;
+    background:linear-gradient(180deg,#30000c 0%,#57001a 46%,#800020 100%);
+    color:var(--cream);
+  }
+  .panel { width:430px; height:932px; position:relative; display:none; flex-direction:column; align-items:center; }
+  .panel.active { display:flex; }
+
+  /* header */
+  .brand { margin-top:44px; display:flex; align-items:center; gap:8px; }
+  .brand svg { width:26px; height:20px; }
+  .brand span { font-size:12px; letter-spacing:5px; color:var(--gold); font-weight:600; }
+  h1 { font-family:'Cormorant Garamond',serif; font-weight:600; font-size:37px; line-height:1.12;
+       text-align:center; margin-top:14px; padding:0 34px; }
+  .sub { font-size:14.5px; line-height:1.45; color:rgba(247,240,230,.72); text-align:center;
+         margin-top:10px; padding:0 48px; }
+
+  /* phone */
+  .phone { margin-top:26px; width:342px; height:698px; background:#17090d; border-radius:52px;
+           padding:9px; box-shadow:0 40px 70px rgba(0,0,0,.5), 0 4px 14px rgba(0,0,0,.4),
+           inset 0 0 0 1.5px rgba(199,159,94,.35); position:relative; }
+  .screen { width:100%; height:100%; border-radius:44px; overflow:hidden; position:relative; background:var(--surface); }
+  .island { position:absolute; top:19px; left:50%; transform:translateX(-50%); width:96px; height:26px;
+            background:#17090d; border-radius:14px; z-index:60; }
+  .statusbar { position:absolute; top:0; left:0; right:0; height:44px; display:flex; align-items:center;
+               justify-content:space-between; padding:12px 26px 0; z-index:55;
+               font-size:13px; font-weight:600; }
+  .statusbar .right { display:flex; gap:5px; align-items:center; }
+
+  /* generic in-screen text colors */
+  .on-photo { color:#fff; }
+  .on-light { color:var(--ink); }
+
+  /* ---------- P1 discover ---------- */
+  .feedimg { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+  .feed-shade { position:absolute; inset:0;
+    background:linear-gradient(180deg, rgba(20,4,8,.42) 0%, rgba(20,4,8,0) 26%, rgba(20,4,8,0) 47%, rgba(20,4,8,.78) 88%); }
+  .feed-top { position:absolute; top:52px; left:20px; right:20px; display:flex; justify-content:space-between; align-items:center; z-index:5; }
+  .feed-logo { font-family:'Cormorant Garamond',serif; font-size:24px; color:#fff; font-weight:600; }
+  .icon-btn { width:34px; height:34px; border-radius:50%; background:rgba(255,255,255,.16);
+              backdrop-filter:blur(4px); display:flex; align-items:center; justify-content:center; }
+  .feed-info { position:absolute; left:22px; right:86px; bottom:96px; z-index:5; }
+  .chip { display:inline-flex; align-items:center; gap:5px; background:rgba(199,159,94,.92); color:#2A2024;
+          font-size:11.5px; font-weight:600; padding:5px 11px; border-radius:999px; margin-bottom:10px; }
+  .feed-name { font-family:'Cormorant Garamond',serif; font-size:33px; font-weight:600; color:#fff; display:flex; align-items:center; gap:8px; }
+  .tick { width:19px; height:19px; border-radius:50%; background:var(--gold); display:inline-flex; align-items:center; justify-content:center; }
+  .feed-meta { font-size:13.5px; color:rgba(255,255,255,.85); margin-top:4px; }
+  .feed-bio  { font-size:12.5px; color:rgba(255,255,255,.72); margin-top:7px; line-height:1.45; }
+  .rail { position:absolute; right:16px; bottom:104px; display:flex; flex-direction:column; gap:13px; z-index:5; }
+  .rail .rbtn { width:46px; height:46px; border-radius:50%; background:rgba(255,255,255,.17);
+                backdrop-filter:blur(6px); border:1px solid rgba(255,255,255,.28);
+                display:flex; align-items:center; justify-content:center; }
+  .rail .rbtn.heart { background:var(--gold); border-color:var(--gold); }
+  .tabbar { position:absolute; left:0; right:0; bottom:0; height:76px; background:rgba(253,250,244,.98);
+            border-top:1px solid var(--line); display:flex; z-index:6; padding-bottom:14px; }
+  .tab { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
+         font-size:10px; font-weight:600; color:#A99A87; }
+  .tab.active { color:var(--burgundy); }
+
+  /* ---------- P2 profile detail ---------- */
+  .pd-photo { height:46%; position:relative; }
+  .pd-photo img { width:100%; height:100%; object-fit:cover; }
+  .pd-body { padding:18px 22px; }
+  .pd-name { font-family:'Cormorant Garamond',serif; font-size:28px; font-weight:600; color:var(--ink);
+             display:flex; align-items:center; gap:8px; }
+  .pd-meta { font-size:13px; color:#8A7A68; margin-top:3px; }
+  .pd-chips { display:flex; gap:8px; margin-top:12px; }
+  .pd-chip { font-size:11px; font-weight:600; color:var(--burgundy); background:#F3E7D8;
+             padding:6px 11px; border-radius:999px; white-space:nowrap; }
+  .rows { margin-top:14px; }
+  .row { display:flex; align-items:center; gap:12px; padding:10.5px 0; border-bottom:1px solid var(--line); }
+  .row:last-child { border-bottom:none; }
+  .row svg { flex:0 0 auto; }
+  .row .lab { font-size:12px; color:#8A7A68; }
+  .row .val { font-size:13.5px; color:var(--ink); font-weight:500; margin-top:1px; }
+
+  /* ---------- P3 matches ---------- */
+  .lt-head { padding:60px 22px 6px; }
+  .lt-title { font-family:'Cormorant Garamond',serif; font-size:30px; font-weight:600; color:var(--burgundy); }
+  .lt-sub { font-size:12.5px; color:#8A7A68; margin-top:3px; }
+  .mgrid { display:grid; grid-template-columns:1fr 1fr; gap:13px; padding:16px 20px; }
+  .mcard { border-radius:18px; overflow:hidden; position:relative; box-shadow:0 8px 20px rgba(42,32,36,.12); }
+  .mcard img { width:100%; height:176px; object-fit:cover; display:block; }
+  .mcap { position:absolute; left:0; right:0; bottom:0; padding:26px 12px 10px;
+          background:linear-gradient(180deg,transparent,rgba(20,4,8,.82)); color:#fff; }
+  .mcap .n { font-family:'Cormorant Garamond',serif; font-size:18px; font-weight:600; }
+  .mcap .c { font-size:10.5px; opacity:.85; }
+  .newb { position:absolute; top:10px; left:10px; background:var(--gold); color:#2A2024; font-size:9.5px;
+          font-weight:700; letter-spacing:.6px; padding:4px 9px; border-radius:999px; }
+
+  /* ---------- P4 chat ---------- */
+  .ch-head { padding:52px 18px 10px; display:flex; align-items:center; gap:11px; background:var(--surface);
+             border-bottom:1px solid var(--line); }
+  .ch-ava { width:40px; height:40px; border-radius:50%; object-fit:cover; object-position:50% 30%; }
+  .ch-name { font-family:'Cormorant Garamond',serif; font-size:20px; font-weight:600; color:var(--ink);
+             display:flex; align-items:center; gap:6px; }
+  .ch-stat { font-size:11px; color:#3E8E5A; font-weight:600; margin-top:1px; }
+  .msgs { padding:10px 14px 104px; display:flex; flex-direction:column; gap:8px; }
+  .bubble { max-width:78%; padding:9px 13px; font-size:12.6px; line-height:1.4; border-radius:17px; }
+  .them { align-self:flex-start; background:#F1E8DA; color:var(--ink); border-bottom-left-radius:5px; }
+  .me   { align-self:flex-end; background:var(--burgundy); color:var(--cream); border-bottom-right-radius:5px; }
+  .daychip { align-self:center; font-size:10.5px; color:#A99A87; background:#F1E8DA; padding:4px 11px; border-radius:999px; }
+  .inputbar { position:absolute; left:0; right:0; bottom:0; padding:12px 14px 26px; background:var(--surface);
+              border-top:1px solid var(--line); display:flex; gap:10px; align-items:center; }
+  .field { flex:1; height:40px; border-radius:999px; background:#F1E8DA; display:flex; align-items:center;
+           padding:0 16px; font-size:13px; color:#A99A87; }
+  .micbtn { width:40px; height:40px; border-radius:50%; background:var(--burgundy);
+            display:flex; align-items:center; justify-content:center; }
+
+  /* ---------- P5 verification ---------- */
+  .vf { display:flex; flex-direction:column; align-items:center; padding:86px 26px 0; text-align:center; }
+  .scanring { width:190px; height:190px; border-radius:50%; border:2.5px dashed var(--gold);
+              display:flex; align-items:center; justify-content:center; position:relative; }
+  .scanring img { width:162px; height:162px; border-radius:50%; object-fit:cover; }
+  .shield { position:absolute; bottom:-4px; right:2px; width:48px; height:48px; border-radius:50%;
+            background:var(--gold); border:4px solid var(--surface); display:flex; align-items:center; justify-content:center; }
+  .vf h2 { font-family:'Cormorant Garamond',serif; font-size:27px; font-weight:600; color:var(--burgundy); margin-top:24px; }
+  .vf p  { font-size:13px; color:#8A7A68; line-height:1.5; margin-top:8px; max-width:270px; }
+  .checks { margin-top:22px; width:100%; background:#FFFFFF; border:1px solid var(--line); border-radius:18px;
+            padding:6px 18px; box-shadow:0 10px 24px rgba(42,32,36,.07); text-align:left; }
+  .checks .cr { display:flex; align-items:center; gap:12px; padding:13px 0; border-bottom:1px solid var(--line); }
+  .checks .cr:last-child { border-bottom:none; }
+  .cbadge { width:26px; height:26px; border-radius:50%; background:#EAF4EC; display:flex; align-items:center; justify-content:center; }
+  .cr .t { font-size:13.5px; color:var(--ink); font-weight:600; }
+  .cr .s { font-size:11px; color:#8A7A68; margin-top:1px; }
+
+  /* ---------- P6 fund ---------- */
+  .fd { padding:70px 22px 0; }
+  .fd-title { font-family:'Cormorant Garamond',serif; font-size:27px; font-weight:600; color:var(--burgundy); }
+  .fd-sub { font-size:12.5px; color:#8A7A68; margin-top:4px; line-height:1.5; }
+  .fd-card { margin-top:18px; border-radius:20px; padding:22px;
+             background:linear-gradient(160deg,#57001a,#800020); color:var(--cream);
+             box-shadow:0 14px 30px rgba(87,0,26,.35); position:relative; overflow:hidden; }
+  .fd-amount { font-family:'Cormorant Garamond',serif; font-size:38px; font-weight:600; color:var(--gold-soft); }
+  .fd-lab { font-size:11.5px; letter-spacing:1.5px; opacity:.8; }
+  .fd-stats { display:flex; gap:26px; margin-top:16px; }
+  .fd-stat .v { font-size:19px; font-weight:700; color:#fff; }
+  .fd-stat .l { font-size:10.5px; opacity:.75; margin-top:2px; }
+  .fd-btns { display:flex; gap:11px; margin-top:18px; }
+  .btn { flex:1; height:46px; border-radius:999px; display:flex; align-items:center; justify-content:center;
+         font-size:13.5px; font-weight:600; }
+  .btn.primary { background:var(--burgundy); color:var(--cream); }
+  .btn.gold { background:#F3E7D8; color:var(--burgundy); }
+  .gifts { margin-top:20px; background:#fff; border:1px solid var(--line); border-radius:18px; padding:4px 18px; }
+  .gift { display:flex; align-items:center; gap:12px; padding:12px 0; border-bottom:1px solid var(--line); }
+  .gift:last-child { border-bottom:none; }
+  .gava { width:32px; height:32px; border-radius:50%; background:#F3E7D8; display:flex; align-items:center;
+          justify-content:center; font-size:13px; color:var(--burgundy); font-weight:700; }
+  .gift .gn { font-size:13px; color:var(--ink); font-weight:600; }
+  .gift .gs { font-size:11px; color:#8A7A68; }
+  .gift .amt { margin-left:auto; font-size:13.5px; font-weight:700; color:var(--burgundy); }
+</style>
+</head>
+<body>
+
+<!-- shared svg defs -->
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <g id="hearts">
+      <path d="M13 4.5 C11.6 2.6 9 2.4 7.6 3.9 C6.2 5.4 6.3 7.8 7.8 9.4 L14.2 15.6 L20 9 C21.4 7.4 21.3 5 19.9 3.7 C18.4 2.3 16 2.6 14.8 4.4" fill="none" stroke="#C79F5E" stroke-width="1.7" stroke-linecap="round"/>
+      <path d="M8.5 9.5 C7.4 8.1 5.4 8 4.3 9.2 C3.2 10.4 3.3 12.3 4.4 13.5 L9.3 18.3 L13.7 13.6" fill="none" stroke="#C79F5E" stroke-width="1.5" stroke-linecap="round"/>
+      <path d="M1 16 C6 18.5 10 19.5 15 16.5 C20 13.5 23 12 26 13" fill="none" stroke="#C79F5E" stroke-width="1.2" stroke-linecap="round"/>
+    </g>
+  </defs>
+</svg>
+
+<script>
+  const ICON = {
+    compass:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2.2 5-5 2.2 2.2-5z" fill="currentColor" stroke="none"/></svg>',
+    heart:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 20.5c-5-3.2-8.5-6.4-8.5-10A4.6 4.6 0 0 1 12 7.6a4.6 4.6 0 0 1 8.5 2.9c0 3.6-3.5 6.8-8.5 10z"/></svg>',
+    heartFill:'<svg width="22" height="22" viewBox="0 0 24 24" fill="#2A2024"><path d="M12 20.5c-5-3.2-8.5-6.4-8.5-10A4.6 4.6 0 0 1 12 7.6a4.6 4.6 0 0 1 8.5 2.9c0 3.6-3.5 6.8-8.5 10z"/></svg>',
+    chat:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 12a8 8 0 0 1-8 8H4l2.2-2.8A8 8 0 1 1 21 12z"/></svg>',
+    person:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0"/></svg>',
+    x:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+    bookmark:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M6 3h12v18l-6-4.5L6 21z"/></svg>',
+    bell:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M18 9a6 6 0 1 0-12 0c0 5-2 6-2 6h16s-2-1-2-6M10.5 20a1.8 1.8 0 0 0 3 0"/></svg>',
+    check:'<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#2A2024" stroke-width="3.4" stroke-linecap="round"><path d="M4.5 12.5l5 5 10-11"/></svg>',
+    checkG:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3E8E5A" stroke-width="3" stroke-linecap="round"><path d="M4.5 12.5l5 5 10-11"/></svg>',
+    shield:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2A2024" stroke-width="2"><path d="M12 3l7 3v5c0 4.5-3 8.4-7 10-4-1.6-7-5.5-7-10V6z"/><path d="M8.8 12l2.2 2.2 4.2-4.6"/></svg>',
+    mic:'<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#F7F0E6" stroke-width="2"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3"/></svg>',
+    back:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#800020" stroke-width="2.4" stroke-linecap="round"><path d="M14.5 5.5 8 12l6.5 6.5"/></svg>',
+    faith:'<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#C79F5E" stroke-width="1.8"><path d="M15.5 3.5A8.5 8.5 0 1 0 20.5 16 7 7 0 0 1 15.5 3.5z"/></svg>',
+    spark:'<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#C79F5E" stroke-width="1.8"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/></svg>',
+    edu:'<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#C79F5E" stroke-width="1.8"><path d="M2 9l10-4.5L22 9l-10 4.5zM6 11.5V16c0 1.6 2.7 3 6 3s6-1.4 6-3v-4.5"/></svg>',
+    fam:'<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#C79F5E" stroke-width="1.8"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9.5" r="2.3"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0M13.8 19a4 4 0 0 1 6.7-2.6"/></svg>',
+    globe:'<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#C79F5E" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c-5 5.5-5 12.5 0 18 5-5.5 5-12.5 0-18z"/></svg>',
+  };
+
+  const PHOTOS = {
+    layla:'https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?w=800&h=1000&fit=crop&q=80',
+    zara:'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=800&h=1000&fit=crop&q=80',
+    mariam:'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=800&h=1000&fit=crop&q=80',
+    sofia:'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=800&h=1000&fit=crop&q=80',
+    fatima:'https://images.unsplash.com/photo-1502685104226-ee32379fefbe?w=800&h=1000&fit=crop&q=80',
+    maria:'https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=800&h=1000&fit=crop&q=80',
+  };
+
+  function statusbar(light) {
+    const c = light ? '#fff' : '#2A2024';
+    return `<div class="statusbar" style="color:${c}"><span style="margin-left:14px">9:41</span>
+      <div class="right">
+        <svg width="17" height="11" viewBox="0 0 18 12" fill="${c}"><rect x="0" y="7" width="3" height="4" rx="1"/><rect x="4.5" y="5" width="3" height="6" rx="1"/><rect x="9" y="2.5" width="3" height="8.5" rx="1"/><rect x="13.5" y="0" width="3" height="11" rx="1"/></svg>
+        <svg width="16" height="11" viewBox="0 0 16 12" fill="${c}"><path d="M8 9.7a1.6 1.6 0 1 1 0 2.3 1.6 1.6 0 0 1 0-2.3zM4.6 7.2a5.5 5.5 0 0 1 6.8 0L10 8.9a3.2 3.2 0 0 0-4 0zM1.6 4.2a9.8 9.8 0 0 1 12.8 0l-1.5 1.7a7.5 7.5 0 0 0-9.8 0z"/></svg>
+        <svg width="24" height="11" viewBox="0 0 25 12" fill="none"><rect x="0.5" y="0.5" width="20" height="11" rx="3" stroke="${c}" opacity=".5"/><rect x="2" y="2" width="17" height="8" rx="1.8" fill="${c}"/><path d="M22.5 4v4a2.2 2.2 0 0 0 0-4z" fill="${c}" opacity=".5"/></svg>
+      </div></div>`;
+  }
+
+  function tabbar(active) {
+    const tabs = [['compass','Discover'],['heart','Matches'],['chat','Messages'],['person','Profile']];
+    return `<div class="tabbar">` + tabs.map(([ic,l]) =>
+      `<div class="tab ${l===active?'active':''}">${ICON[ic]}<span>${l}</span></div>`).join('') + `</div>`;
+  }
+</script>
+
+<!-- P1 · Discover -->
+<div class="panel" id="p1">
+  <div class="brand"><svg viewBox="0 0 27 22"><use href="#hearts"/></svg><span>PAKIZA</span></div>
+  <h1>Marry with intention.</h1>
+  <div class="sub">Thoughtful introductions, guided by your values, family and culture.</div>
+  <div class="phone"><div class="screen">
+    <img class="feedimg" src="" data-photo="layla" alt="">
+    <div class="feed-shade"></div>
+    <div class="sb-slot" data-light="1"></div>
+    <div class="feed-top"><div class="feed-logo">Pakiza</div><div class="icon-btn bell-slot"></div></div>
+    <div class="feed-info">
+      <div class="chip">92% aligned</div>
+      <div class="feed-name">Layla, 24 <span class="tick check-slot"></span></div>
+      <div class="feed-meta">Bristol · Final-year student</div>
+      <div class="feed-bio">Gentle, ambitious, and ready for a serious commitment with the right person.</div>
+    </div>
+    <div class="rail">
+      <div class="rbtn x-slot"></div>
+      <div class="rbtn bm-slot"></div>
+      <div class="rbtn heart hf-slot"></div>
+    </div>
+    <div class="tb-slot" data-tab="Discover"></div>
+    <div class="island"></div>
+  </div></div>
+</div>
+
+<!-- P2 · Values -->
+<div class="panel" id="p2">
+  <div class="brand"><svg viewBox="0 0 27 22"><use href="#hearts"/></svg><span>PAKIZA</span></div>
+  <h1>Guided by your values.</h1>
+  <div class="sub">Faith, family and character sit front and centre of every profile.</div>
+  <div class="phone"><div class="screen">
+    <div class="pd-photo"><img src="" data-photo="sofia" alt=""></div>
+    <div class="sb-slot" data-light="1"></div>
+    <div class="pd-body">
+      <div class="pd-name">Sofia, 27 <span class="tick check-slot"></span></div>
+      <div class="pd-meta">Manchester · Nurse</div>
+      <div class="pd-chips"><span class="pd-chip">Family first</span><span class="pd-chip">Practising</span><span class="pd-chip">Wants children</span></div>
+      <div class="rows">
+        <div class="row"><span data-icon="faith"></span><div><div class="lab">Faith</div><div class="val">Islam · Sunni</div></div></div>
+        <div class="row"><span data-icon="spark"></span><div><div class="lab">Religiosity</div><div class="val">Practising</div></div></div>
+        <div class="row"><span data-icon="edu"></span><div><div class="lab">Education</div><div class="val">Nursing degree</div></div></div>
+        <div class="row"><span data-icon="fam"></span><div><div class="lab">Family plans</div><div class="val">Wants children</div></div></div>
+        <div class="row"><span data-icon="globe"></span><div><div class="lab">Languages</div><div class="val">English · Urdu</div></div></div>
+      </div>
+    </div>
+    <div class="island"></div>
+  </div></div>
+</div>
+
+<!-- P3 · Matches -->
+<div class="panel" id="p3">
+  <div class="brand"><svg viewBox="0 0 27 22"><use href="#hearts"/></svg><span>PAKIZA</span></div>
+  <h1>When it is mutual,<br>it is a match.</h1>
+  <div class="sub">Interest stays private until it is shared. No games, no noise.</div>
+  <div class="phone"><div class="screen">
+    <div class="sb-slot"></div>
+    <div class="lt-head"><div class="lt-title">Matches</div><div class="lt-sub">4 people are getting to know you</div></div>
+    <div class="mgrid">
+      <div class="mcard"><span class="newb">NEW</span><img src="" data-photo="zara"><div class="mcap"><div class="n">Zara, 25</div><div class="c">London · Doctor</div></div></div>
+      <div class="mcard"><img src="" data-photo="mariam"><div class="mcap"><div class="n">Mariam, 28</div><div class="c">Birmingham · Teacher</div></div></div>
+      <div class="mcard"><img src="" data-photo="sofia"><div class="mcap"><div class="n">Sofia, 27</div><div class="c">Manchester · Nurse</div></div></div>
+      <div class="mcard"><img src="" data-photo="fatima"><div class="mcap"><div class="n">Fatima, 26</div><div class="c">Birmingham · Optometrist</div></div></div>
+    </div>
+    <div class="tb-slot" data-tab="Matches"></div>
+    <div class="island"></div>
+  </div></div>
+</div>
+
+<!-- P4 · Chat -->
+<div class="panel" id="p4">
+  <div class="brand"><svg viewBox="0 0 27 22"><use href="#hearts"/></svg><span>PAKIZA</span></div>
+  <h1>Conversations that<br>begin properly.</h1>
+  <div class="sub">Respectful messaging with voice notes, photos and real manners.</div>
+  <div class="phone"><div class="screen">
+    <div class="sb-slot"></div>
+    <div class="ch-head">
+      <span class="back-slot"></span>
+      <img class="ch-ava" src="" data-photo="layla">
+      <div><div class="ch-name">Layla <span class="tick check-slot" style="width:16px;height:16px"></span></div>
+      <div class="ch-stat">Selfie verified</div></div>
+    </div>
+    <div class="msgs">
+      <div class="daychip">Today</div>
+      <div class="bubble them">Assalamu alaikum, thank you for the introduction. Your profile felt very sincere.</div>
+      <div class="bubble me">Wa alaikum assalam! I appreciated what you wrote about family. How has your week been?</div>
+      <div class="bubble them">Alhamdulillah, busy with final exams, but good. I noticed we think alike about living near family.</div>
+      <div class="bubble me">We do. When you feel ready, I would love to arrange a proper meeting with our families present.</div>
+      <div class="bubble them">I would like that. Let me speak to my parents this weekend, insha'Allah.</div>
+    </div>
+    <div class="inputbar"><div class="field">Message…</div><div class="micbtn mic-slot"></div></div>
+    <div class="island"></div>
+  </div></div>
+</div>
+
+<!-- P5 · Verification -->
+<div class="panel" id="p5">
+  <div class="brand"><svg viewBox="0 0 27 22"><use href="#hearts"/></svg><span>PAKIZA</span></div>
+  <h1>Real people, verified.</h1>
+  <div class="sub">Selfie verification and human moderation keep Pakiza safe and sincere.</div>
+  <div class="phone"><div class="screen">
+    <div class="sb-slot"></div>
+    <div class="vf">
+      <div class="scanring">
+        <img src="" data-photo="maria">
+        <div class="shield shield-slot"></div>
+      </div>
+      <h2>Selfie verified</h2>
+      <p>Every verified member has matched a live selfie against their profile photos.</p>
+      <div class="checks">
+        <div class="cr"><span class="cbadge cg-slot"></span><div><div class="t">Email verified</div><div class="s">Confirmed before members can match</div></div></div>
+        <div class="cr"><span class="cbadge cg-slot"></span><div><div class="t">Face verification</div><div class="s">A live selfie, matched to their photos</div></div></div>
+        <div class="cr"><span class="cbadge cg-slot"></span><div><div class="t">Human moderation</div><div class="s">Every report is reviewed by our team</div></div></div>
+      </div>
+    </div>
+    <div class="island"></div>
+  </div></div>
+</div>
+
+<!-- P6 · Fund -->
+<div class="panel" id="p6">
+  <div class="brand"><svg viewBox="0 0 27 22"><use href="#hearts"/></svg><span>PAKIZA</span></div>
+  <h1>A community behind<br>every marriage.</h1>
+  <div class="sub">The Marriage Support Fund helps couples begin their life together.</div>
+  <div class="phone"><div class="screen">
+    <div class="sb-slot"></div>
+    <div class="fd">
+      <div class="fd-title">Marriage Support Fund</div>
+      <div class="fd-sub">Every gift goes towards helping a couple in our community marry with dignity.</div>
+      <div class="fd-card">
+        <div class="fd-lab">RAISED SO FAR</div>
+        <div class="fd-amount">£12,450</div>
+        <div class="fd-stats">
+          <div class="fd-stat"><div class="v">9</div><div class="l">Marriages supported</div></div>
+          <div class="fd-stat"><div class="v">214</div><div class="l">Donors</div></div>
+        </div>
+      </div>
+      <!-- v1 has no in-app donation purchase; screenshot must match the build -->
+      <div class="fd-btns"><div class="btn primary">Apply for support</div></div>
+      <div class="gifts">
+        <div class="gift"><span class="gava">A</span><div><div class="gn">Anonymous</div><div class="gs">This morning</div></div><span class="amt">£50</span></div>
+        <div class="gift"><span class="gava">H</span><div><div class="gn">Hafsa</div><div class="gs">Yesterday</div></div><span class="amt">£25</span></div>
+        <div class="gift"><span class="gava">I</span><div><div class="gn">Imran</div><div class="gs">2 days ago</div></div><span class="amt">£100</span></div>
+      </div>
+    </div>
+    <div class="tb-slot" data-tab="Profile"></div>
+    <div class="island"></div>
+  </div></div>
+</div>
+
+<script>
+  // hydrate photos, icons, statusbars, tabbars
+  document.querySelectorAll('img[data-photo]').forEach(el => { el.src = PHOTOS[el.dataset.photo]; });
+  document.querySelectorAll('.sb-slot').forEach(el => { el.outerHTML = statusbar(!!el.dataset.light); });
+  document.querySelectorAll('.tb-slot').forEach(el => { el.outerHTML = tabbar(el.dataset.tab); });
+  document.querySelectorAll('.bell-slot').forEach(el => el.innerHTML = ICON.bell);
+  document.querySelectorAll('.check-slot').forEach(el => el.innerHTML = ICON.check);
+  document.querySelectorAll('.x-slot').forEach(el => el.innerHTML = ICON.x);
+  document.querySelectorAll('.bm-slot').forEach(el => el.innerHTML = ICON.bookmark);
+  document.querySelectorAll('.hf-slot').forEach(el => el.innerHTML = ICON.heartFill);
+  document.querySelectorAll('.mic-slot').forEach(el => el.innerHTML = ICON.mic);
+  document.querySelectorAll('.back-slot').forEach(el => el.innerHTML = ICON.back);
+  document.querySelectorAll('.shield-slot').forEach(el => el.innerHTML = ICON.shield);
+  document.querySelectorAll('.cg-slot').forEach(el => el.innerHTML = ICON.checkG);
+  document.querySelectorAll('[data-icon]').forEach(el => el.innerHTML = ICON[el.dataset.icon]);
+
+  // show requested panel; ?c=1 = compact (Google Play 2:1) layout
+  const qs = new URLSearchParams(location.search);
+  if (qs.get('c')) document.body.classList.add('compact');
+  const p = qs.get('p') || '1';
+  document.getElementById('p' + p).classList.add('active');
+</script>
+</body>
+</html>
