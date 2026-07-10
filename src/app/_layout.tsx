@@ -57,7 +57,10 @@ function RootNavigator() {
       router.replace('/verify-account');
       return;
     }
-    if (onVerifyRoute) return;
+    // Only a signed-in member may stay on the verify/onboarding routes; after
+    // Sign out on the hub the signedOut redirect below must still run, or the
+    // member is left stranded on the verification screen with no session.
+    if (status === 'signedIn' && onVerifyRoute) return;
 
     const onPublic = root === undefined || root === '(auth)';
 
