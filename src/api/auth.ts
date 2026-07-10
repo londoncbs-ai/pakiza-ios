@@ -70,6 +70,9 @@ export const authApi = {
         is_selfie_verified: boolean;
         profile_complete: boolean;
         has_primary_photo: boolean;
+        // Fully verified but waiting on the team's final review; the hub shows
+        // "our team is completing final checks" until this flips false.
+        under_review: boolean;
       }>('/auth/me')
       .then((r) => r.data);
   },

@@ -28,6 +28,7 @@ export default function VerifyAccount() {
   const [emailVerified, setEmailVerified] = useState(false);
   const [selfieVerified, setSelfieVerified] = useState(false);
   const [photoReady, setPhotoReady] = useState(true);
+  const [underReview, setUnderReview] = useState(false);
 
   // Resend cooldown + "link sent" feedback.
   const [cooldown, setCooldown] = useState(0);
@@ -46,6 +47,7 @@ export default function VerifyAccount() {
       setEmailVerified(a.email_verified);
       setSelfieVerified(a.is_selfie_verified);
       setPhotoReady(a.profile_complete && a.has_primary_photo);
+      setUnderReview(a.under_review ?? false);
 
       // Celebrate the moment a step flips to verified.
       if (a.email_verified && !emailVerifiedRef.current) haptics.success();
@@ -98,18 +100,22 @@ export default function VerifyAccount() {
   };
 
   const allDone = (!phoneRequired || phoneVerified) && emailVerified && selfieVerified;
+  // Verified members wait here while our team completes its final review of
+  // the account; the 5s poll flips this the moment they are cleared.
+  const cleared = allDone && !underReview;
   const finish = useCallback(() => {
     clearVerify();
     router.replace('/(app)/discover');
   }, [clearVerify, router]);
 
-  // The moment everything is verified, take the member in by themselves.
+  // The moment everything is verified AND the team review is done, take the
+  // member in by themselves.
   useEffect(() => {
-    if (!allDone) return;
+    if (!cleared) return;
     haptics.success();
     const id = setTimeout(finish, 1400);
     return () => clearTimeout(id);
-  }, [allDone, finish]);
+  }, [cleared, finish]);
 
   return (
     <Screen>
@@ -118,7 +124,9 @@ export default function VerifyAccount() {
           Finish verifying your account
         </Text>
         <Text variant="callout" tone="muted" style={styles.subtitle}>
-          Pakiza is a verified-only community. Complete the steps below to start matching.
+          {allDone && underReview
+            ? 'All your steps are complete.'
+            : 'Pakiza is a verified-only community. Complete the steps below to start matching.'}
         </Text>
 
         <Surface elevated style={styles.card}>
@@ -200,15 +208,31 @@ export default function VerifyAccount() {
           />
         </Surface>
 
+        {allDone && underReview ? (
+          <Surface elevated style={styles.reviewCard}>
+            <View style={[styles.rowIcon, { backgroundColor: c.accentFaint, alignSelf: 'center' }]}>
+              <Ionicons name="shield-checkmark-outline" size={20} color={c.accent} />
+            </View>
+            <Text variant="callout" tone="default" center style={{ marginTop: spacing.sm }}>
+              You're verified
+            </Text>
+            <Text variant="footnote" tone="muted" center style={{ marginTop: spacing.xs }}>
+              Our team is completing a final check on your account, as we do for
+              every new member. We'll email you as soon as it's done, and this
+              screen will update by itself. Nothing more is needed from you.
+            </Text>
+          </Surface>
+        ) : null}
+
         <View style={styles.actions}>
-          {allDone ? (
+          {cleared ? (
             <>
               <Text variant="callout" tone="accent" style={styles.allset}>
                 All verified. Taking you in...
               </Text>
               <Button label="Continue to Pakiza" onPress={finish} />
             </>
-          ) : (
+          ) : allDone ? null : (
             <Button label="Refresh status" variant="outline" onPress={load} />
           )}
           <Pressable onPress={signOut} hitSlop={10} style={styles.signout}>
@@ -253,6 +277,7 @@ const styles = StyleSheet.create({
   title: { marginBottom: spacing.sm },
   subtitle: { marginBottom: spacing.xl },
   card: { paddingHorizontal: spacing.lg },
+  reviewCard: { padding: spacing.lg, marginTop: spacing.lg },
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.md },
   rowIcon: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
   rowText: { flex: 1 },

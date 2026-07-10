@@ -14,6 +14,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
+import { authApi } from '@/api/auth';
 import { errorMessage } from '@/api/client';
 import { profilesApi } from '@/api/profiles';
 import { Button } from '@/components/Button';
@@ -66,10 +67,19 @@ export default function FaceVerify() {
       await profilesApi.verifySelfie(shot.uri);
       haptics.success();
       // Show the verified moment before moving on; back to the checklist when
-      // the scan was opened from there, otherwise into the app.
+      // the scan was opened from there, otherwise into the app. If the account
+      // is now waiting on the team's final review, the hub explains that
+      // instead of the app bouncing them back here.
       setPhase('success');
+      const held =
+        from === 'hub'
+          ? false
+          : await authApi
+              .me()
+              .then((a) => a.under_review ?? false)
+              .catch(() => false);
       setTimeout(() => {
-        router.replace(from === 'hub' ? '/verify-account' : '/(app)/discover');
+        router.replace(from === 'hub' || held ? '/verify-account' : '/(app)/discover');
       }, 1600);
     } catch (err) {
       haptics.error();
