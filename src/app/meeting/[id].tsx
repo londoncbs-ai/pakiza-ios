@@ -30,7 +30,7 @@ import {
   formatMeetingDateTime,
   isTerminal,
 } from '@/lib/meetings';
-import { PAYMENTS_ENABLED } from '@/lib/features';
+import { MEETING_FEES_ENABLED } from '@/lib/features';
 import { haptics } from '@/lib/haptics';
 import { palette, radii, spacing, useTheme } from '@/theme';
 
@@ -361,7 +361,7 @@ export default function MeetingDetail() {
                     />
                   </View>
 
-                  {PAYMENTS_ENABLED && canPay ? (
+                  {MEETING_FEES_ENABLED && canPay ? (
                     <Button
                       label={myShare ? `Pay your share · ${myShare}` : 'Pay your share'}
                       variant="primary"

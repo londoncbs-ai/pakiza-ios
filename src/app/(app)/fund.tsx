@@ -14,7 +14,7 @@ import { FeatureHint } from '@/components/FeatureHint';
 import { Screen } from '@/components/Screen';
 import { Surface } from '@/components/Surface';
 import { Text } from '@/components/Text';
-import { PAYMENTS_ENABLED } from '@/lib/features';
+import { BOOSTS_ENABLED, DONATIONS_ENABLED } from '@/lib/features';
 import { formatPounds } from '@/lib/format';
 import {
   APPLICATION_STATUS_HINT,
@@ -127,7 +127,7 @@ export default function Fund() {
 
           {/* CTAs. In-app donations are hidden until payments ship; donors can
               still give on the website and the fund page stays informational. */}
-          {PAYMENTS_ENABLED ? (
+          {DONATIONS_ENABLED ? (
             <Button label="Donate" onPress={() => router.push('/donate')} style={styles.cta} />
           ) : null}
           <Button
@@ -260,7 +260,7 @@ export default function Fund() {
             </Section>
           ) : null}
 
-          {PAYMENTS_ENABLED ? (
+          {BOOSTS_ENABLED ? (
             <FeatureHint
               hintKey="support-fund-boost"
               icon="flash"

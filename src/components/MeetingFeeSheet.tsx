@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { errorMessage } from '@/api/client';
 import { meetingsApi } from '@/api/meetings';
 import type { MeetingRequest } from '@/api/types';
+import { PaymentCancelledError, presentStripePayment } from '@/lib/stripeSheet';
 import { Button } from './Button';
 import { Text } from './Text';
 import { formatFee } from '@/lib/meetings';
@@ -42,13 +43,18 @@ export function MeetingFeeSheet({
     setError(null);
     try {
       const session = await meetingsApi.checkout(meeting.id);
-      // With Stripe configured (session.mode === 'stripe') you would present the
-      // native PaymentSheet here using session.client_secret, then confirm. In
-      // dev we record the payment directly (validated server-side, no charge).
-      const updated = await meetingsApi.confirmPaid(meeting.id, session.client_secret ?? undefined);
+      const paymentIntentId = await presentStripePayment(session);
+      const updated = await meetingsApi.confirmPaid(
+        meeting.id,
+        paymentIntentId ?? session.client_secret ?? undefined
+      );
       haptics.success();
       onPaid(updated);
     } catch (err) {
+      if (err instanceof PaymentCancelledError) {
+        setBusy(false);
+        return;
+      }
       haptics.error();
       setError(errorMessage(err, 'Payment could not be completed'));
     } finally {

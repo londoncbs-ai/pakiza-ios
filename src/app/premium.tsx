@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Alert, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Redirect, useFocusEffect, useRouter } from 'expo-router';
@@ -11,7 +11,7 @@ import { Button } from '@/components/Button';
 import { CheckoutSheet } from '@/components/CheckoutSheet';
 import { Screen } from '@/components/Screen';
 import { Text } from '@/components/Text';
-import { PAYMENTS_ENABLED } from '@/lib/features';
+import { SUBSCRIPTIONS_ENABLED } from '@/lib/features';
 import { haptics } from '@/lib/haptics';
 import { palette, radii, spacing, useTheme } from '@/theme';
 
@@ -46,7 +46,7 @@ const PLANS: { plan: SubscriptionPlan; name: string; price: string; period: stri
 export default function Premium() {
   // Purchases are disabled until native IAP ships; the screen is unreachable
   // from the UI, and any stray deep link lands back on the profile tab.
-  if (!PAYMENTS_ENABLED) return <Redirect href="/(app)/profile" />;
+  if (!SUBSCRIPTIONS_ENABLED) return <Redirect href="/(app)/profile" />;
   return <PremiumScreen />;
 }
 
@@ -215,7 +215,9 @@ function PremiumScreen() {
             ) : null}
 
             <Text variant="footnote" tone="subtle" center style={styles.disclaimer}>
-              Dev mode: purchases are simulated (no real charge).
+              {Platform.OS === 'android'
+                ? 'Billed through Google Play. Cancel anytime in Play Store subscriptions.'
+                : 'Dev mode: purchases are simulated (no real charge).'}
             </Text>
           </>
         )}

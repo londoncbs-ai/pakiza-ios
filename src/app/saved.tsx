@@ -13,7 +13,7 @@ import { IntroductionCard } from '@/components/IntroductionCard';
 import { InterestModal } from '@/components/InterestModal';
 import { PressableScale } from '@/components/PressableScale';
 import { Text } from '@/components/Text';
-import { PAYMENTS_ENABLED } from '@/lib/features';
+import { SUBSCRIPTIONS_ENABLED } from '@/lib/features';
 import { haptics } from '@/lib/haptics';
 import { primaryPhotoUrl } from '@/lib/photos';
 import { savedStore } from '@/lib/savedStore';
@@ -56,7 +56,7 @@ export default function Saved() {
       if (sc === 429 || sc === 403 || sc === 402) {
         haptics.warning();
         setOpened(null);
-        if (PAYMENTS_ENABLED) {
+        if (SUBSCRIPTIONS_ENABLED) {
           router.push('/premium');
         } else {
           Alert.alert('Limit reached', err?.response?.data?.detail ?? 'You have reached your limit for now. Please check back later.');

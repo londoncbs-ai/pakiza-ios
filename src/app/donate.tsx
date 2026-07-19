@@ -13,7 +13,7 @@ import { Screen } from '@/components/Screen';
 import { Text } from '@/components/Text';
 import { TextField } from '@/components/TextField';
 import { ToggleRow } from '@/components/ToggleRow';
-import { PAYMENTS_ENABLED } from '@/lib/features';
+import { DONATIONS_ENABLED } from '@/lib/features';
 import { formatPounds, poundsToPence } from '@/lib/format';
 import { haptics } from '@/lib/haptics';
 import { spacing, radii, useTheme } from '@/theme';
@@ -25,7 +25,7 @@ const MESSAGE_MAX = 280;
 
 export default function Donate() {
   // In-app donations are disabled until payments ship; give on the website.
-  if (!PAYMENTS_ENABLED) return <Redirect href="/(app)/fund" />;
+  if (!DONATIONS_ENABLED) return <Redirect href="/(app)/fund" />;
   return <DonateScreen />;
 }
 

@@ -13,7 +13,7 @@ import { ErrorState } from '@/components/ErrorState';
 import { Screen } from '@/components/Screen';
 import { Surface } from '@/components/Surface';
 import { Text } from '@/components/Text';
-import { PAYMENTS_ENABLED } from '@/lib/features';
+import { BOOSTS_ENABLED } from '@/lib/features';
 import { formatPoundsExact } from '@/lib/format';
 import { formatCountdown } from '@/lib/giving';
 import { haptics } from '@/lib/haptics';
@@ -31,7 +31,7 @@ const PERKS = [
 
 export default function Boost() {
   // Purchases are disabled until native IAP ships (see lib/features.ts).
-  if (!PAYMENTS_ENABLED) return <Redirect href="/(app)/profile" />;
+  if (!BOOSTS_ENABLED) return <Redirect href="/(app)/profile" />;
   return <BoostScreen />;
 }
 

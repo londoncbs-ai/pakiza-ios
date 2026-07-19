@@ -76,6 +76,13 @@
         {
           "contactsPermission": "Pakiza uses your contacts only to hide your profile from people you know. Names and numbers never leave your phone, only anonymous codes."
         }
+      ],
+      [
+        "@stripe/stripe-react-native",
+        {
+          "merchantIdentifier": "merchant.app.pakiza.mobile",
+          "enableGooglePay": false
+        }
       ]
     ],
     "experiments": {

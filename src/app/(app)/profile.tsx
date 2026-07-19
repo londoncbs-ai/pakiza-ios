@@ -16,7 +16,7 @@ import { PreferencesSheet } from '@/components/PreferencesSheet';
 import { Screen } from '@/components/Screen';
 import { Surface } from '@/components/Surface';
 import { Text } from '@/components/Text';
-import { PAYMENTS_ENABLED } from '@/lib/features';
+import { BOOSTS_ENABLED, SUBSCRIPTIONS_ENABLED } from '@/lib/features';
 import { label, titleCase } from '@/lib/format';
 import { haptics } from '@/lib/haptics';
 import { sortedPhotos } from '@/lib/photos';
@@ -208,10 +208,14 @@ export default function ProfileTab() {
             <Divider />
             <SettingRow icon="options-outline" label="Partner preferences" onPress={() => setPrefsOpen(true)} />
             <Divider />
-            {PAYMENTS_ENABLED ? (
+            {SUBSCRIPTIONS_ENABLED ? (
               <>
                 <SettingRow icon="diamond-outline" label="Pakiza Premium" onPress={() => router.push('/premium')} />
                 <Divider />
+              </>
+            ) : null}
+            {BOOSTS_ENABLED ? (
+              <>
                 <SettingRow icon="flash-outline" label="Boost my profile" onPress={() => router.push('/boost')} />
                 <Divider />
               </>

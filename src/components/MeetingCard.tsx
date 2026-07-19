@@ -17,7 +17,7 @@ import {
   formatFee,
   formatMeetingDateTime,
 } from '@/lib/meetings';
-import { PAYMENTS_ENABLED } from '@/lib/features';
+import { MEETING_FEES_ENABLED } from '@/lib/features';
 import { haptics } from '@/lib/haptics';
 import { hexA, palette, radii, spacing, useTheme } from '@/theme';
 
@@ -149,7 +149,7 @@ export function MeetingCard({ meetingId }: { meetingId?: string }) {
           <>
             {when ? <StatusLine icon="calendar-outline" text={when} /> : null}
             {place ? <StatusLine icon="location-outline" text={place} /> : null}
-            {PAYMENTS_ENABLED && meeting.fee_status === 'due' && meeting.is_requester ? (
+            {MEETING_FEES_ENABLED && meeting.fee_status === 'due' && meeting.is_requester ? (
               <Button
                 label={fee ? `Pay fee · ${fee}` : 'Pay fee'}
                 variant="primary"

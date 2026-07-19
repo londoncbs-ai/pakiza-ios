@@ -6,6 +6,7 @@ import { useRouter } from 'expo-router';
 
 import { errorMessage } from '@/api/client';
 import { subscriptionsApi } from '@/api/subscriptions';
+import { playBillingAvailable, purchasePlaySubscription } from '@/lib/playBilling';
 import type { Subscription, SubscriptionPlan } from '@/api/types';
 import { Button } from './Button';
 import { PressableScale } from './PressableScale';
@@ -47,13 +48,23 @@ export function CheckoutSheet({
     setBusy(true);
     setError(null);
     try {
+      if (playBillingAvailable()) {
+        // Android: digital subscriptions must go through Google Play Billing.
+        const sub = await purchasePlaySubscription(plan);
+        onPurchased(sub);
+        return;
+      }
       const session = await subscriptionsApi.checkout(plan);
-      // With Stripe configured (session.mode === 'stripe') you'd present the
-      // PaymentSheet here using session.client_secret, then confirm. In dev we
-      // record the purchase directly (validated server-side, no real charge).
+      // Non-store dev builds only: record the purchase directly (validated
+      // server-side, no real charge). Store builds never reach this branch -
+      // iOS keeps subscriptions hidden until StoreKit is wired.
       const sub = await subscriptionsApi.purchase(plan, 'stripe', session.client_secret ?? 'dev-receipt');
       onPurchased(sub);
     } catch (err) {
+      if (err instanceof Error && err.message === 'cancelled') {
+        setBusy(false);
+        return;
+      }
       setError(errorMessage(err, 'Payment could not be completed'));
     } finally {
       setBusy(false);

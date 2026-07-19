@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { errorMessage } from '@/api/client';
 import { givingApi } from '@/api/giving';
 import type { Donation, DonationCheckoutInput } from '@/api/types';
+import { PaymentCancelledError, presentStripePayment } from '@/lib/stripeSheet';
 import { Button } from './Button';
 import { Text } from './Text';
 import { formatPoundsExact } from '@/lib/format';
@@ -42,16 +43,18 @@ export function DonationSheet({
     setError(null);
     try {
       const session = await givingApi.donateCheckout(input);
-      // With Stripe configured (session.mode === 'stripe') you would present the
-      // native PaymentSheet here using session.client_secret, then confirm. In
-      // dev we record the donation directly (validated server-side, no charge).
+      const paymentIntentId = await presentStripePayment(session);
       const donation = await givingApi.confirmDonation(
         session.donation_id,
-        session.client_secret ?? undefined
+        paymentIntentId ?? session.client_secret ?? undefined
       );
       haptics.success();
       onDonated(donation);
     } catch (err) {
+      if (err instanceof PaymentCancelledError) {
+        setBusy(false);
+        return;
+      }
       haptics.error();
       setError(errorMessage(err, 'Payment could not be completed'));
     } finally {

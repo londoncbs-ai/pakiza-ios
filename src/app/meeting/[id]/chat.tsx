@@ -23,7 +23,7 @@ import { Screen } from '@/components/Screen';
 import { Surface } from '@/components/Surface';
 import { Text } from '@/components/Text';
 import { PressableScale } from '@/components/PressableScale';
-import { PAYMENTS_ENABLED } from '@/lib/features';
+import { MEETING_FEES_ENABLED } from '@/lib/features';
 import { formatFee } from '@/lib/meetings';
 import { haptics } from '@/lib/haptics';
 import { useRealtime } from '@/store/realtime';
@@ -228,7 +228,7 @@ export default function MeetingChat() {
               clearable={false}
             />
           ) : null}
-          {PAYMENTS_ENABLED && !meeting.i_have_paid && meeting.my_share_pence > 0 ? (
+          {MEETING_FEES_ENABLED && !meeting.i_have_paid && meeting.my_share_pence > 0 ? (
             <Button
               label={`Pay your share (${formatFee(meeting.my_share_pence)})`}
               onPress={() => { haptics.selection(); setFeeOpen(true); }}

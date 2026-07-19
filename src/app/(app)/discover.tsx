@@ -18,7 +18,7 @@ import { PressableScale } from '@/components/PressableScale';
 import { SkeletonCard } from '@/components/Skeleton';
 import { Text } from '@/components/Text';
 import { Wordmark } from '@/components/Wordmark';
-import { PAYMENTS_ENABLED } from '@/lib/features';
+import { SUBSCRIPTIONS_ENABLED } from '@/lib/features';
 import { haptics } from '@/lib/haptics';
 import { savedStore } from '@/lib/savedStore';
 import { palette, spacing, tint, useTheme } from '@/theme';
@@ -240,11 +240,11 @@ export default function Discover() {
 
       {notice ? (
         <Pressable
-          onPress={() => { setNotice(null); if (PAYMENTS_ENABLED) router.push('/premium'); }}
+          onPress={() => { setNotice(null); if (SUBSCRIPTIONS_ENABLED) router.push('/premium'); }}
           style={styles.notice}
         >
           <Text variant="footnote" tone="default" center>
-            {PAYMENTS_ENABLED ? `${notice}  Tap to upgrade.` : notice}
+            {SUBSCRIPTIONS_ENABLED ? `${notice}  Tap to upgrade.` : notice}
           </Text>
         </Pressable>
       ) : null}
