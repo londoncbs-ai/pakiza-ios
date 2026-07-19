@@ -53,3 +53,7 @@ example
 .vscode/
 CLAUDE.md
 AGENTS.md
+
+# Build artifacts
+*.aab
+*.apk

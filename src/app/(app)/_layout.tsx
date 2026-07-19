@@ -1,13 +1,30 @@
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useEffect } from 'react';
 import { Platform, StyleSheet } from 'react-native';
 
+import { profilesApi } from '@/api/profiles';
+import { syncContactHashes } from '@/lib/contactPrivacy';
 import { useRealtime } from '@/store/realtime';
 import { fonts, palette, useTheme } from '@/theme';
 
 export default function AppTabsLayout() {
   const { c } = useTheme();
   const { unreadCount } = useRealtime();
+
+  // Hide-from-contacts drifts as the phone book changes; refresh the hash
+  // set once per launch, silently (never prompts - the settings toggle owns
+  // the permission ask).
+  useEffect(() => {
+    (async () => {
+      try {
+        const me = await profilesApi.getMine();
+        if (me?.hide_from_contacts) await syncContactHashes(me.phone, false);
+      } catch {
+        // Best effort only; the last uploaded set keeps working.
+      }
+    })();
+  }, []);
   return (
     <Tabs
       screenOptions={{

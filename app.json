@@ -29,6 +29,9 @@
       "predictiveBackGestureEnabled": false,
       "softwareKeyboardLayoutMode": "resize",
       "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.READ_CONTACTS",
         "android.permission.RECORD_AUDIO"
       ]
     },
@@ -67,11 +70,24 @@
         {
           "cameraPermission": "Pakiza needs camera access for a quick face verification scan."
         }
+      ],
+      [
+        "expo-contacts",
+        {
+          "contactsPermission": "Pakiza uses your contacts only to hide your profile from people you know. Names and numbers never leave your phone, only anonymous codes."
+        }
       ]
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "763b2fd7-1851-4599-bd23-54d622efee6c"
+      }
+    },
+    "owner": "pakiza-team"
   }
 }

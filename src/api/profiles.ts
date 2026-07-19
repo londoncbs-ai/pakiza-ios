@@ -28,6 +28,15 @@ export const profilesApi = {
     return api.patch<MyProfile>('/profiles/me', patch).then((r) => r.data);
   },
 
+  /** Hide-from-contacts: upload the full replacement set of SHA-256 hashes. */
+  syncContactHashes(hashes: string[]) {
+    return api.put('/profiles/me/contact-hashes', { hashes }).then((r) => r.data);
+  },
+
+  clearContactHashes() {
+    return api.delete('/profiles/me/contact-hashes').then((r) => r.data);
+  },
+
   getPreferences() {
     return api.get<PartnerPreferences>('/profiles/me/preferences').then((r) => r.data);
   },

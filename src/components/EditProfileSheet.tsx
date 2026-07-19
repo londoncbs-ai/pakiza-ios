@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { errorMessage } from '@/api/client';
 import { profilesApi } from '@/api/profiles';
+import { syncContactHashes } from '@/lib/contactPrivacy';
 import type {
   BodyType,
   EducationLevel,
@@ -112,6 +113,19 @@ export function EditProfileSheet({
     setSaving(true);
     setError(null);
     try {
+      // Turning hide-from-contacts on needs the phone book: hash the numbers
+      // on device and upload before the flag goes live. Numbers themselves
+      // never leave the phone. If access is denied, keep the toggle off
+      // rather than saving a promise we cannot keep.
+      if (hideContacts && !profile.hide_from_contacts) {
+        const res = await syncContactHashes(profile.phone);
+        if (res === 'permission-denied') {
+          setHideContacts(false);
+          setSaving(false);
+          setError('To hide from your contacts, Pakiza needs contacts access. Only anonymous codes are uploaded, never names or numbers.');
+          return;
+        }
+      }
       const patch: UpdateProfileInput = {
         bio: bio.trim() || undefined,
         city: city.trim() || undefined,
@@ -197,7 +211,7 @@ export function EditProfileSheet({
 
           <Section title="Privacy">
             <ToggleRow label="Blur my photos until matched" value={photosBlurred} onValueChange={setPhotosBlurred} onDark={false} />
-            <ToggleRow label="Hide me from my phone contacts" value={hideContacts} onValueChange={setHideContacts} onDark={false} />
+            <ToggleRow label="Hide me from my phone contacts" hint="People in your phone book will not see your profile. Only anonymous codes are uploaded, never names or numbers." value={hideContacts} onValueChange={setHideContacts} onDark={false} />
             <ToggleRow label="Incognito mode" hint="Browse without leaving profile-view notifications." value={incognito} onValueChange={setIncognito} onDark={false} />
           </Section>
 
