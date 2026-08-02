@@ -85,7 +85,7 @@ export function AcceptMeetingSheet({
       <Pressable style={[styles.backdrop, { backgroundColor: c.overlay }]} onPress={close} />
       <KeyboardAvoidingView
         style={styles.kav}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior="padding"
         pointerEvents="box-none"
       >
       <View
