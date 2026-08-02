@@ -52,6 +52,16 @@ export async function purchasePlaySubscription(
       const cleanup = () => subs.forEach((s) => s.remove());
       subs.push(
         IAP.purchaseUpdatedListener((p: any) => {
+          // Slow payment methods (cash, redeem codes) emit a PENDING purchase
+          // first. It has a token but cannot be verified or acknowledged yet -
+          // treat it as "come back later", never as a completed purchase.
+          if (p?.purchaseState === 'pending') {
+            cleanup();
+            reject(new Error(
+              'Your payment is still processing. Your subscription will activate once Google Play completes it - check back shortly.',
+            ));
+            return;
+          }
           cleanup();
           resolve(p);
         }),

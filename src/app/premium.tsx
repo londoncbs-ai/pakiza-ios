@@ -6,6 +6,7 @@ import { Redirect, useFocusEffect, useRouter } from 'expo-router';
 
 import { errorMessage } from '@/api/client';
 import { subscriptionsApi } from '@/api/subscriptions';
+import { restorePlaySubscription } from '@/lib/playBilling';
 import type { Subscription, SubscriptionPlan } from '@/api/types';
 import { Button } from '@/components/Button';
 import { CheckoutSheet } from '@/components/CheckoutSheet';
@@ -74,6 +75,20 @@ function PremiumScreen() {
       load();
     }, [load])
   );
+
+  const restore = async () => {
+    try {
+      const restored = await restorePlaySubscription();
+      if (restored) {
+        setSub(restored);
+        Alert.alert('Restored', 'Your subscription is active again.');
+      } else {
+        Alert.alert('Nothing to restore', 'No previous purchase was found for this Google account.');
+      }
+    } catch (err) {
+      Alert.alert('Could not restore', errorMessage(err, 'Please try again.'));
+    }
+  };
 
   const cancel = () => {
     Alert.alert('Cancel auto-renewal?', 'You’ll keep your benefits until the period ends.', [
@@ -219,6 +234,12 @@ function PremiumScreen() {
                 ? 'Billed through Google Play. Cancel anytime in Play Store subscriptions.'
                 : 'Dev mode: purchases are simulated (no real charge).'}
             </Text>
+
+            {Platform.OS === 'android' ? (
+              <Pressable onPress={restore} style={styles.cancel} hitSlop={8}>
+                <Text variant="footnote" tone="muted">Restore purchases</Text>
+              </Pressable>
+            ) : null}
           </>
         )}
       </ScrollView>

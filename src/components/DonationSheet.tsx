@@ -104,7 +104,9 @@ export function DonationSheet({
         <Button label={price ? `Give ${price}` : 'Give'} onPress={pay} loading={busy} />
 
         <Text variant="footnote" tone="subtle" center style={styles.dev}>
-          Dev mode: simulated payment, you will not be charged.
+          {__DEV__
+            ? 'Dev mode: simulated payment, you will not be charged.'
+            : 'Payments are processed securely by Stripe. Donations support the Marriage Support Fund.'}
         </Text>
       </View>
     </Modal>

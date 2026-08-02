@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Modal, Pressable, StyleSheet, View } from 'react-native';
+import { Modal, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -149,7 +149,11 @@ export function CheckoutSheet({
         />
 
         <Text variant="footnote" tone="subtle" center style={styles.dev}>
-          Dev mode: simulated payment, you won’t be charged.
+          {__DEV__
+            ? 'Dev mode: simulated payment, you won’t be charged.'
+            : Platform.OS === 'android'
+              ? 'Billed through Google Play. Cancel anytime in Play Store subscriptions.'
+              : 'Payments are processed securely.'}
         </Text>
       </View>
     </Modal>

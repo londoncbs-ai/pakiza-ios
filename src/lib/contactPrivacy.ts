@@ -26,10 +26,12 @@ const CALLING_CODES = [
   '41', '43', '44', '45', '46', '47', '48', '49', '61', '64', '7', '1',
 ];
 
+const CODES_LONGEST_FIRST = [...CALLING_CODES].sort((a, b) => b.length - a.length);
+
 export function callingCodeOf(ownPhone: string | null | undefined): string {
   if (!ownPhone || !ownPhone.startsWith('+')) return '44';
   const digits = ownPhone.slice(1);
-  return CALLING_CODES.find((cc) => digits.startsWith(cc)) ?? '44';
+  return CODES_LONGEST_FIRST.find((cc) => digits.startsWith(cc)) ?? '44';
 }
 
 export function normalizePhone(raw: string, ownCc: string): string | null {

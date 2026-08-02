@@ -56,6 +56,7 @@ export const chatApi = {
     return api
       .post<MediaUploadResult>(`/conversations/${convId}/media`, form, {
         headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 120000,
       })
       .then((r) => r.data);
   },

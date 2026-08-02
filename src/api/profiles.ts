@@ -64,6 +64,7 @@ export const profilesApi = {
     return api
       .post<Photo>('/profiles/me/photos', form, {
         headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 120000,
       })
       .then((r) => r.data);
   },
@@ -79,7 +80,7 @@ export const profilesApi = {
     const ext = (name.split('.').pop() || 'jpg').toLowerCase();
     form.append('file', { uri, name, type: ext === 'png' ? 'image/png' : 'image/jpeg' } as any);
     return api
-      .post('/profiles/me/verify-selfie', form, { headers: { 'Content-Type': 'multipart/form-data' } })
+      .post('/profiles/me/verify-selfie', form, { headers: { 'Content-Type': 'multipart/form-data' }, timeout: 120000 })
       .then((r) => r.data);
   },
 };

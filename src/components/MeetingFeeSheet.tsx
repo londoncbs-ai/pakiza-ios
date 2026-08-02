@@ -107,7 +107,9 @@ export function MeetingFeeSheet({
         <Button label={price ? `Pay ${price}` : 'Pay fee'} onPress={pay} loading={busy} />
 
         <Text variant="footnote" tone="subtle" center style={styles.dev}>
-          Dev mode: simulated payment, you will not be charged.
+          {__DEV__
+            ? 'Dev mode: simulated payment, you will not be charged.'
+            : 'Payments are processed securely by Stripe.'}
         </Text>
       </View>
     </Modal>
