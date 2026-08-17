@@ -29,7 +29,12 @@ export function ScreenshotGuard() {
     // expo-screen-capture has no web implementation - calling it there
     // crashes the whole app at the root layout.
     if (Platform.OS === 'web') return;
-    ScreenCapture.preventScreenCaptureAsync().catch(() => {});
+    // Android keeps the hard FLAG_SECURE block. On iOS, capture is allowed
+    // for now (App Review requires demo screen recordings); the screenshot
+    // warning below still fires. To re-block iOS, drop this platform check.
+    if (Platform.OS === 'android') {
+      ScreenCapture.preventScreenCaptureAsync().catch(() => {});
+    }
     const sub = ScreenCapture.addScreenshotListener(() => setWarned(true));
     return () => {
       sub.remove();
