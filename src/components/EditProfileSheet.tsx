@@ -16,6 +16,7 @@ import type {
   WantsChildren,
 } from '@/api/types';
 import { Button } from './Button';
+import { ChipMultiSelect } from './ChipMultiSelect';
 import { FormScroll } from './FormScroll';
 import { OptionGroup } from './OptionGroup';
 import { Surface } from './Surface';
@@ -68,6 +69,8 @@ const RELIGIOSITY = [
   { label: 'Practising', value: 4 },
   { label: 'Very devout', value: 5 },
 ];
+// Same presets as onboarding, so chips picked there light up here too.
+const HOBBIES = ['Reading', 'Travel', 'Fitness', 'Cooking', 'Photography', 'Volunteering', 'Sports', 'Art', 'Music', 'Nature', 'Writing', 'Gardening', 'Calligraphy'];
 
 export function EditProfileSheet({
   profile,
@@ -103,6 +106,7 @@ export function EditProfileSheet({
   const [drinking, setDrinking] = useState<SmokingDrinking | null>(profile.drinking ?? null);
   const [relocate, setRelocate] = useState<RelocationWillingness | null>(profile.willing_to_relocate ?? null);
   const [religiosity, setReligiosity] = useState<number | null>(profile.religiosity ?? null);
+  const [hobbies, setHobbies] = useState(profile.hobbies ?? '');
   const [photosBlurred, setPhotosBlurred] = useState<boolean>(profile.photos_blurred ?? true);
   const [hideContacts, setHideContacts] = useState<boolean>(profile.hide_from_contacts ?? false);
   const [incognito, setIncognito] = useState<boolean>(profile.incognito_mode ?? false);
@@ -148,6 +152,7 @@ export function EditProfileSheet({
         drinking: drinking ?? undefined,
         willing_to_relocate: relocate ?? undefined,
         religiosity: religiosity ?? undefined,
+        hobbies: hobbies || undefined,
         photos_blurred: photosBlurred,
         hide_from_contacts: hideContacts,
         incognito_mode: incognito,
@@ -198,6 +203,7 @@ export function EditProfileSheet({
             <OptionGroup label="Education" options={EDUCATION} value={education} onChange={setEducation} onDark={false} />
             <TextField label="Field of study" value={educationField} onChangeText={setEducationField} placeholder="e.g. Medicine" />
             <TextField label="Languages (comma separated)" value={languages} onChangeText={setLanguages} placeholder="e.g. en, ar, ur" />
+            <ChipMultiSelect label="Hobbies & interests" options={HOBBIES} value={hobbies || null} onChange={(v) => setHobbies(v ?? '')} placeholder="Add a hobby" />
           </Section>
 
           <Section title="Lifestyle & family">

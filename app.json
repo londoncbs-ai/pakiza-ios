@@ -2,7 +2,7 @@
   "expo": {
     "name": "Pakiza",
     "slug": "pakiza-frontend",
-    "version": "1.1.0",
+    "version": "1.1.1",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "pakiza",
@@ -50,8 +50,8 @@
         "expo-splash-screen",
         {
           "backgroundColor": "#800020",
-          "image": "./assets/brand/splash.png",
-          "imageWidth": 320,
+          "image": "./assets/brand/logo-hearts.png",
+          "imageWidth": 180,
           "resizeMode": "contain"
         }
       ],

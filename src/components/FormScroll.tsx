@@ -1,33 +1,37 @@
 import React from 'react';
-import { Platform, StyleSheet } from 'react-native';
-import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
+import { KeyboardAvoidingView, ScrollView, StyleSheet } from 'react-native';
 
-type Props = React.ComponentProps<typeof KeyboardAwareScrollView>;
+type Props = React.ComponentProps<typeof ScrollView>;
 
 /**
- * Keyboard-aware scroll container for form screens. Unlike a plain
- * KeyboardAvoidingView, it scrolls the focused input into view, so fields
- * near the bottom of a long form are never hidden behind the keyboard.
+ * Keyboard-aware scroll container for form screens: a plain ScrollView inside
+ * a KeyboardAvoidingView (behavior "padding", same as the chat screens), so
+ * the scroll area shrinks above the keyboard and every field stays reachable.
  *
- * Accepts all ScrollView props; project defaults (extra scroll height,
- * persist taps, hidden indicator) can be overridden per call site.
+ * Built on core components only. react-native-keyboard-aware-scroll-view must
+ * not come back here: with edge-to-edge Android the window no longer resizes
+ * for the keyboard, its focus tracking calls UIManager APIs the new
+ * architecture removed, and on Android it overwrote the caller's paddingBottom
+ * with 0 until the first keyboard event - which left form screens (profile
+ * setup among them) unable to scroll at all.
  */
 export function FormScroll({ children, contentContainerStyle, ...rest }: Props) {
   return (
-    <KeyboardAwareScrollView
-      enableOnAndroid
-      extraScrollHeight={Platform.OS === 'ios' ? 32 : 24}
-      keyboardShouldPersistTaps="handled"
-      keyboardOpeningTime={0}
-      showsVerticalScrollIndicator={false}
-      contentContainerStyle={[styles.content, contentContainerStyle]}
-      {...rest}
-    >
-      {children}
-    </KeyboardAwareScrollView>
+    <KeyboardAvoidingView style={styles.avoid} behavior="padding">
+      <ScrollView
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive"
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={[styles.content, contentContainerStyle]}
+        {...rest}
+      >
+        {children}
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
+  avoid: { flex: 1 },
   content: { flexGrow: 1 },
 });

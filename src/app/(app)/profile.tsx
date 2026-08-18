@@ -9,13 +9,15 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { authApi } from '@/api/auth';
 import { errorMessage } from '@/api/client';
 import { profilesApi } from '@/api/profiles';
-import type { MyProfile } from '@/api/types';
+import type { MyProfile, UpdateProfileInput } from '@/api/types';
 import { DetailRow } from '@/components/DetailRow';
 import { EditProfileSheet } from '@/components/EditProfileSheet';
 import { PreferencesSheet } from '@/components/PreferencesSheet';
 import { Screen } from '@/components/Screen';
 import { Surface } from '@/components/Surface';
 import { Text } from '@/components/Text';
+import { ToggleRow } from '@/components/ToggleRow';
+import { syncContactHashes } from '@/lib/contactPrivacy';
 import { BOOSTS_ENABLED, SUBSCRIPTIONS_ENABLED } from '@/lib/features';
 import { label, titleCase } from '@/lib/format';
 import { haptics } from '@/lib/haptics';
@@ -93,6 +95,37 @@ export default function ProfileTab() {
       { text: 'Cancel', style: 'cancel' },
       { text: 'Sign out', style: 'destructive', onPress: signOut },
     ]);
+  };
+
+  // Privacy toggles save straight away - members should not have to discover
+  // them inside the edit sheet. Optimistic flip, reverted if the save fails.
+  const setPrivacy = async (
+    patch: Pick<UpdateProfileInput, 'photos_blurred' | 'hide_from_contacts' | 'incognito_mode'>,
+  ) => {
+    if (!profile) return;
+    const prev = profile;
+    // Turning hide-from-contacts on needs the phone book: hash the numbers on
+    // device and upload before the flag goes live. Numbers themselves never
+    // leave the phone. If access is denied, leave the toggle off rather than
+    // saving a promise we cannot keep.
+    if (patch.hide_from_contacts && !profile.hide_from_contacts) {
+      const res = await syncContactHashes(profile.phone);
+      if (res === 'permission-denied') {
+        Alert.alert(
+          'Contacts access needed',
+          'To hide from your contacts, Pakiza needs contacts access. Only anonymous codes are uploaded, never names or numbers.',
+        );
+        return;
+      }
+    }
+    setProfile({ ...profile, ...patch });
+    try {
+      const updated = await profilesApi.update(patch);
+      setProfile(updated);
+    } catch (err) {
+      setProfile(prev);
+      Alert.alert('Could not save', errorMessage(err, 'Please try again.'));
+    }
   };
 
   if (loading) {
@@ -200,6 +233,34 @@ export default function ProfileTab() {
             <AppearanceToggle />
           </Surface>
         </Section>
+
+        {/* Privacy */}
+        {profile ? (
+          <Section title="Privacy">
+            <Surface elevated style={styles.cardPad}>
+              <ToggleRow
+                label="Blur my photos until matched"
+                value={profile.photos_blurred ?? true}
+                onValueChange={(v) => setPrivacy({ photos_blurred: v })}
+                onDark={false}
+              />
+              <ToggleRow
+                label="Hide me from my phone contacts"
+                hint="People in your phone book will not see your profile. Only anonymous codes are uploaded, never names or numbers."
+                value={profile.hide_from_contacts ?? false}
+                onValueChange={(v) => setPrivacy({ hide_from_contacts: v })}
+                onDark={false}
+              />
+              <ToggleRow
+                label="Incognito mode"
+                hint="Browse without leaving profile-view notifications."
+                value={profile.incognito_mode ?? false}
+                onValueChange={(v) => setPrivacy({ incognito_mode: v })}
+                onDark={false}
+              />
+            </Surface>
+          </Section>
+        ) : null}
 
         {/* Account */}
         <Section title="Account">
