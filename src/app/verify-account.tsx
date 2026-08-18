@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, AppState, Pressable, StyleSheet, View } from 'react-native';
+import { Alert, AppState, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -119,7 +119,10 @@ export default function VerifyAccount() {
 
   return (
     <Screen>
-      <View style={[styles.wrap, { paddingTop: insets.top + spacing.xxl, paddingBottom: insets.bottom + spacing.lg }]}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={[styles.wrap, { paddingTop: insets.top + spacing.xxl, paddingBottom: insets.bottom + spacing.lg }]}
+      >
         <Text variant="title" tone="default" style={styles.title}>
           Finish verifying your account
         </Text>
@@ -239,7 +242,7 @@ export default function VerifyAccount() {
             <Text variant="callout" tone="muted">Sign out</Text>
           </Pressable>
         </View>
-      </View>
+      </ScrollView>
     </Screen>
   );
 }
@@ -273,7 +276,9 @@ function Divider({ c }: { c: ReturnType<typeof useTheme>['c'] }) {
 }
 
 const styles = StyleSheet.create({
-  wrap: { flex: 1, paddingHorizontal: spacing.xl },
+  // flexGrow (not flex): fills tall screens so the actions sit at the bottom,
+  // but lets the content scroll on small ones.
+  wrap: { flexGrow: 1, paddingHorizontal: spacing.xl },
   title: { marginBottom: spacing.sm },
   subtitle: { marginBottom: spacing.xl },
   card: { paddingHorizontal: spacing.lg },

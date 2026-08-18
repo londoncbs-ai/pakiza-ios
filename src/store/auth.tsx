@@ -27,6 +27,30 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
+/**
+ * Whether any verification step is still pending for this account, or null
+ * when it cannot be determined right now (offline, expired session) - in that
+ * case the API gate's 403 handler flips the flag later instead.
+ *
+ * This must be known BEFORE status turns signedIn: the navigator routes on
+ * both together. Discovering it lazily via the first rejected API call sent
+ * fresh members into the app for a beat, showed the verification hub, then
+ * Discover's "no profile yet" redirect yanked them off it a second later.
+ */
+async function fetchVerifyRequired(): Promise<boolean | null> {
+  try {
+    const me = await authApi.me();
+    return (
+      (me.phone_verification_required && !me.phone_verified) ||
+      !me.email_verified ||
+      !me.is_selfie_verified ||
+      me.under_review
+    );
+  } catch {
+    return null;
+  }
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [status, setStatus] = useState<Status>('loading');
   const [userId, setUserId] = useState<string | null>(null);
@@ -38,6 +62,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     (async () => {
       const token = await tokenStore.getAccess();
       setUserId(jwtSub(token));
+      if (token) {
+        const v = await fetchVerifyRequired();
+        if (v !== null) setVerifyRequired(v);
+      }
       setStatus(token ? 'signedIn' : 'signedOut');
     })();
   }, []);
@@ -46,6 +74,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await tokenStore.save(tokens.access_token, tokens.refresh_token);
     setUserId(jwtSub(tokens.access_token));
     setBlock(null);
+    const v = await fetchVerifyRequired();
+    if (v !== null) setVerifyRequired(v);
     setStatus('signedIn');
   }, []);
 
