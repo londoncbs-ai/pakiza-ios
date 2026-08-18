@@ -50,7 +50,7 @@
         "expo-splash-screen",
         {
           "backgroundColor": "#800020",
-          "image": "./assets/brand/logo-hearts.png",
+          "image": "./assets/images/splash-mark.png",
           "imageWidth": 180,
           "resizeMode": "contain"
         }
