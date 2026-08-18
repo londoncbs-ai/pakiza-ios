@@ -16,7 +16,7 @@ import type {
   WantsChildren,
 } from '@/api/types';
 import { Button } from './Button';
-import { ChipMultiSelect } from './ChipMultiSelect';
+import { MultiSelectField } from './MultiSelectField';
 import { FormScroll } from './FormScroll';
 import { OptionGroup } from './OptionGroup';
 import { Surface } from './Surface';
@@ -203,7 +203,7 @@ export function EditProfileSheet({
             <OptionGroup label="Education" options={EDUCATION} value={education} onChange={setEducation} onDark={false} />
             <TextField label="Field of study" value={educationField} onChangeText={setEducationField} placeholder="e.g. Medicine" />
             <TextField label="Languages (comma separated)" value={languages} onChangeText={setLanguages} placeholder="e.g. en, ar, ur" />
-            <ChipMultiSelect label="Hobbies & interests" options={HOBBIES} value={hobbies || null} onChange={(v) => setHobbies(v ?? '')} placeholder="Add a hobby" />
+            <MultiSelectField label="Hobbies & interests" sheetTitle="Hobbies & interests" options={HOBBIES} value={hobbies || null} onChange={(v) => setHobbies(v ?? '')} placeholder="What do you enjoy?" addPlaceholder="Add a hobby" />
           </Section>
 
           <Section title="Lifestyle & family">

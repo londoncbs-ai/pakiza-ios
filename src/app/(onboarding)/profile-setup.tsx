@@ -18,7 +18,7 @@ import type {
 } from '@/api/types';
 import { AcceptCheckbox } from '@/components/AcceptCheckbox';
 import { Button } from '@/components/Button';
-import { ChipMultiSelect } from '@/components/ChipMultiSelect';
+import { MultiSelectField } from '@/components/MultiSelectField';
 import { DatePickerField } from '@/components/DatePickerField';
 import { FormScroll } from '@/components/FormScroll';
 import { OptionGroup } from '@/components/OptionGroup';
@@ -239,7 +239,7 @@ export default function ProfileSetup() {
             <OptionGroup label="I am a…" options={GENDERS} value={gender} onChange={setGender} onDark={false} clearable={false} />
             <DatePickerField label="Date of birth" value={dob} onChange={setDob} onDark={false} />
             <TextField label="City (optional)" value={city} onChangeText={setCity} placeholder="e.g. London" />
-            <ChipMultiSelect label="Ethnicity (optional)" options={ETHNICITIES} value={ethnicity || null} onChange={(v) => setEthnicity(v ?? '')} placeholder="Add your ethnicity" />
+            <MultiSelectField label="Ethnicity (optional)" sheetTitle="Your ethnicity" options={ETHNICITIES} value={ethnicity || null} onChange={(v) => setEthnicity(v ?? '')} placeholder="Choose your background" addPlaceholder="Add your ethnicity" />
           </>
         )}
 
@@ -253,12 +253,14 @@ export default function ProfileSetup() {
               placeholder="e.g. Sunni, Catholic, Reform"
             />
             <OptionGroup label="How religious are you?" options={RELIGIOSITY} value={religiosity} onChange={setReligiosity} onDark={false} />
-            <ChipMultiSelect
+            <MultiSelectField
               label="Caste / biradari (optional)"
+              sheetTitle="Caste / biradari"
               options={CASTES}
               value={caste || null}
               onChange={(v) => setCaste(v ?? '')}
-              placeholder="e.g. Syed, Jat, Gotra…"
+              placeholder="Add if it matters to your family"
+              addPlaceholder="e.g. Syed, Jat, Gotra…"
             />
             {caste ? (
               <ToggleRow
@@ -279,7 +281,7 @@ export default function ProfileSetup() {
             <TextField label="Height in cm (optional)" value={height} onChangeText={setHeight} keyboardType="number-pad" placeholder="e.g. 170" />
             <OptionGroup label="Marital status" options={MARITAL} value={marital} onChange={setMarital} onDark={false} />
             <OptionGroup label="Children" options={WANTS} value={wants} onChange={setWants} onDark={false} />
-            <ChipMultiSelect label="Hobbies & interests (optional)" options={HOBBIES} value={hobbies || null} onChange={(v) => setHobbies(v ?? '')} placeholder="Add a hobby" />
+            <MultiSelectField label="Hobbies & interests (optional)" sheetTitle="Hobbies & interests" options={HOBBIES} value={hobbies || null} onChange={(v) => setHobbies(v ?? '')} placeholder="What do you enjoy?" addPlaceholder="Add a hobby" />
             <TextField
               label="About you (optional)"
               value={bio}
