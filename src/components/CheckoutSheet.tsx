@@ -6,6 +6,7 @@ import { useRouter } from 'expo-router';
 
 import { errorMessage } from '@/api/client';
 import { subscriptionsApi } from '@/api/subscriptions';
+import { appleBillingAvailable, purchaseAppleSubscription } from '@/lib/appleBilling';
 import { playBillingAvailable, purchasePlaySubscription } from '@/lib/playBilling';
 import type { Subscription, SubscriptionPlan } from '@/api/types';
 import { Button } from './Button';
@@ -51,6 +52,12 @@ export function CheckoutSheet({
       if (playBillingAvailable()) {
         // Android: digital subscriptions must go through Google Play Billing.
         const sub = await purchasePlaySubscription(plan);
+        onPurchased(sub);
+        return;
+      }
+      if (appleBillingAvailable()) {
+        // iOS: digital subscriptions must go through Apple StoreKit.
+        const sub = await purchaseAppleSubscription(plan);
         onPurchased(sub);
         return;
       }
@@ -153,7 +160,7 @@ export function CheckoutSheet({
             ? 'Dev mode: simulated payment, you won’t be charged.'
             : Platform.OS === 'android'
               ? 'Billed through Google Play. Cancel anytime in Play Store subscriptions.'
-              : 'Payments are processed securely.'}
+              : 'Billed through the App Store as an auto-renewing monthly subscription. Cancel anytime in your Apple ID settings.'}
         </Text>
       </View>
     </Modal>

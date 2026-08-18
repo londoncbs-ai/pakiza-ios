@@ -5,10 +5,10 @@ import { Platform } from 'react-native';
  * bought, so one global switch cannot work:
  *
  * - Subscriptions (Premium/Gold) are digital goods: Google/Apple REQUIRE
- *   native billing (Play Billing / StoreKit). Play Billing is integrated
- *   (src/lib/playBilling.ts), so Android is on. iOS stays off until
- *   StoreKit is wired - never show a Stripe sheet for these on either
- *   store or the app gets rejected.
+ *   native billing. Both are integrated: Play Billing on Android
+ *   (src/lib/playBilling.ts) and StoreKit on iOS (src/lib/appleBilling.ts).
+ *   Never show a Stripe sheet for these on either store or the app gets
+ *   rejected.
  *
  * - Donations to the Marriage Support Fund are charitable giving, which
  *   both stores exempt from native billing: Stripe's PaymentSheet is
@@ -21,7 +21,8 @@ import { Platform } from 'react-native';
  *   server-side one-time-product validation, which is not built yet.
  *   Keep hidden everywhere.
  */
-export const SUBSCRIPTIONS_ENABLED = Platform.OS === 'android';
+export const SUBSCRIPTIONS_ENABLED =
+  Platform.OS === 'android' || Platform.OS === 'ios';
 export const DONATIONS_ENABLED = true;
 export const MEETING_FEES_ENABLED = true;
 export const BOOSTS_ENABLED = false;

@@ -1,11 +1,12 @@
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Alert, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Alert, Linking, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Redirect, useFocusEffect, useRouter } from 'expo-router';
 
 import { errorMessage } from '@/api/client';
 import { subscriptionsApi } from '@/api/subscriptions';
+import { restoreAppleSubscription } from '@/lib/appleBilling';
 import { restorePlaySubscription } from '@/lib/playBilling';
 import type { Subscription, SubscriptionPlan } from '@/api/types';
 import { Button } from '@/components/Button';
@@ -45,8 +46,8 @@ const PLANS: { plan: SubscriptionPlan; name: string; price: string; period: stri
 ];
 
 export default function Premium() {
-  // Purchases are disabled until native IAP ships; the screen is unreachable
-  // from the UI, and any stray deep link lands back on the profile tab.
+  // Native billing everywhere subscriptions are sold (Play Billing on
+  // Android, StoreKit on iOS); other platforms redirect away.
   if (!SUBSCRIPTIONS_ENABLED) return <Redirect href="/(app)/profile" />;
   return <PremiumScreen />;
 }
@@ -78,12 +79,15 @@ function PremiumScreen() {
 
   const restore = async () => {
     try {
-      const restored = await restorePlaySubscription();
+      const restored =
+        Platform.OS === 'ios'
+          ? await restoreAppleSubscription()
+          : await restorePlaySubscription();
       if (restored) {
         setSub(restored);
         Alert.alert('Restored', 'Your subscription is active again.');
       } else {
-        Alert.alert('Nothing to restore', 'No previous purchase was found for this Google account.');
+        Alert.alert('Nothing to restore', 'No previous purchase was found for this store account.');
       }
     } catch (err) {
       Alert.alert('Could not restore', errorMessage(err, 'Please try again.'));
@@ -232,14 +236,26 @@ function PremiumScreen() {
             <Text variant="footnote" tone="subtle" center style={styles.disclaimer}>
               {Platform.OS === 'android'
                 ? 'Billed through Google Play. Cancel anytime in Play Store subscriptions.'
-                : 'Dev mode: purchases are simulated (no real charge).'}
+                : Platform.OS === 'ios'
+                  ? 'Billed through the App Store as an auto-renewing monthly subscription. Cancel anytime in your Apple ID settings.'
+                  : 'Dev mode: purchases are simulated (no real charge).'}
             </Text>
 
-            {Platform.OS === 'android' ? (
-              <Pressable onPress={restore} style={styles.cancel} hitSlop={8}>
-                <Text variant="footnote" tone="muted">Restore purchases</Text>
+            <Pressable onPress={restore} style={styles.cancel} hitSlop={8}>
+              <Text variant="footnote" tone="muted">Restore purchases</Text>
+            </Pressable>
+
+            {/* App Review 3.1.2: the paywall must link Terms of Use and the
+                privacy policy. */}
+            <View style={styles.legalRow}>
+              <Pressable onPress={() => Linking.openURL('https://pakiza.co.uk/terms')} hitSlop={8}>
+                <Text variant="footnote" tone="muted" style={styles.legalLink}>Terms of Use</Text>
               </Pressable>
-            ) : null}
+              <Text variant="footnote" tone="subtle">·</Text>
+              <Pressable onPress={() => Linking.openURL('https://pakiza.co.uk/privacy')} hitSlop={8}>
+                <Text variant="footnote" tone="muted" style={styles.legalLink}>Privacy Policy</Text>
+              </Pressable>
+            </View>
           </>
         )}
       </ScrollView>
@@ -358,6 +374,11 @@ const styles = StyleSheet.create({
   perk: { flex: 1 },
 
   cancel: { alignItems: 'center', paddingVertical: spacing.md, marginTop: spacing.xs },
+  legalRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: spacing.sm, marginTop: spacing.xs,
+  },
+  legalLink: { textDecorationLine: 'underline' },
   disclaimer: { marginTop: spacing.sm },
 
   ctaBar: {
