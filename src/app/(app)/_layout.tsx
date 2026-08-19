@@ -1,7 +1,8 @@
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect } from 'react';
-import { Platform, StyleSheet } from 'react-native';
+import { StyleSheet } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { profilesApi } from '@/api/profiles';
 import { syncContactHashes } from '@/lib/contactPrivacy';
@@ -11,6 +12,7 @@ import { fonts, palette, useTheme } from '@/theme';
 export default function AppTabsLayout() {
   const { c } = useTheme();
   const { unreadCount } = useRealtime();
+  const insets = useSafeAreaInsets();
 
   // Hide-from-contacts drifts as the phone book changes; refresh the hash
   // set once per launch, silently (never prompts - the settings toggle owns
@@ -35,7 +37,10 @@ export default function AppTabsLayout() {
           backgroundColor: c.surface,
           borderTopColor: c.border,
           borderTopWidth: StyleSheet.hairlineWidth,
-          height: Platform.OS === 'ios' ? 88 : 64,
+          // The app draws edge-to-edge, so the bar must clear the system nav
+          // (Android 3-button nav overlaps a fixed-height bar otherwise).
+          height: 56 + insets.bottom,
+          paddingBottom: insets.bottom,
           paddingTop: 8,
         },
         tabBarLabelStyle: { fontFamily: fonts.bodyMedium, fontSize: 11, letterSpacing: 0.3 },

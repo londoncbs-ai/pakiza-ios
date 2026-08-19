@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Redirect, useFocusEffect, useRouter } from 'expo-router';
 
 import { errorMessage } from '@/api/client';
+import { matchesApi } from '@/api/matches';
 import { subscriptionsApi } from '@/api/subscriptions';
 import { restoreAppleSubscription } from '@/lib/appleBilling';
 import { restorePlaySubscription } from '@/lib/playBilling';
@@ -17,31 +18,45 @@ import { SUBSCRIPTIONS_ENABLED } from '@/lib/features';
 import { haptics } from '@/lib/haptics';
 import { palette, radii, spacing, useTheme } from '@/theme';
 
-const PLANS: { plan: SubscriptionPlan; name: string; price: string; period: string; tagline: string; perks: string[]; highlight?: boolean }[] = [
+const PLANS: { plan: SubscriptionPlan; name: string; price: string; period: string; perDay: string; tagline: string; perks: string[]; highlight?: boolean }[] = [
   {
     plan: 'free',
     name: 'Free',
     price: '£0',
     period: '',
+    perDay: '',
     tagline: 'Start meeting people.',
-    perks: ['Daily curated profiles', 'Up to 4 matches', 'Send and receive messages'],
+    perks: ['A daily set of curated introductions', 'Up to 4 open matches at a time', 'Unlimited messaging with your matches'],
   },
   {
     plan: 'premium',
     name: 'Premium',
     price: '£14.99',
     period: '/mo',
-    tagline: 'Connect with intention.',
-    perks: ['Unlimited likes', 'See who you’ve matched faster', '1 monthly profile boost', 'Advanced filters'],
-    highlight: true,
+    perDay: 'about 50p a day',
+    tagline: 'Move at your own pace.',
+    perks: [
+      'Unlimited likes and unlimited open matches',
+      'Undo an accidental pass',
+      'Save profiles to revisit later',
+      'A profile boost every month (a £5 value)',
+    ],
   },
   {
     plan: 'gold',
     name: 'Gold',
     price: '£24.99',
     period: '/mo',
-    tagline: 'Be seen first.',
-    perks: ['Everything in Premium', 'See who liked you', '5 monthly boosts', 'Priority in discovery'],
+    perDay: 'about 83p a day',
+    tagline: 'Skip the queue. Meet first.',
+    perks: [
+      'Everything in Premium',
+      'See everyone who likes you and match instantly',
+      '5 profile boosts every month (a £25 value)',
+      'Priority placement in discovery',
+      'Gold badge on your profile',
+    ],
+    highlight: true,
   },
 ];
 
@@ -58,10 +73,12 @@ function PremiumScreen() {
   const { c, isDark } = useTheme();
   const [sub, setSub] = useState<Subscription | null>(null);
   const [loading, setLoading] = useState(true);
-  const [selected, setSelected] = useState<SubscriptionPlan>('premium');
+  const [selected, setSelected] = useState<SubscriptionPlan>('gold');
+  const [likesWaiting, setLikesWaiting] = useState(0);
   const [checkout, setCheckout] = useState<{ plan: SubscriptionPlan; name: string } | null>(null);
 
   const load = useCallback(async () => {
+    matchesApi.likesPreview().then((p) => setLikesWaiting(p.count)).catch(() => {});
     try {
       setSub(await subscriptionsApi.getMine());
     } catch {
@@ -150,6 +167,15 @@ function PremiumScreen() {
           <ActivityIndicator color={c.accent} size="large" style={{ marginTop: spacing.xxxl }} />
         ) : (
           <>
+            {likesWaiting > 0 && sub?.plan !== 'gold' ? (
+              <View style={[styles.likesBanner, { backgroundColor: c.accentFaint, borderColor: c.accent }]}>
+                <Ionicons name="heart" size={18} color={c.accent} />
+                <Text variant="footnote" tone="accent" style={{ flex: 1 }}>
+                  {likesWaiting} {likesWaiting === 1 ? 'person has' : 'people have'} already liked you. Gold reveals them instantly.
+                </Text>
+              </View>
+            ) : null}
+
             {activePremium ? (
               <View style={[styles.current, { backgroundColor: c.accentFaint }]}>
                 <Ionicons name="ribbon-outline" size={18} color={c.accent} />
@@ -184,7 +210,7 @@ function PremiumScreen() {
                         <Text variant="heading" tone="default">{p.name}</Text>
                         {p.highlight ? (
                           <View style={[styles.popularPill, { backgroundColor: c.accent }]}>
-                            <Text variant="label" color={c.textOnAccent} style={styles.popularText}>Popular</Text>
+                            <Text variant="label" color={c.textOnAccent} style={styles.popularText}>Most popular</Text>
                           </View>
                         ) : null}
                       </View>
@@ -206,6 +232,7 @@ function PremiumScreen() {
                   <View style={styles.priceRow}>
                     <Text variant="title" tone="default">{p.price}</Text>
                     {p.period ? <Text variant="callout" tone="subtle" style={styles.period}>{p.period}</Text> : null}
+                    {p.perDay ? <Text variant="footnote" tone="subtle" style={styles.perDay}>{p.perDay}</Text> : null}
                     {isCurrent ? (
                       <View style={[styles.currentTag, { borderColor: c.borderStrong }]}>
                         <Text variant="label" tone="muted" style={styles.currentTagText}>Current</Text>
@@ -339,6 +366,16 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     elevation: 3,
   },
+  likesBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+    marginBottom: spacing.lg,
+  },
   cardHead: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md },
   cardHeadText: { flex: 1 },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
@@ -357,6 +394,7 @@ const styles = StyleSheet.create({
 
   priceRow: { flexDirection: 'row', alignItems: 'baseline', gap: 2, marginTop: spacing.md },
   period: { marginLeft: 1 },
+  perDay: { marginLeft: spacing.sm },
   currentTag: {
     marginLeft: spacing.sm,
     borderWidth: StyleSheet.hairlineWidth,

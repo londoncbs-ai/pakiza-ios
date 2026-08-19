@@ -11,7 +11,7 @@ import { DonatedBadge, PlanBadge, VerifiedBadge } from './PlanBadge';
 import { SafetySheet } from './SafetySheet';
 import { Text } from './Text';
 import { label, titleCase } from '@/lib/format';
-import { sortedPhotos } from '@/lib/photos';
+import { photoBlurRadius, sortedPhotos } from '@/lib/photos';
 import { fonts, palette, radii, shadow, spacing, tint, useTheme } from '@/theme';
 
 const { width: W } = Dimensions.get('window');
@@ -34,6 +34,7 @@ export function ProfileDetail({
   const [active, setActive] = useState(0);
   const [safetyOpen, setSafetyOpen] = useState(false);
   const hero = photos[active]?.cdn_url;
+  const heroBlur = photoBlurRadius(photos[active]);
 
   const faith = [label.religion(profile.religion), profile.denomination].filter(Boolean).join(' · ');
   const location = [profile.city, profile.country_name].filter(Boolean).join(', ');
@@ -43,7 +44,7 @@ export function ProfileDetail({
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: (onLike ? 110 : 40) + insets.bottom }}>
         <View style={styles.hero}>
           {hero ? (
-            <Image source={{ uri: hero }} style={StyleSheet.absoluteFill} contentFit="cover" transition={150} />
+            <Image source={{ uri: hero }} style={StyleSheet.absoluteFill} contentFit="cover" transition={150} blurRadius={heroBlur} />
           ) : (
             <View style={[StyleSheet.absoluteFill, styles.placeholder]}>
               <Text style={styles.placeholderText}>{profile.display_name?.[0] ?? '?'}</Text>
@@ -76,6 +77,12 @@ export function ProfileDetail({
               <VerifiedBadge show={profile.is_selfie_verified} />
               <PlanBadge plan={profile.plan} />
               <DonatedBadge show={profile.has_donated} />
+              {heroBlur > 0 ? (
+                <View style={styles.blurPill}>
+                  <Ionicons name="eye-off-outline" size={12} color={palette.cream} />
+                  <Text variant="label" color={palette.cream}>Revealed when you match</Text>
+                </View>
+              ) : null}
             </View>
             <Text variant="display" color={palette.white} style={styles.name}>
               {profile.display_name}
@@ -103,6 +110,7 @@ export function ProfileDetail({
                     active === i && [styles.thumbActive, { borderColor: c.accent }],
                   ]}
                   contentFit="cover"
+                  blurRadius={photoBlurRadius(p)}
                 />
               </Pressable>
             ))}
@@ -129,6 +137,7 @@ export function ProfileDetail({
               <DetailRow icon="body-outline" label="Body type" value={label.bodyType(profile.body_type)} />
               <DetailRow icon="globe-outline" label="Ethnicity" value={titleCase(profile.ethnicity)} />
               <DetailRow icon="language-outline" label="Languages" value={label.languages(profile.languages_spoken)} />
+              <DetailRow icon="color-palette-outline" label="Hobbies" value={profile.hobbies ?? null} />
               <DetailRow icon="heart-outline" label="Marital status" value={label.marital(profile.marital_status)} />
               <DetailRow icon="happy-outline" label="Has children" value={label.hasChildren(profile.has_children)} />
               <DetailRow icon="people-outline" label="Wants children" value={label.wantsChildren(profile.wants_children)} />
@@ -208,6 +217,15 @@ const styles = StyleSheet.create({
     borderRadius: radii.pill,
   },
   matchPillText: { letterSpacing: 0.3 },
+  blurPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: tint.overlaySoft,
+    paddingHorizontal: 11,
+    paddingVertical: 6,
+    borderRadius: radii.pill,
+  },
   name: { lineHeight: 46 },
   locRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 4 },
   thumbs: { gap: spacing.sm, paddingHorizontal: spacing.lg, paddingTop: spacing.md },

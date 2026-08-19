@@ -18,7 +18,7 @@ import { PressableScale } from '@/components/PressableScale';
 import { SkeletonCard } from '@/components/Skeleton';
 import { Text } from '@/components/Text';
 import { Wordmark } from '@/components/Wordmark';
-import { SUBSCRIPTIONS_ENABLED } from '@/lib/features';
+import { BOOSTS_ENABLED, SUBSCRIPTIONS_ENABLED } from '@/lib/features';
 import { haptics } from '@/lib/haptics';
 import { savedStore } from '@/lib/savedStore';
 import { palette, spacing, tint, useTheme } from '@/theme';
@@ -162,20 +162,15 @@ export default function Discover() {
     }
   }, [busy, isPremium, index, upsell]);
 
-  const onBoost = useCallback(async () => {
+  // The boost hub owns the whole story: live countdown, plan boosts, one-off
+  // purchase, and the upsell for free members.
+  const boostHubAvailable = SUBSCRIPTIONS_ENABLED || BOOSTS_ENABLED;
+  const onBoost = useCallback(() => {
     if (busy) return;
-    if (!isPremium) return upsell('Boost');
-    setBusy(true);
-    try {
-      await matchesApi.boost();
-      haptics.success();
-      Alert.alert('You are boosted', 'Your profile is shown first in Discover for the next 30 minutes.');
-    } catch (err: any) {
-      if (err?.response?.status === 402) upsell('Boost');
-    } finally {
-      setBusy(false);
-    }
-  }, [busy, isPremium, upsell]);
+    if (!boostHubAvailable) return upsell('Boost');
+    haptics.light();
+    router.push('/boost');
+  }, [busy, boostHubAvailable, upsell, router]);
 
   const onInterest = useCallback(async () => {
     if (!current || busy) return;
@@ -277,7 +272,7 @@ export default function Discover() {
                 iconColor={c.accent} bg={c.surface} borderColor={c.border} label="Save to revisit" />
               <ActionCircle icon="heart" size={66} onPress={onInterest} disabled={busy} primary
                 iconColor={palette.cream} label="Express interest" />
-              <ActionCircle icon="flash-outline" size={48} onPress={onBoost} disabled={busy} locked={!isPremium}
+              <ActionCircle icon="flash-outline" size={48} onPress={onBoost} disabled={busy} locked={!boostHubAvailable && !isPremium}
                 iconColor={c.accent} bg={c.surface} borderColor={c.border} label="Boost your profile" />
             </View>
           </>

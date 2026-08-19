@@ -1,5 +1,5 @@
 import { api } from './client';
-import type { MatchSummary, PublicProfile, Quota, SwipeResult } from './types';
+import type { LikesPreview, MatchSummary, PlanBoostResult, PublicProfile, Quota, SwipeResult } from './types';
 
 export const matchesApi = {
   like(userId: string, superlike = false) {
@@ -32,9 +32,14 @@ export const matchesApi = {
     return api.get<{ count: number }>('/matches/likes-count').then((r) => r.data.count);
   },
 
-  /** Premium feature — 402 if no boosts remaining. */
+  /** Anonymous blurred teaser of who liked you (all tiers) — powers the Gold upsell grid. */
+  likesPreview() {
+    return api.get<LikesPreview>('/matches/likes-preview').then((r) => r.data);
+  },
+
+  /** Plan-included boost. 402 if no boosts remaining, 409 while a boost is already live. */
   boost() {
-    return api.post('/matches/boost').then((r) => r.data);
+    return api.post<PlanBoostResult>('/matches/boost').then((r) => r.data);
   },
 
   /** Premium feature — undo last swipe; returns the profile to show again. 402 if free. */

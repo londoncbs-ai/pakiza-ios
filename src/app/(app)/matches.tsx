@@ -16,7 +16,7 @@ import { PressableScale } from '@/components/PressableScale';
 import { SkeletonList } from '@/components/Skeleton';
 import { Text } from '@/components/Text';
 import { haptics } from '@/lib/haptics';
-import { primaryPhotoUrl } from '@/lib/photos';
+import { photoBlurRadius, primaryPhoto } from '@/lib/photos';
 import { fonts, palette, radii, shadow, spacing, useTheme } from '@/theme';
 
 export default function Matches() {
@@ -98,7 +98,7 @@ export default function Matches() {
             />
           }
           renderItem={({ item }) => {
-            const photo = primaryPhotoUrl(item.profile);
+            const photo = primaryPhoto(item.profile);
             const canBook = !!item.conversation_id;
             const openChat = () => {
               if (item.conversation_id) {
@@ -127,7 +127,7 @@ export default function Matches() {
               >
                 <View style={styles.avatarWrap}>
                   {photo ? (
-                    <Image source={{ uri: photo }} style={styles.avatar} contentFit="cover" />
+                    <Image source={{ uri: photo.cdn_url }} style={styles.avatar} contentFit="cover" blurRadius={photoBlurRadius(photo)} />
                   ) : (
                     <View style={[styles.avatar, styles.avatarPlaceholder, { backgroundColor: c.surfaceAlt }]}>
                       <Text style={styles.avatarInitial} tone="accent">{item.profile.display_name[0]}</Text>

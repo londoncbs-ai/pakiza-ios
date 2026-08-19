@@ -6,14 +6,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 
 import { matchesApi } from '@/api/matches';
-import type { PublicProfile } from '@/api/types';
+import type { LikesPreview, PublicProfile } from '@/api/types';
 import { Button } from '@/components/Button';
 import { EmptyState } from '@/components/EmptyState';
 import { ProfileDetail } from '@/components/ProfileDetail';
 import { SkeletonList } from '@/components/Skeleton';
 import { Text } from '@/components/Text';
 import { SUBSCRIPTIONS_ENABLED } from '@/lib/features';
-import { primaryPhotoUrl } from '@/lib/photos';
+import { BLUR_RADIUS, photoBlurRadius, primaryPhoto } from '@/lib/photos';
 import { fonts, palette, radii, shadow, spacing, tint, useTheme } from '@/theme';
 
 export default function LikesYou() {
@@ -24,11 +24,11 @@ export default function LikesYou() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [locked, setLocked] = useState(false);
-  const [likeCount, setLikeCount] = useState(0);
+  const [preview, setPreview] = useState<LikesPreview | null>(null);
   const [opened, setOpened] = useState<PublicProfile | null>(null);
 
   const load = useCallback(async () => {
-    matchesApi.likesCount().then(setLikeCount).catch(() => {});
+    matchesApi.likesPreview().then(setPreview).catch(() => {});
     try {
       setProfiles(await matchesApi.likesReceived());
       setLocked(false);
@@ -78,26 +78,54 @@ export default function LikesYou() {
       {loading ? (
         <SkeletonList count={4} />
       ) : locked ? (
-        <View style={styles.lock}>
-          <View style={[styles.lockIcon, { backgroundColor: c.accentFaint }]}>
-            <Ionicons name="lock-closed" size={40} color={c.accent} />
-          </View>
-          <Text variant="title" tone="accent" center style={styles.lockTitle}>
-            {likeCount > 0
-              ? `${likeCount} ${likeCount === 1 ? 'person likes' : 'people like'} you`
-              : 'See who already likes you'}
-          </Text>
+        <ScrollView contentContainerStyle={styles.lock}>
+          {preview && preview.count > 0 ? (
+            <>
+              <Text variant="title" tone="accent" center style={styles.lockTitle}>
+                {preview.count} {preview.count === 1 ? 'person likes' : 'people like'} you
+              </Text>
+              <Text variant="body" tone="muted" center style={styles.lockBody}>
+                They are real members waiting for your answer.
+              </Text>
+              <View style={styles.teaserGrid}>
+                {preview.previews.map((t, i) => (
+                  <View key={i} style={[styles.teaserCard, !isDark && shadow.soft]}>
+                    {t.photo_url ? (
+                      <Image source={{ uri: t.photo_url }} style={StyleSheet.absoluteFill} contentFit="cover" blurRadius={BLUR_RADIUS} />
+                    ) : (
+                      <View style={[StyleSheet.absoluteFill, styles.ph]} />
+                    )}
+                    <View style={styles.teaserVeil}>
+                      <Ionicons name="heart" size={22} color={palette.cream} />
+                    </View>
+                  </View>
+                ))}
+              </View>
+            </>
+          ) : (
+            <>
+              <View style={[styles.lockIcon, { backgroundColor: c.accentFaint }]}>
+                <Ionicons name="lock-closed" size={40} color={c.accent} />
+              </View>
+              <Text variant="title" tone="accent" center style={styles.lockTitle}>
+                See who already likes you
+              </Text>
+            </>
+          )}
           <Text variant="body" tone="muted" center style={styles.lockBody}>
             {SUBSCRIPTIONS_ENABLED
-              ? likeCount > 0
-                ? 'Upgrade to Gold to see them and match instantly, without waiting to find each other in Discover.'
-                : 'When someone likes you, upgrade to Gold to see them and match instantly.'
+              ? 'Gold shows you everyone who has liked you. Like them back and you match instantly, no waiting to find each other in Discover.'
               : 'Keep discovering. When you like each other, you match instantly and they appear here.'}
           </Text>
           {SUBSCRIPTIONS_ENABLED ? (
-            <Button label="Upgrade to Gold" variant="primary" onPress={() => router.push('/premium')} style={{ marginTop: spacing.lg }} />
+            <Button
+              label={preview && preview.count > 0 ? 'See who likes you with Gold' : 'Upgrade to Gold'}
+              variant="primary"
+              onPress={() => router.push('/premium')}
+              style={{ marginTop: spacing.lg, alignSelf: 'stretch' }}
+            />
           ) : null}
-        </View>
+        </ScrollView>
       ) : profiles.length === 0 ? (
         <EmptyState
           icon="heart-outline"
@@ -110,11 +138,11 @@ export default function LikesYou() {
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.accent} />}
         >
           {profiles.map((p) => {
-            const photo = primaryPhotoUrl(p);
+            const photo = primaryPhoto(p);
             return (
               <Pressable key={p.user_id} style={[styles.card, !isDark && shadow.soft]} onPress={() => setOpened(p)}>
                 {photo ? (
-                  <Image source={{ uri: photo }} style={StyleSheet.absoluteFill} contentFit="cover" />
+                  <Image source={{ uri: photo.cdn_url }} style={StyleSheet.absoluteFill} contentFit="cover" blurRadius={photoBlurRadius(photo)} />
                 ) : (
                   <View style={[StyleSheet.absoluteFill, styles.ph]}>
                     <Text style={styles.phText} color={palette.cream}>{p.display_name[0]}</Text>
@@ -151,10 +179,25 @@ export default function LikesYou() {
 const styles = StyleSheet.create({
   root: { flex: 1 },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.md, paddingBottom: spacing.md },
-  lock: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.xxl },
+  lock: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.xxl, paddingVertical: spacing.xl },
   lockIcon: { width: 88, height: 88, borderRadius: 44, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.lg },
   lockTitle: { fontFamily: fonts.display },
   lockBody: { lineHeight: 22, marginTop: spacing.sm },
+  teaserGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: spacing.md,
+    marginTop: spacing.lg,
+    alignSelf: 'stretch',
+  },
+  teaserCard: { width: '29%', aspectRatio: 0.8, borderRadius: radii.lg, overflow: 'hidden', backgroundColor: palette.burgundyDark },
+  teaserVeil: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: tint.overlaySoft,
+  },
   grid: { flexDirection: 'row', flexWrap: 'wrap', padding: spacing.md, gap: spacing.md },
   card: { width: '47%', aspectRatio: 0.8, borderRadius: radii.card, overflow: 'hidden', backgroundColor: palette.burgundyDark },
   ph: { backgroundColor: palette.burgundy, alignItems: 'center', justifyContent: 'center' },

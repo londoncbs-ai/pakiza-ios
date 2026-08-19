@@ -19,7 +19,7 @@ import { ProfileBadges } from './PlanBadge';
 import { SafetySheet } from './SafetySheet';
 import { Text } from './Text';
 import { label, titleCase } from '@/lib/format';
-import { sortedPhotos } from '@/lib/photos';
+import { photoBlurRadius, sortedPhotos } from '@/lib/photos';
 import { fonts, palette, radii, shadow, spacing, surfaces, tint, useTheme } from '@/theme';
 
 /** Small uppercase section heading in the brand accent. */
@@ -97,7 +97,7 @@ export function IntroductionCard({
               scrollEventThrottle={16}
             >
               {photos.map((p) => (
-                <Image key={p.id} source={{ uri: p.cdn_url }} style={{ width, height: heroH }} contentFit="cover" transition={180} />
+                <Image key={p.id} source={{ uri: p.cdn_url }} style={{ width, height: heroH }} contentFit="cover" transition={180} blurRadius={photoBlurRadius(p)} />
               ))}
             </ScrollView>
           ) : (
@@ -123,6 +123,13 @@ export function IntroductionCard({
               <Text variant="label" color={palette.cream} style={styles.matchPillText}>
                 {profile.compatibility}% match
               </Text>
+            </View>
+          ) : null}
+
+          {photos.some((p) => p.is_blurred_public) ? (
+            <View style={styles.blurPill} pointerEvents="none">
+              <Ionicons name="eye-off-outline" size={12} color={palette.cream} />
+              <Text variant="label" color={palette.cream}>Photos revealed when you match</Text>
             </View>
           ) : null}
 
@@ -213,6 +220,7 @@ export function IntroductionCard({
               <DetailRow icon="school-outline" label="Education" value={label.education(profile.education_level)} />
               <DetailRow icon="globe-outline" label="Ethnicity" value={titleCase(profile.ethnicity)} />
               <DetailRow icon="language-outline" label="Languages" value={label.languages(profile.languages_spoken)} />
+              <DetailRow icon="color-palette-outline" label="Hobbies" value={profile.hobbies ?? null} />
               <DetailRow icon="resize-outline" label="Height" value={label.height(profile.height_cm)} />
               <DetailRow icon="body-outline" label="Build" value={label.bodyType(profile.body_type)} />
             </View>
@@ -264,6 +272,18 @@ const styles = StyleSheet.create({
     borderRadius: radii.pill,
   },
   matchPillText: { letterSpacing: 0.3 },
+  blurPill: {
+    position: 'absolute',
+    top: 66,
+    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: tint.overlaySoft,
+    paddingHorizontal: 11,
+    paddingVertical: 6,
+    borderRadius: radii.pill,
+  },
   kebab: {
     position: 'absolute',
     top: 22,

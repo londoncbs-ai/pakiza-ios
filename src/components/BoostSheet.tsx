@@ -10,6 +10,7 @@ import { Button } from './Button';
 import { Text } from './Text';
 import { formatPoundsExact } from '@/lib/format';
 import { haptics } from '@/lib/haptics';
+import { PaymentCancelledError, presentStripePayment } from '@/lib/stripeSheet';
 import { radii, spacing, useTheme } from '@/theme';
 
 /**
@@ -44,15 +45,24 @@ export function BoostSheet({
     setError(null);
     try {
       const session = await boostsApi.checkout();
-      // With Stripe configured (session.mode === 'stripe') you would present the
-      // native PaymentSheet here using session.client_secret, then confirm. In
-      // dev we activate the boost directly (validated server-side, no charge).
-      const status = await boostsApi.confirm(session.boost_id, session.client_secret ?? undefined);
+      // With Stripe configured the native PaymentSheet collects the card;
+      // in dev (mode 'dev', no keys) there is nothing to present and the
+      // confirm below activates directly, validated server-side, no charge.
+      const paymentIntentId = await presentStripePayment(session);
+      const status = await boostsApi.confirm(session.boost_id, paymentIntentId ?? undefined);
       haptics.success();
       onBoosted(status);
-    } catch (err) {
+    } catch (err: any) {
+      if (err instanceof PaymentCancelledError) {
+        setBusy(false);
+        return;
+      }
       haptics.error();
-      setError(errorMessage(err, 'Payment could not be completed'));
+      if (err?.response?.status === 409) {
+        setError('Your profile is already boosted. You can start another boost once this one ends.');
+      } else {
+        setError(errorMessage(err, 'Payment could not be completed'));
+      }
     } finally {
       setBusy(false);
     }
@@ -100,7 +110,9 @@ export function BoostSheet({
         <Button label={price ? `Boost ${price}` : 'Boost now'} onPress={pay} loading={busy} />
 
         <Text variant="footnote" tone="subtle" center style={styles.dev}>
-          Dev mode: simulated payment, you will not be charged.
+          {__DEV__
+            ? 'Dev mode: simulated payment, you will not be charged.'
+            : 'One-off payment. Your boost starts as soon as payment completes.'}
         </Text>
       </View>
     </Modal>

@@ -15,7 +15,7 @@ import { PressableScale } from '@/components/PressableScale';
 import { Text } from '@/components/Text';
 import { SUBSCRIPTIONS_ENABLED } from '@/lib/features';
 import { haptics } from '@/lib/haptics';
-import { primaryPhotoUrl } from '@/lib/photos';
+import { photoBlurRadius, primaryPhoto } from '@/lib/photos';
 import { savedStore } from '@/lib/savedStore';
 import { palette, radii, shadow, spacing, surfaces, useTheme } from '@/theme';
 
@@ -87,11 +87,11 @@ export default function Saved() {
             People you've set aside to consider. They won't know you saved them.
           </Text>
           {items.map((p) => {
-            const photo = primaryPhotoUrl(p);
+            const photo = primaryPhoto(p);
             return (
               <PressableScale key={p.user_id} style={[styles.row, { backgroundColor: c.surface }]} onPress={() => setOpened(p)} haptic={false}>
                 {photo ? (
-                  <Image source={{ uri: photo }} style={styles.thumb} contentFit="cover" />
+                  <Image source={{ uri: photo.cdn_url }} style={styles.thumb} contentFit="cover" blurRadius={photoBlurRadius(photo)} />
                 ) : (
                   <View style={[styles.thumb, styles.ph]}>
                     <Text variant="title" color={palette.goldSoft}>{p.display_name[0]}</Text>

@@ -85,6 +85,7 @@ export function EditProfileSheet({
 }) {
   const insets = useSafeAreaInsets();
   const { c } = useTheme();
+  const [name, setName] = useState(profile.display_name ?? '');
   const [bio, setBio] = useState(profile.bio ?? '');
   const [city, setCity] = useState(profile.city ?? '');
   const [country, setCountry] = useState(profile.country_name ?? '');
@@ -107,13 +108,17 @@ export function EditProfileSheet({
   const [relocate, setRelocate] = useState<RelocationWillingness | null>(profile.willing_to_relocate ?? null);
   const [religiosity, setReligiosity] = useState<number | null>(profile.religiosity ?? null);
   const [hobbies, setHobbies] = useState(profile.hobbies ?? '');
-  const [photosBlurred, setPhotosBlurred] = useState<boolean>(profile.photos_blurred ?? true);
+  const [photosBlurred, setPhotosBlurred] = useState<boolean>(profile.photos_blurred ?? false);
   const [hideContacts, setHideContacts] = useState<boolean>(profile.hide_from_contacts ?? false);
-  const [incognito, setIncognito] = useState<boolean>(profile.incognito_mode ?? false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   const save = async () => {
+    const trimmedName = name.trim();
+    if (trimmedName.length < 2) {
+      setError('Your name needs at least 2 characters.');
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
@@ -131,6 +136,7 @@ export function EditProfileSheet({
         }
       }
       const patch: UpdateProfileInput = {
+        display_name: trimmedName,
         bio: bio.trim() || undefined,
         city: city.trim() || undefined,
         country_name: country.trim() || undefined,
@@ -155,7 +161,6 @@ export function EditProfileSheet({
         hobbies: hobbies || undefined,
         photos_blurred: photosBlurred,
         hide_from_contacts: hideContacts,
-        incognito_mode: incognito,
       };
       const updated = await profilesApi.update(patch);
       onSaved(updated);
@@ -180,6 +185,7 @@ export function EditProfileSheet({
           contentContainerStyle={{ padding: spacing.lg, paddingBottom: insets.bottom + 120, gap: spacing.lg }}
         >
           <Section title="About you">
+            <TextField label="Display name" value={name} onChangeText={setName} placeholder="How you appear to others" autoCapitalize="words" />
             <TextField label="Bio" value={bio} onChangeText={setBio} multiline placeholder="What are you looking for?" style={{ height: 100, paddingTop: 14, textAlignVertical: 'top' }} />
             <TextField label="City" value={city} onChangeText={setCity} placeholder="e.g. London" />
             <TextField label="Country" value={country} onChangeText={setCountry} placeholder="e.g. United Kingdom" />
@@ -216,9 +222,8 @@ export function EditProfileSheet({
           </Section>
 
           <Section title="Privacy">
-            <ToggleRow label="Blur my photos until matched" value={photosBlurred} onValueChange={setPhotosBlurred} onDark={false} />
+            <ToggleRow label="Blur my photos until matched" hint="Members you have not matched with see your photos blurred. Once you match, they see them clearly." value={photosBlurred} onValueChange={setPhotosBlurred} onDark={false} />
             <ToggleRow label="Hide me from my phone contacts" hint="People in your phone book will not see your profile. Only anonymous codes are uploaded, never names or numbers." value={hideContacts} onValueChange={setHideContacts} onDark={false} />
-            <ToggleRow label="Incognito mode" hint="Browse without leaving profile-view notifications." value={incognito} onValueChange={setIncognito} onDark={false} />
           </Section>
 
           {error ? <Text variant="footnote" tone="danger" center>{error}</Text> : null}

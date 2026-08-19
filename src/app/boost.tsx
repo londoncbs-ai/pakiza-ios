@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Redirect, useFocusEffect, useRouter } from 'expo-router';
 
 import { errorMessage } from '@/api/client';
 import { boostsApi } from '@/api/boosts';
+import { matchesApi } from '@/api/matches';
 import type { BoostStatus } from '@/api/types';
 import { BoostSheet } from '@/components/BoostSheet';
 import { Button } from '@/components/Button';
@@ -13,7 +14,7 @@ import { ErrorState } from '@/components/ErrorState';
 import { Screen } from '@/components/Screen';
 import { Surface } from '@/components/Surface';
 import { Text } from '@/components/Text';
-import { BOOSTS_ENABLED } from '@/lib/features';
+import { BOOSTS_ENABLED, SUBSCRIPTIONS_ENABLED } from '@/lib/features';
 import { formatPoundsExact } from '@/lib/format';
 import { formatCountdown } from '@/lib/giving';
 import { haptics } from '@/lib/haptics';
@@ -22,16 +23,17 @@ import { spacing, radii, useTheme } from '@/theme';
 // Fallbacks until the live status arrives (the backend is the source of truth).
 const DEFAULT_PRICE_PENCE = 500;
 const DEFAULT_DURATION_MIN = 60;
+const PLAN_BOOST_MIN = 30;
 
 const PERKS = [
   { icon: 'rocket-outline', text: 'Your profile jumps to the top of discovery for everyone.' },
-  { icon: 'eye-outline', text: 'Get seen by far more members during your boosted hour.' },
+  { icon: 'eye-outline', text: 'Get seen by far more members while your boost runs.' },
   { icon: 'heart-outline', text: 'More views means more chances at a meaningful match.' },
 ] as const;
 
 export default function Boost() {
-  // Purchases are disabled until native IAP ships (see lib/features.ts).
-  if (!BOOSTS_ENABLED) return <Redirect href="/(app)/profile" />;
+  // The hub needs either plan boosts (subscriptions) or one-off purchases.
+  if (!BOOSTS_ENABLED && !SUBSCRIPTIONS_ENABLED) return <Redirect href="/(app)/profile" />;
   return <BoostScreen />;
 }
 
@@ -45,6 +47,7 @@ function BoostScreen() {
   const [error, setError] = useState<string | null>(null);
   const [remaining, setRemaining] = useState(0);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [activating, setActivating] = useState(false);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const load = useCallback(async () => {
@@ -70,7 +73,7 @@ function BoostScreen() {
       setRemaining((r) => {
         if (r <= 1) {
           if (timer.current) clearInterval(timer.current);
-          setStatus((prev) => (prev ? { ...prev, active: false, seconds_remaining: 0 } : prev));
+          load();
           return 0;
         }
         return r - 1;
@@ -79,12 +82,36 @@ function BoostScreen() {
     return () => {
       if (timer.current) clearInterval(timer.current);
     };
-  }, [status?.active, remaining]);
+  }, [status?.active, remaining <= 0, load]);
+
+  const usePlanBoost = async () => {
+    if (activating) return;
+    setActivating(true);
+    try {
+      await matchesApi.boost();
+      haptics.success();
+      await load();
+    } catch (err: any) {
+      const sc = err?.response?.status;
+      if (sc === 409) {
+        // Someone raced us; just show the live state.
+        await load();
+      } else if (sc === 402) {
+        Alert.alert('No boosts left', 'Your plan has no boosts remaining this period.');
+        await load();
+      } else {
+        Alert.alert('Could not start your boost', errorMessage(err, 'Please try again.'));
+      }
+    } finally {
+      setActivating(false);
+    }
+  };
 
   const pricePence = status?.price_pence ?? DEFAULT_PRICE_PENCE;
   const durationMin = status?.duration_minutes ?? DEFAULT_DURATION_MIN;
   const price = formatPoundsExact(pricePence);
   const active = !!status?.active && remaining > 0;
+  const planBoosts = status?.plan_boosts_remaining ?? 0;
 
   return (
     <Screen>
@@ -104,7 +131,7 @@ function BoostScreen() {
         <ErrorState message={error} onRetry={() => { setLoading(true); load(); }} />
       ) : (
         <ScrollView
-          contentContainerStyle={{ padding: spacing.lg, paddingBottom: insets.bottom + 120 }}
+          contentContainerStyle={{ padding: spacing.lg, paddingBottom: insets.bottom + 140 }}
           showsVerticalScrollIndicator={false}
         >
           <View style={[styles.crest, { backgroundColor: c.accentFaint }]}>
@@ -112,8 +139,7 @@ function BoostScreen() {
           </View>
           <Text variant="display" tone="default" style={styles.lead}>Boost your profile</Text>
           <Text variant="callout" tone="muted" style={styles.sub}>
-            {price} puts you at the top of discovery for {durationMin} minutes, so the right people see
-            you first.
+            Jump to the top of discovery so the right people see you first.
           </Text>
 
           {active ? (
@@ -124,6 +150,9 @@ function BoostScreen() {
               </View>
               <Text variant="title" tone="default" style={styles.countdown}>{formatCountdown(remaining)}</Text>
               <Text variant="footnote" tone="muted">left at the top of discovery</Text>
+              <Text variant="footnote" tone="subtle" center style={{ marginTop: spacing.md }}>
+                You can start your next boost once this one ends.
+              </Text>
             </Surface>
           ) : (
             <Surface style={isDark ? styles.perksCard : [styles.perksCard, styles.softShadow]}>
@@ -138,18 +167,57 @@ function BoostScreen() {
             </Surface>
           )}
 
-          <Text variant="footnote" tone="subtle" center style={styles.disclaimer}>
-            Dev mode: purchases are simulated (no real charge).
-          </Text>
+          {!active && planBoosts > 0 ? (
+            <View style={[styles.planNote, { backgroundColor: c.accentFaint }]}>
+              <Ionicons name="ribbon-outline" size={16} color={c.accent} />
+              <Text variant="footnote" tone="accent" style={{ flex: 1 }}>
+                Your plan includes {planBoosts} {planBoosts === 1 ? 'boost' : 'boosts'} ({PLAN_BOOST_MIN} minutes each), ready to use.
+              </Text>
+            </View>
+          ) : null}
+
+          {!active && planBoosts === 0 && SUBSCRIPTIONS_ENABLED ? (
+            <Pressable onPress={() => router.push('/premium')} style={[styles.planNote, { backgroundColor: c.accentFaint }]}>
+              <Ionicons name="diamond-outline" size={16} color={c.accent} />
+              <Text variant="footnote" tone="accent" style={{ flex: 1 }}>
+                Premium includes 1 boost a month and Gold includes 5, worth {formatPoundsExact(5 * DEFAULT_PRICE_PENCE)}. See plans.
+              </Text>
+              <Ionicons name="chevron-forward" size={14} color={c.accent} />
+            </Pressable>
+          ) : null}
+
+          {__DEV__ && BOOSTS_ENABLED ? (
+            <Text variant="footnote" tone="subtle" center style={styles.disclaimer}>
+              Dev mode: purchases are simulated (no real charge).
+            </Text>
+          ) : null}
         </ScrollView>
       )}
 
-      {!loading ? (
+      {!loading && !active ? (
         <View style={[styles.ctaBar, { backgroundColor: c.surface, borderTopColor: c.border, paddingBottom: insets.bottom + spacing.md }]}>
-          <Button
-            label={active ? 'Extend boost' : `Boost now (${price})`}
-            onPress={() => { haptics.light(); setSheetOpen(true); }}
-          />
+          {planBoosts > 0 ? (
+            <Button
+              label={`Use a plan boost (${planBoosts} left)`}
+              onPress={() => { haptics.light(); usePlanBoost(); }}
+              loading={activating}
+            />
+          ) : BOOSTS_ENABLED ? (
+            <Button
+              label={`Boost now (${price})`}
+              onPress={() => { haptics.light(); setSheetOpen(true); }}
+            />
+          ) : (
+            <Button
+              label="Get boosts with Premium"
+              onPress={() => { haptics.light(); router.push('/premium'); }}
+            />
+          )}
+          {planBoosts > 0 && BOOSTS_ENABLED ? (
+            <Pressable onPress={() => setSheetOpen(true)} style={styles.secondaryCta} hitSlop={8}>
+              <Text variant="footnote" tone="muted">Or buy a {durationMin}-minute boost for {price}</Text>
+            </Pressable>
+          ) : null}
         </View>
       ) : null}
 
@@ -216,6 +284,16 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
 
+  planNote: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    borderRadius: radii.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+    marginTop: spacing.lg,
+  },
+
   disclaimer: { marginTop: spacing.xl },
 
   ctaBar: {
@@ -227,4 +305,5 @@ const styles = StyleSheet.create({
     paddingTop: spacing.md,
     borderTopWidth: StyleSheet.hairlineWidth,
   },
+  secondaryCta: { alignItems: 'center', paddingTop: spacing.md },
 });

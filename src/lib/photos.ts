@@ -11,10 +11,28 @@ export function sortedPhotos(photos: Photo[] | null | undefined): Photo[] {
   );
 }
 
+/** The single avatar / profile photo for a member (their first image). */
+export function primaryPhoto(
+  source: { photos?: Photo[] | null } | Photo[] | null | undefined,
+): Photo | undefined {
+  const photos = Array.isArray(source) ? source : source?.photos;
+  return sortedPhotos(photos)[0];
+}
+
 /** The single avatar / profile photo url for a member (their first image). */
 export function primaryPhotoUrl(
   source: { photos?: Photo[] | null } | Photo[] | null | undefined,
 ): string | undefined {
-  const photos = Array.isArray(source) ? source : source?.photos;
-  return sortedPhotos(photos)[0]?.cdn_url;
+  return primaryPhoto(source)?.cdn_url;
+}
+
+/**
+ * Blur radius for a member's photo, honouring their privacy choice.
+ * The backend derives is_blurred_public per viewer (owner's toggle AND the
+ * pair is not matched), so rendering is a straight read of the flag.
+ */
+export const BLUR_RADIUS = 26;
+
+export function photoBlurRadius(photo: Photo | null | undefined): number {
+  return photo?.is_blurred_public ? BLUR_RADIUS : 0;
 }

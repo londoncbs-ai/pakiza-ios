@@ -275,7 +275,7 @@ export default function ProfileTab() {
                 <Divider />
               </>
             ) : null}
-            {BOOSTS_ENABLED ? (
+            {BOOSTS_ENABLED || SUBSCRIPTIONS_ENABLED ? (
               <>
                 <SettingRow icon="flash-outline" label="Boost my profile" onPress={() => router.push('/boost')} />
                 <Divider />
@@ -283,8 +283,27 @@ export default function ProfileTab() {
             ) : null}
             <SettingRow icon="heart-outline" label="Support a marriage" onPress={() => router.push('/fund')} />
             <Divider />
-            <SettingRow icon="scan-outline" label="Face verification" onPress={() => router.push('/(onboarding)/face-verify')} />
-            <Divider />
+            {profile?.is_selfie_verified ? (
+              <>
+                <SettingRow
+                  icon="shield-checkmark-outline"
+                  label="Face verification"
+                  badge="Verified"
+                  onPress={() =>
+                    Alert.alert(
+                      'You are verified',
+                      'Your face verification is complete. If you change your photos, we may ask you to verify again to keep the badge.',
+                    )
+                  }
+                />
+                <Divider />
+              </>
+            ) : (
+              <>
+                <SettingRow icon="scan-outline" label="Verify your face" onPress={() => router.push('/(onboarding)/face-verify')} />
+                <Divider />
+              </>
+            )}
             {profile?.email && profile.email_verified === false ? (
               <>
                 <SettingRow icon="alert-circle-outline" label="Verify your email" onPress={sendEmailVerify} />
@@ -376,17 +395,24 @@ function SettingRow({
   label: text,
   onPress,
   danger,
+  badge,
 }: {
   icon: keyof typeof Ionicons.glyphMap;
   label: string;
   onPress: () => void;
   danger?: boolean;
+  badge?: string;
 }) {
   const { c } = useTheme();
   return (
     <Pressable onPress={() => { haptics.selection(); onPress(); }} style={styles.settingRow}>
       <Ionicons name={icon} size={20} color={danger ? c.danger : palette.burgundy} />
       <Text variant="callout" color={danger ? c.danger : c.text} style={{ flex: 1 }}>{text}</Text>
+      {badge ? (
+        <View style={[styles.settingBadge, { backgroundColor: c.accentFaint }]}>
+          <Text variant="label" tone="accent">{badge}</Text>
+        </View>
+      ) : null}
       <Ionicons name="chevron-forward" size={18} color={c.textSubtle} />
     </Pressable>
   );
@@ -430,6 +456,7 @@ const styles = StyleSheet.create({
   card: { paddingHorizontal: spacing.lg, paddingVertical: spacing.xs },
   cardPad: { padding: spacing.md },
   settingRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.md },
+  settingBadge: { borderRadius: radii.pill, paddingHorizontal: 9, paddingVertical: 3 },
   segment: { flexDirection: 'row', borderRadius: radii.pill, padding: 4, gap: 4 },
   segmentItem: {
     flex: 1,

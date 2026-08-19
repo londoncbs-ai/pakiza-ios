@@ -78,6 +78,8 @@ export interface PublicProfile {
   languages_spoken: string | null;
   bio: string | null;
   photos: Photo[];
+  photos_blurred?: boolean; // owner's privacy toggle; per-photo is_blurred_public is the per-viewer verdict
+  hobbies?: string | null;
   profile_complete_pct: number;
   compatibility: number | null; // 0-100, set by the discovery feed (matching algorithm)
   compatibility_reasons?: string[]; // plain-language "why you match", feed only
@@ -102,7 +104,6 @@ export interface MyProfile extends PublicProfile {
   willing_to_relocate: RelocationWillingness | null;
   photos_blurred: boolean;
   hide_from_contacts: boolean;
-  incognito_mode: boolean;
   hobbies?: string | null;
   // Account fields (from the User; only present on the /me response)
   phone?: string | null;
@@ -258,7 +259,6 @@ export interface CreateProfileInput {
   // privacy
   photos_blurred?: boolean;
   hide_from_contacts?: boolean;
-  incognito_mode?: boolean;
   // The member must confirm their details are accurate and they are 18+.
   terms_accepted: boolean;
 }
@@ -580,4 +580,20 @@ export interface BoostStatus {
   seconds_remaining: number;
   price_pence: number;
   duration_minutes: number;
+  plan_boosts_remaining?: number; // boosts included with the member's plan, 0 for free
+  can_activate?: boolean; // false while a boost is already running
+}
+
+/** Response from POST /matches/boost (plan-included boost). */
+export interface PlanBoostResult {
+  message: string;
+  active?: boolean;
+  expires_at?: string | null;
+  seconds_remaining?: number;
+}
+
+/** GET /matches/likes-preview - anonymous teaser for the who-liked-you upsell. */
+export interface LikesPreview {
+  count: number;
+  previews: { photo_url: string | null; blurred: boolean }[];
 }
