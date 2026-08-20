@@ -100,7 +100,7 @@ export default function ProfileTab() {
   // Privacy toggles save straight away - members should not have to discover
   // them inside the edit sheet. Optimistic flip, reverted if the save fails.
   const setPrivacy = async (
-    patch: Pick<UpdateProfileInput, 'photos_blurred' | 'hide_from_contacts' | 'incognito_mode'>,
+    patch: Pick<UpdateProfileInput, 'photos_blurred' | 'hide_from_contacts'>,
   ) => {
     if (!profile) return;
     const prev = profile;
@@ -240,7 +240,8 @@ export default function ProfileTab() {
             <Surface elevated style={styles.cardPad}>
               <ToggleRow
                 label="Blur my photos until matched"
-                value={profile.photos_blurred ?? true}
+                hint="Members you have not matched with see your photos blurred. Once you match, they see them clearly."
+                value={profile.photos_blurred ?? false}
                 onValueChange={(v) => setPrivacy({ photos_blurred: v })}
                 onDark={false}
               />
@@ -249,13 +250,6 @@ export default function ProfileTab() {
                 hint="People in your phone book will not see your profile. Only anonymous codes are uploaded, never names or numbers."
                 value={profile.hide_from_contacts ?? false}
                 onValueChange={(v) => setPrivacy({ hide_from_contacts: v })}
-                onDark={false}
-              />
-              <ToggleRow
-                label="Incognito mode"
-                hint="Browse without leaving profile-view notifications."
-                value={profile.incognito_mode ?? false}
-                onValueChange={(v) => setPrivacy({ incognito_mode: v })}
                 onDark={false}
               />
             </Surface>
