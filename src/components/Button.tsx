@@ -7,10 +7,12 @@ import {
   ViewStyle,
 } from 'react-native';
 
-import { colors, fonts, palette, radii, shadow } from '@/theme';
+import { colors, fonts, palette, radii, shadow, useTheme } from '@/theme';
 import { haptics } from '@/lib/haptics';
 
-type Variant = 'primary' | 'secondary' | 'dark' | 'outline' | 'ghost';
+// 'outline' is cream (for dark/branded backgrounds); 'outlineAccent' is the
+// theme accent (for light surfaces like cards) so it stays visible there.
+type Variant = 'primary' | 'secondary' | 'dark' | 'outline' | 'outlineAccent' | 'ghost';
 
 interface Props {
   label: string;
@@ -26,6 +28,7 @@ const BG: Record<Variant, string> = {
   secondary: palette.gold,
   dark: palette.navy,
   outline: 'transparent',
+  outlineAccent: 'transparent',
   ghost: 'transparent',
 };
 
@@ -34,11 +37,16 @@ const FG: Record<Variant, string> = {
   secondary: palette.ink,
   dark: palette.cream,
   outline: palette.cream,
+  outlineAccent: palette.burgundy,  // overridden by the theme accent at render
   ghost: palette.burgundy,
 };
 
 export function Button({ label, onPress, variant = 'primary', loading, disabled, style }: Props) {
+  const { c } = useTheme();
   const isDisabled = disabled || loading;
+  const isOutline = variant === 'outline' || variant === 'outlineAccent';
+  // Accent outline follows the theme so it stays visible on light cards.
+  const fg = variant === 'outlineAccent' ? c.accent : FG[variant];
   return (
     <Pressable
       onPress={onPress}
@@ -50,16 +58,17 @@ export function Button({ label, onPress, variant = 'primary', loading, disabled,
         styles.base,
         { backgroundColor: BG[variant] },
         variant === 'outline' && styles.outline,
-        variant !== 'outline' && variant !== 'ghost' && shadow.soft,
+        variant === 'outlineAccent' && { borderWidth: 1.5, borderColor: c.accent },
+        !isOutline && variant !== 'ghost' && shadow.soft,
         pressed && !isDisabled && styles.pressed,
         isDisabled && styles.disabled,
         style,
       ]}
     >
       {loading ? (
-        <ActivityIndicator color={FG[variant]} />
+        <ActivityIndicator color={fg} />
       ) : (
-        <Text style={[styles.label, { color: FG[variant] }]}>{label}</Text>
+        <Text style={[styles.label, { color: fg }]}>{label}</Text>
       )}
     </Pressable>
   );

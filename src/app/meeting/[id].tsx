@@ -382,7 +382,7 @@ export default function MeetingDetail() {
           ) : null}
 
           {canCancel ? (
-            <Button label="Cancel meeting" variant="outline" onPress={cancel} style={styles.cancelBtn} />
+            <Button label="Cancel meeting" variant="outlineAccent" onPress={cancel} style={styles.cancelBtn} />
           ) : null}
         </ScrollView>
       )}

@@ -236,7 +236,7 @@ export default function VerifyAccount() {
               <Button label="Continue to Pakiza" onPress={finish} />
             </>
           ) : allDone ? null : (
-            <Button label="Refresh status" variant="outline" onPress={load} />
+            <Button label="Refresh status" variant="outlineAccent" onPress={load} />
           )}
           <Pressable onPress={signOut} hitSlop={10} style={styles.signout}>
             <Text variant="callout" tone="muted">Sign out</Text>

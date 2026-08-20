@@ -137,7 +137,7 @@ export function MeetingCard({ meetingId }: { meetingId?: string }) {
               {meeting.other_party_name ?? 'Your match'} invited you to a supervised meeting. A wali will be present.
             </Text>
             <View style={styles.actions}>
-              <Button label="Decline" variant="outline" onPress={decline} disabled={acting} style={styles.btn} />
+              <Button label="Decline" variant="outlineAccent" onPress={decline} disabled={acting} style={styles.btn} />
               <Button label="Accept" variant="primary" onPress={accept} loading={acting} style={styles.btn} />
             </View>
           </>
