@@ -4,7 +4,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { errorMessage } from '@/api/client';
 import { profilesApi } from '@/api/profiles';
-import { syncContactHashes } from '@/lib/contactPrivacy';
 import type {
   BodyType,
   EducationLevel,
@@ -108,8 +107,6 @@ export function EditProfileSheet({
   const [relocate, setRelocate] = useState<RelocationWillingness | null>(profile.willing_to_relocate ?? null);
   const [religiosity, setReligiosity] = useState<number | null>(profile.religiosity ?? null);
   const [hobbies, setHobbies] = useState(profile.hobbies ?? '');
-  const [photosBlurred, setPhotosBlurred] = useState<boolean>(profile.photos_blurred ?? false);
-  const [hideContacts, setHideContacts] = useState<boolean>(profile.hide_from_contacts ?? false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -122,19 +119,6 @@ export function EditProfileSheet({
     setSaving(true);
     setError(null);
     try {
-      // Turning hide-from-contacts on needs the phone book: hash the numbers
-      // on device and upload before the flag goes live. Numbers themselves
-      // never leave the phone. If access is denied, keep the toggle off
-      // rather than saving a promise we cannot keep.
-      if (hideContacts && !profile.hide_from_contacts) {
-        const res = await syncContactHashes(profile.phone);
-        if (res === 'permission-denied') {
-          setHideContacts(false);
-          setSaving(false);
-          setError('To hide from your contacts, Pakiza needs contacts access. Only anonymous codes are uploaded, never names or numbers.');
-          return;
-        }
-      }
       const patch: UpdateProfileInput = {
         display_name: trimmedName,
         bio: bio.trim() || undefined,
@@ -159,8 +143,6 @@ export function EditProfileSheet({
         willing_to_relocate: relocate ?? undefined,
         religiosity: religiosity ?? undefined,
         hobbies: hobbies || undefined,
-        photos_blurred: photosBlurred,
-        hide_from_contacts: hideContacts,
       };
       const updated = await profilesApi.update(patch);
       onSaved(updated);
@@ -219,11 +201,6 @@ export function EditProfileSheet({
             <OptionGroup label="Smoking" options={LIFESTYLE} value={smoking} onChange={setSmoking} onDark={false} />
             <OptionGroup label="Drinking" options={LIFESTYLE} value={drinking} onChange={setDrinking} onDark={false} />
             <OptionGroup label="Willing to relocate" options={RELOCATE} value={relocate} onChange={setRelocate} onDark={false} />
-          </Section>
-
-          <Section title="Privacy">
-            <ToggleRow label="Blur my photos until matched" hint="Members you have not matched with see your photos blurred. Once you match, they see them clearly." value={photosBlurred} onValueChange={setPhotosBlurred} onDark={false} />
-            <ToggleRow label="Hide me from my phone contacts" hint="People in your phone book will not see your profile. Only anonymous codes are uploaded, never names or numbers." value={hideContacts} onValueChange={setHideContacts} onDark={false} />
           </Section>
 
           {error ? <Text variant="footnote" tone="danger" center>{error}</Text> : null}
