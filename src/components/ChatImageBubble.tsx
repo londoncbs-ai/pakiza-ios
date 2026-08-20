@@ -9,6 +9,9 @@ import { palette, radii } from '@/theme';
 interface ChatImageBubbleProps {
   /** Presigned GET url for the image. */
   url: string | null;
+  /** Long-press handler (e.g. report) - the image's own tap opens it fullscreen,
+   *  so the report gesture has to live on this Pressable, not the parent. */
+  onLongPress?: () => void;
 }
 
 const MAX_W = 240;
@@ -18,7 +21,7 @@ const MAX_H = 300;
  * An image message body: a rounded thumbnail that, on tap, opens the picture
  * fullscreen in a dark modal with a close button.
  */
-export function ChatImageBubble({ url }: ChatImageBubbleProps) {
+export function ChatImageBubble({ url, onLongPress }: ChatImageBubbleProps) {
   const insets = useSafeAreaInsets();
   const [open, setOpen] = useState(false);
 
@@ -26,7 +29,12 @@ export function ChatImageBubble({ url }: ChatImageBubbleProps) {
 
   return (
     <>
-      <Pressable onPress={() => setOpen(true)} accessibilityRole="imagebutton">
+      <Pressable
+        onPress={() => setOpen(true)}
+        onLongPress={onLongPress}
+        delayLongPress={350}
+        accessibilityRole="imagebutton"
+      >
         <Image
           source={{ uri: url }}
           style={styles.thumb}

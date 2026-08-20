@@ -583,21 +583,26 @@ export default function ChatThread() {
                               styles.quote,
                               mine ? styles.quoteMine : styles.quoteTheirs,
                               {
-                                backgroundColor: mine ? 'rgba(251,247,239,0.14)' : c.surfaceAlt,
+                                backgroundColor: mine ? 'rgba(251,247,239,0.14)' : c.accentFaint,
                                 borderLeftColor: mine ? palette.cream : c.accent,
                               },
                             ]}
                           >
-                            <Text variant="footnote" color={mine ? palette.cream : c.accent} numberOfLines={1}>
-                              {quoted ? quotedSender : 'Reply'}
-                            </Text>
-                            <Text
-                              variant="footnote"
-                              color={mine ? 'rgba(251,247,239,0.85)' : c.textMuted}
-                              numberOfLines={1}
-                            >
-                              {replySnippet(quoted)}
-                            </Text>
+                            {quoted?.type === 'image' && quoted.media_url ? (
+                              <Image source={{ uri: quoted.media_url }} style={styles.quoteThumb} contentFit="cover" />
+                            ) : null}
+                            <View style={styles.replyBarText}>
+                              <Text variant="footnote" color={mine ? palette.cream : c.accent} numberOfLines={1}>
+                                {quoted ? quotedSender : 'Reply'}
+                              </Text>
+                              <Text
+                                variant="footnote"
+                                color={mine ? 'rgba(251,247,239,0.85)' : c.textMuted}
+                                numberOfLines={1}
+                              >
+                                {replySnippet(quoted)}
+                              </Text>
+                            </View>
                           </View>
                         ) : null}
                         <Pressable
@@ -606,7 +611,10 @@ export default function ChatThread() {
                           style={bubbleStyle}
                         >
                           {isImage ? (
-                            <ChatImageBubble url={item.media_url} />
+                            <ChatImageBubble
+                              url={item.media_url}
+                              onLongPress={!mine ? () => { haptics.selection(); setReportMsg(item); } : undefined}
+                            />
                           ) : isVoice ? (
                             <VoiceMessage
                               url={item.media_url}
@@ -670,6 +678,9 @@ export default function ChatThread() {
             {/* Reply preview bar */}
             {replyTo ? (
               <View style={[styles.replyBar, { borderLeftColor: c.accent, backgroundColor: c.surfaceAlt }]}>
+                {replyTo.type === 'image' && replyTo.media_url ? (
+                  <Image source={{ uri: replyTo.media_url }} style={styles.replyThumb} contentFit="cover" />
+                ) : null}
                 <View style={styles.replyBarText}>
                   <Text variant="footnote" tone="accent" numberOfLines={1}>
                     Replying to {replyTo.sender_id === userId ? 'yourself' : peerName}
@@ -879,6 +890,9 @@ const styles = StyleSheet.create({
 
   // Quoted reply above a bubble
   quote: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
     borderLeftWidth: 2,
     borderRadius: radii.sm,
     paddingHorizontal: spacing.sm,
@@ -888,6 +902,8 @@ const styles = StyleSheet.create({
   },
   quoteMine: { alignSelf: 'flex-end' },
   quoteTheirs: { alignSelf: 'flex-start' },
+  quoteThumb: { width: 30, height: 30, borderRadius: 6, backgroundColor: 'rgba(0,0,0,0.06)' },
+  replyThumb: { width: 36, height: 36, borderRadius: 6, backgroundColor: 'rgba(0,0,0,0.06)' },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3, paddingHorizontal: 2 },
   metaMine: { justifyContent: 'flex-end' },
   metaTheirs: { justifyContent: 'flex-start' },
