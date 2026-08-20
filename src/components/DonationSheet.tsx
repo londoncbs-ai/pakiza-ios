@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { errorMessage } from '@/api/client';
 import { givingApi } from '@/api/giving';
 import type { Donation, DonationCheckoutInput } from '@/api/types';
+import { logDonation } from '@/lib/analytics';
 import { PaymentCancelledError, presentStripePayment } from '@/lib/stripeSheet';
 import { Button } from './Button';
 import { Text } from './Text';
@@ -49,6 +50,7 @@ export function DonationSheet({
         paymentIntentId ?? session.client_secret ?? undefined
       );
       haptics.success();
+      logDonation(donation.amount_pence / 100);
       onDonated(donation);
     } catch (err) {
       if (err instanceof PaymentCancelledError) {

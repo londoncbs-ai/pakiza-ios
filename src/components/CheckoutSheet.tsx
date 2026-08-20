@@ -6,6 +6,7 @@ import { useRouter } from 'expo-router';
 
 import { errorMessage } from '@/api/client';
 import { subscriptionsApi } from '@/api/subscriptions';
+import { logSubscribe } from '@/lib/analytics';
 import { appleBillingAvailable, purchaseAppleSubscription } from '@/lib/appleBilling';
 import { playBillingAvailable, purchasePlaySubscription } from '@/lib/playBilling';
 import type { Subscription, SubscriptionPlan } from '@/api/types';
@@ -15,6 +16,9 @@ import { Text } from './Text';
 import { radii, spacing, useTheme } from '@/theme';
 
 const PRICE: Record<string, string> = { premium: '£14.99', gold: '£24.99' };
+// Headline monthly price per plan, in pounds - used only for the ad-campaign
+// value event (the real charge is set by the store / backend).
+const SUB_PRICE_POUNDS: Record<string, number> = { premium: 14.99, gold: 24.99 };
 
 /**
  * Payment + contract acceptance sheet.
@@ -52,6 +56,7 @@ export function CheckoutSheet({
       if (playBillingAvailable()) {
         // Android: digital subscriptions must go through Google Play Billing.
         const sub = await purchasePlaySubscription(plan);
+        logSubscribe(SUB_PRICE_POUNDS[plan] ?? 0, plan);
         onPurchased(sub);
         return;
       }
@@ -66,6 +71,7 @@ export function CheckoutSheet({
       // server-side, no real charge). Store builds never reach this branch -
       // iOS keeps subscriptions hidden until StoreKit is wired.
       const sub = await subscriptionsApi.purchase(plan, 'stripe', session.client_secret ?? 'dev-receipt');
+      logSubscribe(SUB_PRICE_POUNDS[plan] ?? 0, plan);
       onPurchased(sub);
     } catch (err) {
       if (err instanceof Error && err.message === 'cancelled') {

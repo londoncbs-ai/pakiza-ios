@@ -18,6 +18,7 @@ import {
 import { AuthProvider, useAuth } from '@/store/auth';
 import { RealtimeProvider } from '@/store/realtime';
 import { ScreenshotGuard } from '@/components/ScreenshotGuard';
+import { initAnalytics } from '@/lib/analytics';
 import { ThemeProvider, useTheme } from '@/theme';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
@@ -123,6 +124,12 @@ export default function RootLayout() {
   useEffect(() => {
     if (fontsLoaded) SplashScreen.hideAsync().catch(() => {});
   }, [fontsLoaded]);
+
+  // Start Meta analytics once, after the app is interactive (so the iOS
+  // tracking prompt does not land over the splash). No-ops without the SDK.
+  useEffect(() => {
+    initAnalytics();
+  }, []);
 
   if (!fontsLoaded) return null;
 

@@ -19,6 +19,7 @@ import { errorMessage } from '@/api/client';
 import { profilesApi } from '@/api/profiles';
 import { Button } from '@/components/Button';
 import { Text } from '@/components/Text';
+import { logVerified } from '@/lib/analytics';
 import { haptics } from '@/lib/haptics';
 import { useAuth } from '@/store/auth';
 import { hexA, palette, spacing } from '@/theme';
@@ -65,6 +66,7 @@ export default function FaceVerify() {
       const shot = await cameraRef.current.takePictureAsync({ quality: 0.7, skipProcessing: true });
       if (!shot?.uri) throw new Error('Could not capture your photo');
       await profilesApi.verifySelfie(shot.uri);
+      logVerified();
       haptics.success();
       // Show the verified moment before moving on; back to the checklist when
       // the scan was opened from there, otherwise into the app. If the account
@@ -156,7 +158,14 @@ export default function FaceVerify() {
                 <View style={styles.successBadge}>
                   <Ionicons name="checkmark" size={44} color={palette.burgundyDeep} />
                 </View>
-                <Text variant="title" tone="onDark" center style={{ marginTop: spacing.md }}>
+                <Text
+                  variant="title"
+                  tone="onDark"
+                  center
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  style={{ marginTop: spacing.md, paddingHorizontal: spacing.md }}
+                >
                   Verified
                 </Text>
                 <Text variant="footnote" tone="onDarkMuted" center style={{ marginTop: spacing.xs }}>

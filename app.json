@@ -89,6 +89,24 @@
           "enableGooglePay": false
         }
       ],
+      [
+        "react-native-fbsdk-next",
+        {
+          "appID": "1049825554586302",
+          "clientToken": "859974a713b252df29be9bea9871049c",
+          "displayName": "Pakiza",
+          "scheme": "fb1049825554586302",
+          "advertiserIDCollectionEnabled": true,
+          "autoLogAppEventsEnabled": true,
+          "isAutoInitEnabled": true
+        }
+      ],
+      [
+        "expo-tracking-transparency",
+        {
+          "userTrackingPermission": "This lets Pakiza measure how well our ads work so we can reach more people looking for marriage. Your data is never sold."
+        }
+      ],
       "expo-asset"
     ],
     "experiments": {

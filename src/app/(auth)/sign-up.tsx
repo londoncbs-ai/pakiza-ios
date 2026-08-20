@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 
 import { authApi } from '@/api/auth';
 import { errorMessage } from '@/api/client';
+import { logRegistration } from '@/lib/analytics';
 import { AuthScaffold } from '@/components/AuthScaffold';
 import { Button } from '@/components/Button';
 import { Text } from '@/components/Text';
@@ -38,6 +39,7 @@ export default function SignUp() {
     setLoading(true);
     try {
       const res = await authApi.register(phone.trim() || null, password, email.trim());
+      logRegistration();
       if (res.otp_required === false) {
         // No OTP step (SMS verification disabled): sign straight in.
         const tokens = await authApi.login(email.trim(), password);
