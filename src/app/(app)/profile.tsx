@@ -9,7 +9,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { authApi } from '@/api/auth';
 import { errorMessage } from '@/api/client';
 import { profilesApi } from '@/api/profiles';
-import type { MyProfile, UpdateProfileInput } from '@/api/types';
+import type { MyProfile, Photo, UpdateProfileInput } from '@/api/types';
 import { DetailRow } from '@/components/DetailRow';
 import { EditProfileSheet } from '@/components/EditProfileSheet';
 import { PreferencesSheet } from '@/components/PreferencesSheet';
@@ -37,18 +37,21 @@ export default function ProfileTab() {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [prefsOpen, setPrefsOpen] = useState(false);
-  const [photos, setPhotos] = useState<string[]>([]);
+  // Server photos are the source of truth (each carries an id so it can be
+  // deleted); `uploading` holds local uris still being sent, shown as pending
+  // tiles.
+  const [photos, setPhotos] = useState<Photo[]>([]);
+  const [uploading, setUploading] = useState<string[]>([]);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (): Promise<MyProfile | null> => {
     try {
       const p = await profilesApi.getMine();
       setProfile(p);
-      const serverPhotos = sortedPhotos(p?.photos)
-        .map((ph) => ph.cdn_url)
-        .filter((u) => !u.includes('cdn.example.com'));
-      setPhotos((prev) => (prev.length ? prev : serverPhotos));
+      setPhotos(sortedPhotos(p?.photos).filter((ph) => !ph.cdn_url.includes('cdn.example.com')));
+      return p;
     } catch {
       setProfile(null);
+      return null;
     } finally {
       setLoading(false);
     }
@@ -56,8 +59,25 @@ export default function ProfileTab() {
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
 
+  // After a photo change, if it cost the member their verified badge (the
+  // server re-checks the gallery against the stored selfie), tell them and
+  // offer to re-verify - a silent revocation is confusing.
+  const afterPhotoChange = useCallback(async (wasVerified?: boolean) => {
+    const p = await load();
+    if (wasVerified && p && !p.is_selfie_verified) {
+      Alert.alert(
+        'Verify your photo again',
+        'Your photos changed, so we need a quick new face scan to restore your verified badge.',
+        [
+          { text: 'Later', style: 'cancel' },
+          { text: 'Verify now', onPress: () => router.push('/(onboarding)/face-verify') },
+        ],
+      );
+    }
+  }, [load, router]);
+
   const addPhoto = async () => {
-    const remaining = MAX_PHOTOS - photos.length;
+    const remaining = MAX_PHOTOS - (photos.length + uploading.length);
     if (remaining <= 0) {
       Alert.alert('Photo limit', `You can add up to ${MAX_PHOTOS} photos.`);
       return;
@@ -72,14 +92,45 @@ export default function ProfileTab() {
     if (res.canceled) return;
     const fresh = res.assets
       .map((a) => a.uri)
-      .filter((u, i, arr) => arr.indexOf(u) === i && !photos.includes(u))
+      .filter((u, i, arr) => arr.indexOf(u) === i)
       .slice(0, remaining);
     if (fresh.length === 0) return;
-    setPhotos((p) => [...p, ...fresh]);
-    for (const uri of fresh) profilesApi.uploadPhoto(uri).catch(() => {});
+    const wasVerified = profile?.is_selfie_verified;
+    setUploading((u) => [...u, ...fresh]);
+    // One at a time so the server assigns primary/order correctly and the
+    // selfie re-check runs per photo.
+    for (const uri of fresh) {
+      try {
+        await profilesApi.uploadPhoto(uri);
+      } catch (err) {
+        Alert.alert('Upload failed', errorMessage(err, 'That photo could not be uploaded. Please try again.'));
+      } finally {
+        setUploading((u) => u.filter((x) => x !== uri));
+      }
+    }
+    // Reload from the server so the tiles reflect what was actually saved, and
+    // surface any verification change.
+    await afterPhotoChange(wasVerified);
   };
 
-  const removePhoto = (uri: string) => setPhotos((p) => p.filter((u) => u !== uri));
+  const removePhoto = (photo: Photo) => {
+    Alert.alert('Remove photo', 'Remove this photo from your profile?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Remove',
+        style: 'destructive',
+        onPress: async () => {
+          const wasVerified = profile?.is_selfie_verified;
+          try {
+            await profilesApi.deletePhoto(photo.id);
+            await afterPhotoChange(wasVerified);
+          } catch (err) {
+            Alert.alert('Could not remove', errorMessage(err, 'Please try again.'));
+          }
+        },
+      },
+    ]);
+  };
 
   const sendEmailVerify = async () => {
     try {
@@ -153,7 +204,7 @@ export default function ProfileTab() {
         {/* Identity card */}
         <Surface elevated style={styles.identity}>
           {photos[0] ? (
-            <Image source={{ uri: photos[0] }} style={[styles.avatar, { borderColor: c.accent }]} contentFit="cover" />
+            <Image source={{ uri: photos[0].cdn_url }} style={[styles.avatar, { borderColor: c.accent }]} contentFit="cover" />
           ) : (
             <View style={[styles.avatar, { borderColor: c.accent, backgroundColor: c.surfaceAlt, alignItems: 'center', justifyContent: 'center' }]}>
               <Text style={styles.avatarInitial}>{profile?.display_name?.[0] ?? '?'}</Text>
@@ -182,15 +233,23 @@ export default function ProfileTab() {
         {/* Photos */}
         <Section title="My photos">
           <View style={styles.photoGrid}>
-            {photos.map((uri) => (
-              <View key={uri} style={[styles.photoTile, { backgroundColor: c.surfaceAlt }]}>
-                <Image source={{ uri }} style={styles.photoImg} contentFit="cover" />
-                <Pressable onPress={() => removePhoto(uri)} hitSlop={6} style={styles.removeBtn}>
+            {photos.map((ph) => (
+              <View key={ph.id} style={[styles.photoTile, { backgroundColor: c.surfaceAlt }]}>
+                <Image source={{ uri: ph.cdn_url }} style={styles.photoImg} contentFit="cover" />
+                <Pressable onPress={() => removePhoto(ph)} hitSlop={6} style={styles.removeBtn}>
                   <Ionicons name="close" size={14} color={palette.cream} />
                 </Pressable>
               </View>
             ))}
-            {photos.length < MAX_PHOTOS ? (
+            {uploading.map((uri) => (
+              <View key={uri} style={[styles.photoTile, { backgroundColor: c.surfaceAlt }]}>
+                <Image source={{ uri }} style={styles.photoImg} contentFit="cover" />
+                <View style={styles.uploadingOverlay}>
+                  <ActivityIndicator color={palette.cream} />
+                </View>
+              </View>
+            ))}
+            {photos.length + uploading.length < MAX_PHOTOS ? (
               <Pressable onPress={addPhoto} style={[styles.photoTile, styles.addTile, { borderColor: c.borderStrong }]}>
                 <Ionicons name="add" size={30} color={palette.burgundy} />
                 <Text variant="footnote" tone="burgundy">Add</Text>
@@ -434,6 +493,12 @@ const styles = StyleSheet.create({
   photoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   photoTile: { width: 104, height: 132, borderRadius: 12, overflow: 'hidden' },
   photoImg: { width: '100%', height: '100%' },
+  uploadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(20,16,17,0.45)',
+  },
   removeBtn: {
     position: 'absolute',
     top: 6,
