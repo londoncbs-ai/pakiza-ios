@@ -199,7 +199,10 @@ const styles = StyleSheet.create({
     backgroundColor: tint.overlaySoft,
   },
   grid: { flexDirection: 'row', flexWrap: 'wrap', padding: spacing.md, gap: spacing.md },
-  card: { width: '47%', aspectRatio: 0.8, borderRadius: radii.card, overflow: 'hidden', backgroundColor: palette.burgundyDark },
+  // Fixed height, not aspectRatio: on the new architecture aspectRatio
+  // collapses this card to zero inside the wrapping grid. teaserCard above
+  // still uses aspectRatio and may have the same problem.
+  card: { width: '47%', height: 192, borderRadius: radii.card, overflow: 'hidden', backgroundColor: palette.burgundyDark },
   ph: { backgroundColor: palette.burgundy, alignItems: 'center', justifyContent: 'center' },
   phText: { fontFamily: fonts.display, fontSize: 64 },
   cardOverlay: { position: 'absolute', left: 0, right: 0, bottom: 0, padding: spacing.md, backgroundColor: tint.overlayStrong },

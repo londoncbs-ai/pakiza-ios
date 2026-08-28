@@ -13,14 +13,24 @@
  * verified, subscribe/purchase) are logged explicitly via the helpers below.
  */
 import { Platform } from 'react-native';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
 
 let started = false;
 
+// react-native-fbsdk-next is not bundled into Expo Go, and its failure escapes
+// the try/catch below: the Invariant Violation is raised through the native
+// module proxy rather than as a plain require() error, so it reaches the root
+// layout and red-boxes the whole app. Detect the Expo Go client up front and
+// never attempt the load there. Real builds (dev client, TestFlight, store)
+// report `standalone`/`bare`, so analytics is untouched for actual users.
+const IN_EXPO_GO = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
+
 function fbsdk(): any | null {
+  if (IN_EXPO_GO) return null;
   try {
     return require('react-native-fbsdk-next');
   } catch {
-    return null; // native module absent (Expo Go / web)
+    return null; // native module absent (web, or a build without the SDK)
   }
 }
 
