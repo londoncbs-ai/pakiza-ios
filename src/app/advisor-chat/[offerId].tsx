@@ -1,6 +1,7 @@
 import { useCallback, useState, useRef } from 'react';
 import { FlatList, KeyboardAvoidingView, Platform, StyleSheet, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 
@@ -12,35 +13,61 @@ import { ErrorState } from '@/components/ErrorState';
 import { PressableScale } from '@/components/PressableScale';
 import { SkeletonList } from '@/components/Skeleton';
 import { Text } from '@/components/Text';
-import { Button } from '@/components/Button';
-import { fonts, palette, radii, shadow, spacing, useTheme } from '@/theme';
+import { useAuth } from '@/store/auth';
+import { palette, radii, shadow, spacing, useTheme } from '@/theme';
+
+function formatTime(iso?: string): string {
+  if (!iso) return '';
+  try {
+    const d = new Date(iso);
+    return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  } catch {
+    return '';
+  }
+}
 
 export default function OfferChatScreen() {
-  const { offerId } = useLocalSearchParams<{ offerId: string }>();
+  const { offerId, name: paramName, photo: paramPhoto } = useLocalSearchParams<{
+    offerId: string;
+    name?: string;
+    photo?: string;
+  }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { c, isDark } = useTheme();
+  const { userId } = useAuth();
 
   const [offer, setOffer] = useState<MatchAdvisorOffer | null>(null);
   const [messages, setMessages] = useState<MatchAdvisorOfferMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   const [inputText, setInputText] = useState('');
   const [sending, setSending] = useState(false);
   const flatListRef = useRef<FlatList>(null);
+
+  const advisorDisplayName = offer?.advisor_name || paramName || 'Match Advisor';
+  const advisorAvatar = offer?.advisor_photo_url || paramPhoto || null;
 
   const load = useCallback(async () => {
     try {
       const [offerData, messagesData] = await Promise.all([
         matchAdvisorsApi.getOffer(offerId),
-        matchAdvisorsApi.getOfferMessages(offerId)
+        matchAdvisorsApi.getOfferMessages(offerId),
       ]);
       setOffer(offerData);
       setMessages(messagesData);
       setError(null);
     } catch (err) {
-      setError(errorMessage(err));
+      console.warn('Chat load err:', err);
+      // Fallback: if getOffer fails, try just messages
+      try {
+        const messagesData = await matchAdvisorsApi.getOfferMessages(offerId);
+        setMessages(messagesData);
+        setError(null);
+      } catch (innerErr) {
+        setError(errorMessage(err));
+      }
     } finally {
       setLoading(false);
     }
@@ -49,76 +76,150 @@ export default function OfferChatScreen() {
   useFocusEffect(
     useCallback(() => {
       load();
-      const interval = setInterval(load, 3000);
+      const interval = setInterval(load, 2500);
       return () => clearInterval(interval);
     }, [load])
   );
 
   const handleSend = async () => {
-    if (!inputText.trim() || sending) return;
+    const textToSend = inputText.trim();
+    if (!textToSend || sending) return;
+
+    // Optimistic message
+    const tempId = `temp-${Date.now()}`;
+    const optimisticMsg: MatchAdvisorOfferMessage = {
+      id: tempId,
+      offer_id: offerId,
+      sender_id: userId || 'me',
+      sender_role: 'user',
+      type: 'TEXT',
+      content: textToSend,
+      created_at: new Date().toISOString(),
+    };
+
+    setMessages((prev) => [...prev, optimisticMsg]);
+    setInputText('');
+
     try {
       setSending(true);
       const newMessage = await matchAdvisorsApi.sendOfferMessage(offerId, {
         type: 'TEXT',
-        content: inputText.trim()
+        content: textToSend,
       });
-      setMessages((prev) => [...prev, newMessage]);
-      setInputText('');
-      
+      // Replace optimistic message with actual backend response
+      setMessages((prev) =>
+        prev.map((m) => (m.id === tempId ? { ...newMessage, sender_role: 'user' } : m))
+      );
     } catch (err) {
-      console.error(err);
-      // You could show a toast here
+      console.error('Send message failed:', err);
+      // Rollback optimistic message on error
+      setMessages((prev) => prev.filter((m) => m.id !== tempId));
+      setError(errorMessage(err));
     } finally {
       setSending(false);
     }
   };
 
   const renderMessage = ({ item }: { item: MatchAdvisorOfferMessage }) => {
-    const isMe = item.sender_role === 'user';
+    const isMe = item.sender_id === userId || item.sender_role === 'user';
 
-    if (item.type === 'PROPOSAL') {
+    if (item.type === 'PROPOSAL' || item.type === ('SYSTEM' as any)) {
+      const isSearchActive =
+        offer?.status === 'accepted' || offer?.status === 'paid' || offer?.status === 'completed';
+
       return (
         <View style={styles.proposalContainer}>
-          <View style={[styles.proposalCard, { backgroundColor: c.surface, borderColor: c.accent }, !isDark && shadow.card]}>
+          <View
+            style={[
+              styles.proposalCard,
+              { backgroundColor: c.surface, borderColor: c.border },
+              !isDark && shadow.card,
+            ]}
+          >
+            {/* Agreement Header */}
             <View style={[styles.proposalHeader, { borderBottomColor: c.border }]}>
-              <Ionicons name="shield-checkmark" size={20} color={c.accent} style={{ marginRight: spacing.sm }} />
-              <Text variant="subhead" style={{ color: c.accent, fontWeight: 'bold' }}>Matchmaking Agreement</Text>
-            </View>
-            <View style={{ padding: spacing.md }}>
-              <Text variant="body" style={{ marginBottom: spacing.sm }}>
-                {item.content || 'Dedicated Match Advisor assigned with standard flat fee.'}
-              </Text>
-              
-              <View style={[styles.proposalDetails, { backgroundColor: c.bg }]}>
-                <Text variant="footnote" tone="default">
-                  <Text variant="footnote" tone="muted">Service Fee: </Text>
-                  £500 Flat Fee
+              <View style={[styles.proposalBadgeIcon, { backgroundColor: c.accentFaint }]}>
+                <Ionicons name="shield-checkmark" size={18} color={palette.burgundy} />
+              </View>
+              <View style={{ flex: 1, marginLeft: spacing.sm }}>
+                <Text variant="subhead" style={{ color: palette.burgundy, fontWeight: '700' }}>
+                  Matchmaking Agreement
                 </Text>
-                <Text variant="footnote" tone="default" style={{ marginTop: spacing.xs }}>
-                  <Text variant="footnote" tone="muted">Deposit Secured: </Text>
-                  £250 (Paid)
-                </Text>
-                <Text variant="footnote" tone="default" style={{ marginTop: spacing.xs }}>
-                  <Text variant="footnote" tone="muted">Success Balance: </Text>
-                  £250 (Payable only once spouse is found)
+                <Text variant="footnote" tone="muted">
+                  Private & Verified Matchmaking
                 </Text>
               </View>
+              <View
+                style={[
+                  styles.statusTag,
+                  { backgroundColor: isSearchActive ? 'rgba(34, 197, 94, 0.12)' : 'rgba(128, 0, 32, 0.08)' },
+                ]}
+              >
+                <View
+                  style={[
+                    styles.statusDot,
+                    { backgroundColor: isSearchActive ? c.success : palette.burgundy },
+                  ]}
+                />
+                <Text
+                  variant="label"
+                  style={{
+                    color: isSearchActive ? c.success : palette.burgundy,
+                    fontWeight: '700',
+                    fontSize: 10,
+                  }}
+                >
+                  {isSearchActive ? 'ACTIVE SEARCH' : 'ASSIGNED'}
+                </Text>
+              </View>
+            </View>
 
-              <View style={[styles.proposalActions, { justifyContent: 'center', marginTop: spacing.sm }]}>
-                <View style={{
-                  backgroundColor: (offer?.status === 'accepted' || offer?.status === 'paid')
-                    ? c.success
-                    : palette.burgundy,
-                  paddingVertical: 6,
-                  paddingHorizontal: 12,
-                  borderRadius: 12,
-                }}>
-                  <Text variant="label" style={{ color: 'white' }}>
-                    {(offer?.status === 'accepted' || offer?.status === 'paid')
-                      ? 'ACTIVE SEARCH IN PROGRESS'
-                      : 'PENDING ADVISOR REVIEW'}
+            {/* Agreement Details */}
+            <View style={{ padding: spacing.md }}>
+              <Text variant="body" tone="default" style={{ marginBottom: spacing.md, lineHeight: 20 }}>
+                {item.content ||
+                  'Your dedicated Match Advisor is assigned to your case. They will review preferences, conduct thorough matchmaking, and introduce hand-picked candidates.'}
+              </Text>
+
+              {/* Fee Breakdown Cards */}
+              <View style={[styles.feeRow, { backgroundColor: c.surfaceAlt, borderColor: c.border }]}>
+                <View style={styles.feeItem}>
+                  <Text variant="label" tone="muted" style={{ textTransform: 'uppercase', fontSize: 10 }}>
+                    Total Flat Fee
+                  </Text>
+                  <Text variant="subhead" style={{ fontWeight: '800', color: palette.burgundy, marginTop: 2 }}>
+                    £500
                   </Text>
                 </View>
+
+                <View style={[styles.feeDivider, { backgroundColor: c.border }]} />
+
+                <View style={styles.feeItem}>
+                  <Text variant="label" tone="muted" style={{ textTransform: 'uppercase', fontSize: 10 }}>
+                    Deposit (Paid)
+                  </Text>
+                  <Text variant="subhead" style={{ fontWeight: '800', color: c.success, marginTop: 2 }}>
+                    £250 Secured
+                  </Text>
+                </View>
+
+                <View style={[styles.feeDivider, { backgroundColor: c.border }]} />
+
+                <View style={styles.feeItem}>
+                  <Text variant="label" tone="muted" style={{ textTransform: 'uppercase', fontSize: 10 }}>
+                    Success Fee
+                  </Text>
+                  <Text variant="subhead" style={{ fontWeight: '800', color: c.text, marginTop: 2 }}>
+                    £250 Due Later
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.guaranteeNote}>
+                <Ionicons name="information-circle-outline" size={14} color={c.textMuted} style={{ marginRight: 4 }} />
+                <Text variant="footnote" tone="muted" style={{ flex: 1, fontSize: 11 }}>
+                  Success balance of £250 is only payable once a spouse/partner is found and agreed.
+                </Text>
               </View>
             </View>
           </View>
@@ -128,75 +229,176 @@ export default function OfferChatScreen() {
 
     return (
       <View style={[styles.messageRow, isMe ? styles.messageRowMe : styles.messageRowOther]}>
-        <View style={[
-          styles.messageBubble,
-          isMe ? { backgroundColor: c.accent } : { backgroundColor: c.surface, borderWidth: StyleSheet.hairlineWidth, borderColor: c.border }
-        ]}>
-          <Text variant="body" style={{ color: isMe ? '#fff' : c.text }}>
-            {item.content}
-          </Text>
+        {!isMe && (
+          <View style={styles.bubbleAvatarWrap}>
+            {advisorAvatar ? (
+              <Image source={{ uri: advisorAvatar }} style={styles.bubbleAvatar} contentFit="cover" />
+            ) : (
+              <View style={[styles.bubbleAvatarPlaceholder, { backgroundColor: c.accentFaint }]}>
+                <Text variant="label" style={{ color: palette.burgundy, fontWeight: '700' }}>
+                  {advisorDisplayName.charAt(0).toUpperCase()}
+                </Text>
+              </View>
+            )}
+          </View>
+        )}
+
+        <View style={[styles.messageContentCol, isMe ? { alignItems: 'flex-end' } : { alignItems: 'flex-start' }]}>
+          <View
+            style={[
+              styles.messageBubble,
+              isMe
+                ? [styles.bubbleMe, { backgroundColor: palette.burgundy }]
+                : [styles.bubbleOther, { backgroundColor: c.surface, borderColor: c.border }],
+            ]}
+          >
+            <Text
+              variant="body"
+              style={[
+                styles.messageText,
+                { color: isMe ? palette.cream : c.text },
+              ]}
+            >
+              {item.content}
+            </Text>
+          </View>
+
+          {/* Time & status */}
+          <View style={[styles.timeRow, isMe ? { justifyContent: 'flex-end' } : { justifyContent: 'flex-start' }]}>
+            <Text variant="footnote" tone="subtle" style={styles.timeText}>
+              {formatTime(item.created_at)}
+            </Text>
+            {isMe && (
+              <Ionicons
+                name="checkmark-done"
+                size={14}
+                color={c.accent}
+                style={{ marginLeft: 3 }}
+              />
+            )}
+          </View>
         </View>
       </View>
     );
   };
 
   return (
-    <KeyboardAvoidingView 
+    <KeyboardAvoidingView
       style={[styles.root, { backgroundColor: c.bg }]}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
     >
-      <View style={[styles.header, { paddingTop: insets.top + spacing.sm, borderBottomColor: c.border }]}>
-        <PressableScale onPress={() => router.back()} style={{ marginRight: spacing.md }}>
+      {/* Premium Header */}
+      <View style={[styles.header, { paddingTop: insets.top + spacing.xs, borderBottomColor: c.border, backgroundColor: c.surface }]}>
+        <PressableScale onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color={c.text} />
         </PressableScale>
-        <View style={{ flex: 1 }}>
-          <Text variant="heading" numberOfLines={1}>{offer?.title || 'Loading...'}</Text>
-          {offer && (
-            <Text variant="footnote" tone="muted">{offer.status.toUpperCase()}</Text>
+
+        {/* Advisor Avatar */}
+        <View style={styles.headerAvatarContainer}>
+          {advisorAvatar ? (
+            <Image source={{ uri: advisorAvatar }} style={styles.headerAvatar} contentFit="cover" />
+          ) : (
+            <View style={[styles.headerAvatarPlaceholder, { backgroundColor: palette.burgundy }]}>
+              <Text variant="subhead" style={{ color: palette.cream, fontWeight: '700' }}>
+                {advisorDisplayName.charAt(0).toUpperCase()}
+              </Text>
+            </View>
           )}
+          <View style={[styles.onlineIndicator, { borderColor: c.surface }]} />
+        </View>
+
+        {/* Advisor Title & Details */}
+        <View style={styles.headerDetails}>
+          <View style={styles.headerNameRow}>
+            <Text variant="subhead" style={{ fontWeight: '700', color: c.text }} numberOfLines={1}>
+              {advisorDisplayName}
+            </Text>
+            <Ionicons name="checkmark-circle" size={16} color={palette.burgundy} style={{ marginLeft: 4 }} />
+          </View>
+          <Text variant="footnote" tone="muted" numberOfLines={1}>
+            Dedicated Match Advisor • Active Case
+          </Text>
+        </View>
+
+        {/* Safety / Info Pill */}
+        <View style={[styles.headerBadge, { backgroundColor: c.accentFaint }]}>
+          <Ionicons name="shield-checkmark" size={13} color={palette.burgundy} style={{ marginRight: 3 }} />
+          <Text variant="label" style={{ color: palette.burgundy, fontWeight: '700', fontSize: 11 }}>
+            Verified
+          </Text>
         </View>
       </View>
 
-      {loading && !offer ? (
-        <SkeletonList />
-      ) : error ? (
+      {/* Main Chat Body */}
+      {loading && !offer && messages.length === 0 ? (
+        <View style={{ flex: 1, padding: spacing.lg }}>
+          <SkeletonList />
+        </View>
+      ) : error && messages.length === 0 ? (
         <ErrorState message={error} onRetry={load} />
       ) : (
         <FlatList
           ref={flatListRef}
           inverted
           data={[...messages].reverse()}
-          keyExtractor={(m) => m.id}
-          contentContainerStyle={{ padding: spacing.md, paddingBottom: spacing.xxxl }}
+          keyExtractor={(m) => String(m.id)}
+          contentContainerStyle={{ padding: spacing.md, paddingBottom: spacing.lg }}
           renderItem={renderMessage}
           ListEmptyComponent={
-            <View style={{ transform: [{ scaleY: -1 }] }}>
+            <View style={{ transform: [{ scaleY: -1 }], paddingVertical: spacing.xxl }}>
               <EmptyState
                 icon="chatbubbles-outline"
-                title="No messages yet"
-                message="Send a message to start negotiating with the advisor."
+                title="Your Match Advisor is Assigned"
+                message="Send a message to share your partner preferences, values, or questions."
               />
             </View>
           }
         />
       )}
 
-      <View style={[styles.inputContainer, { backgroundColor: c.surface, borderTopColor: c.border, paddingBottom: insets.bottom || spacing.md }]}>
+      {/* Composer Input Bar */}
+      <View
+        style={[
+          styles.inputContainer,
+          {
+            backgroundColor: c.surface,
+            borderTopColor: c.border,
+            paddingBottom: Math.max(insets.bottom, spacing.md),
+          },
+        ]}
+      >
         <TextInput
-          style={[styles.textInput, { backgroundColor: c.bg, color: c.text, borderColor: c.border }]}
-          placeholder="Type a message..."
+          style={[
+            styles.textInput,
+            {
+              backgroundColor: c.surfaceAlt,
+              color: c.text,
+              borderColor: c.border,
+            },
+          ]}
+          placeholder="Message your Match Advisor..."
           placeholderTextColor={c.textSubtle}
           value={inputText}
           onChangeText={setInputText}
           multiline
-          maxLength={500}
+          maxLength={1000}
         />
-        <PressableScale 
-          style={[styles.sendButton, { backgroundColor: inputText.trim() && !sending ? c.accent : c.border }]} 
+        <PressableScale
+          style={[
+            styles.sendButton,
+            {
+              backgroundColor: inputText.trim() && !sending ? palette.burgundy : c.border,
+            },
+          ]}
           onPress={handleSend}
           disabled={!inputText.trim() || sending}
         >
-          <Ionicons name="send" size={20} color="#fff" style={{ marginLeft: 2 }} />
+          <Ionicons
+            name="arrow-up"
+            size={20}
+            color={inputText.trim() && !sending ? palette.cream : c.textSubtle}
+          />
         </PressableScale>
       </View>
     </KeyboardAvoidingView>
@@ -208,13 +410,59 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.md,
+    paddingHorizontal: spacing.md,
+    paddingBottom: spacing.sm,
     borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  backButton: {
+    padding: spacing.xs,
+    marginRight: spacing.xs,
+  },
+  headerAvatarContainer: {
+    position: 'relative',
+    marginRight: spacing.sm,
+  },
+  headerAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+  },
+  headerAvatarPlaceholder: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  onlineIndicator: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 11,
+    height: 11,
+    borderRadius: 6,
+    backgroundColor: '#22c55e',
+    borderWidth: 2,
+  },
+  headerDetails: {
+    flex: 1,
+  },
+  headerNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: radii.pill,
+    marginLeft: spacing.xs,
   },
   messageRow: {
     flexDirection: 'row',
     marginBottom: spacing.md,
+    alignItems: 'flex-end',
   },
   messageRowMe: {
     justifyContent: 'flex-end',
@@ -222,18 +470,56 @@ const styles = StyleSheet.create({
   messageRowOther: {
     justifyContent: 'flex-start',
   },
+  bubbleAvatarWrap: {
+    marginRight: spacing.xs,
+    marginBottom: 16,
+  },
+  bubbleAvatar: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+  },
+  bubbleAvatarPlaceholder: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  messageContentCol: {
+    maxWidth: '78%',
+  },
   messageBubble: {
-    maxWidth: '80%',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: radii.lg,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 18,
+  },
+  bubbleMe: {
+    borderBottomRightRadius: 4,
+  },
+  bubbleOther: {
+    borderBottomLeftRadius: 4,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  messageText: {
+    fontSize: 15,
+    lineHeight: 20,
+  },
+  timeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+    paddingHorizontal: 4,
+  },
+  timeText: {
+    fontSize: 11,
   },
   proposalContainer: {
     alignItems: 'center',
     marginVertical: spacing.md,
   },
   proposalCard: {
-    width: '90%',
+    width: '100%',
     borderRadius: radii.card,
     borderWidth: 1,
     overflow: 'hidden',
@@ -244,38 +530,73 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  proposalDetails: {
-    padding: spacing.sm,
-    borderRadius: radii.md,
-    marginBottom: spacing.md,
+  proposalBadgeIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  proposalActions: {
+  statusTag: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: radii.pill,
+    gap: 4,
+  },
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  feeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-around',
+    paddingVertical: 10,
+    paddingHorizontal: 6,
+    borderRadius: radii.md,
+    borderWidth: StyleSheet.hairlineWidth,
+    marginBottom: spacing.sm,
+  },
+  feeItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  feeDivider: {
+    width: 1,
+    height: 24,
+  },
+  guaranteeNote: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    padding: spacing.md,
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.sm,
     borderTopWidth: StyleSheet.hairlineWidth,
+    gap: spacing.sm,
   },
   textInput: {
     flex: 1,
-    minHeight: 40,
+    minHeight: 42,
     maxHeight: 120,
     borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: radii.pill,
-    paddingHorizontal: spacing.md,
+    borderRadius: 21,
+    paddingHorizontal: 16,
     paddingTop: 10,
     paddingBottom: 10,
-    marginRight: spacing.sm,
+    fontSize: 15,
   },
   sendButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 2,
-  }
+  },
 });

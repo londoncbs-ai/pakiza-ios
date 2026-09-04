@@ -107,17 +107,25 @@ export default function MatchAdvisorsDirectoryScreen() {
                       <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: c.success }} />
                       <Text variant="label" tone="accent" style={{ textTransform: 'uppercase', fontWeight: '700' }}>Active Search</Text>
                     </View>
-                    <Text variant="subhead" tone="default" numberOfLines={1}>{activeRequest.request_title}</Text>
+                    <Text variant="subhead" tone="default" numberOfLines={1}>
+                      {activeRequest.advisor_name ? `Advisor: ${activeRequest.advisor_name}` : activeRequest.request_title}
+                    </Text>
                     <Text variant="footnote" tone="muted" style={{ marginTop: 2 }}>
-                      Deposit Secured • {activeRequest.status.toUpperCase()}
+                      £500 Flat Fee • £250 Deposit Secured
                     </Text>
                   </View>
                   <Button
-                    label="View Chat"
-                    variant="outlineAccent"
+                    label="Open Chat"
+                    variant="primary"
                     onPress={() => {
                       if (activeRequest.selected_offer_id) {
-                        router.push(`/advisor-chat/${activeRequest.selected_offer_id}` as any);
+                        router.push({
+                          pathname: `/advisor-chat/${activeRequest.selected_offer_id}`,
+                          params: {
+                            name: activeRequest.advisor_name || '',
+                            photo: activeRequest.advisor_photo_url || '',
+                          },
+                        } as any);
                       } else {
                         router.push('/(app)/messages' as any);
                       }

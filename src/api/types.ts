@@ -98,6 +98,10 @@ export interface MatchAdvisorRequest {
   payout_status: 'pending' | 'escrow_held' | 'payout_pending' | 'paid_out' | 'disputed';
   created_at: string;
   updated_at: string;
+  advisor_name?: string | null;
+  advisor_photo_url?: string | null;
+  user_name?: string | null;
+  user_photo_url?: string | null;
 }
 
 export interface MatchAdvisorOffer {
@@ -119,6 +123,10 @@ export interface MatchAdvisorOffer {
   completed_at: string | null;
   created_at: string;
   updated_at: string;
+  advisor_name?: string | null;
+  advisor_photo_url?: string | null;
+  user_name?: string | null;
+  user_photo_url?: string | null;
 }
 
 export interface MatchAdvisorProfileInput {
