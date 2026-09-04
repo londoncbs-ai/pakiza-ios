@@ -1,12 +1,14 @@
 #!/bin/zsh
-# shoot.sh <out.png> <url> [budget_ms]
+# shoot.sh <out.png> <url> [budget_ms] [css_width] [css_height]
+# Default 430x932 @3x = 1290x2796 (App Store 6.7/6.9 inch).
+# Pass 428 926 for 1284x2778 (App Store 6.5 inch).
 CHROME="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 PROF=/tmp/pk-shots-profile
-OUT=$1; URL=$2; BUDGET=${3:-12000}
+OUT=$1; URL=$2; BUDGET=${3:-12000}; W=${4:-430}; H=${5:-932}
 rm -f "$OUT"
 rm -f "$PROF"/Singleton*(N) 2>/dev/null
 "$CHROME" --headless --disable-gpu --disable-dev-shm-usage --no-sandbox --hide-scrollbars \
-  --user-data-dir="$PROF" --disk-cache-size=1 --window-size=430,932 --force-device-scale-factor=3 \
+  --user-data-dir="$PROF" --disk-cache-size=1 --window-size=$W,$H --force-device-scale-factor=3 \
   --virtual-time-budget=$BUDGET --screenshot="$OUT" "$URL" > /dev/null 2>&1 &
 PID=$!
 for i in {1..90}; do [ -s "$OUT" ] && break; sleep 1; done

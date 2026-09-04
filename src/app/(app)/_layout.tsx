@@ -14,19 +14,16 @@ export default function AppTabsLayout() {
   const { unreadCount } = useRealtime();
   const insets = useSafeAreaInsets();
 
-  // Hide-from-contacts drifts as the phone book changes; refresh the hash
-  // set once per launch, silently (never prompts - the settings toggle owns
-  // the permission ask).
   useEffect(() => {
     (async () => {
       try {
         const me = await profilesApi.getMine();
         if (me?.hide_from_contacts) await syncContactHashes(me.phone, false);
       } catch {
-        // Best effort only; the last uploaded set keeps working.
       }
     })();
   }, []);
+
   return (
     <Tabs
       screenOptions={{
@@ -37,8 +34,6 @@ export default function AppTabsLayout() {
           backgroundColor: c.surface,
           borderTopColor: c.border,
           borderTopWidth: StyleSheet.hairlineWidth,
-          // The app draws edge-to-edge, so the bar must clear the system nav
-          // (Android 3-button nav overlaps a fixed-height bar otherwise).
           height: 56 + insets.bottom,
           paddingBottom: insets.bottom,
           paddingTop: 8,
@@ -57,11 +52,11 @@ export default function AppTabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="matches"
+        name="advisors"
         options={{
-          title: 'Matches',
+          title: 'Find For Me',
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'heart' : 'heart-outline'} size={23} color={color} />
+            <Ionicons name={focused ? 'search' : 'search-outline'} size={23} color={color} />
           ),
         }}
       />
@@ -75,9 +70,6 @@ export default function AppTabsLayout() {
           ),
         }}
       />
-      {/* Explore stays a full route (/explore) reached from the Discover header,
-          so the bar keeps to five tabs. href:null hides it from the bar. */}
-      <Tabs.Screen name="explore" options={{ href: null }} />
       <Tabs.Screen
         name="fund"
         options={{
@@ -96,6 +88,14 @@ export default function AppTabsLayout() {
           ),
         }}
       />
+      
+      {/* Hidden Screens */}
+            <Tabs.Screen name="explore" options={{ href: null }} />
+      <Tabs.Screen name="matches" options={{ href: null }} />
+      <Tabs.Screen name="find-for-me" options={{ href: null }} />
+      <Tabs.Screen name="create-request" options={{ href: null }} />
+      <Tabs.Screen name="requests/[id]" options={{ href: null }} />
+      <Tabs.Screen name="requests/chat/[offerId]" options={{ href: null }} />
     </Tabs>
   );
 }

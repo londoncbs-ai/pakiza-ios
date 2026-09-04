@@ -334,6 +334,9 @@ export default function ProfileTab() {
                 <Divider />
               </>
             ) : null}
+            <SettingRow icon="search-outline" label="Find for me" onPress={() => router.push('/(app)/find-for-me' as any)} />
+            <Divider />
+            <Divider />
             <SettingRow icon="heart-outline" label="Support a marriage" onPress={() => router.push('/fund')} />
             <Divider />
             {profile?.is_selfie_verified ? (

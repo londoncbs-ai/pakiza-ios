@@ -14,6 +14,10 @@
     --surface:#FDFAF4; --line:#E8DECE;
   }
   html,body { width:430px; height:932px; overflow:hidden; }
+  /* ?s=65 renders the App Store 6.5 inch canvas (428x926 @3x = 1284x2778) */
+  html.six5, body.six5 { width:428px; height:926px; }
+  body.six5 .panel { width:428px; height:926px; }
+  body.six5 .phone { margin-top:22px; height:692px; }
   /* Google Play needs <= 2:1 aspect; ?c=1 renders a 430x860 compact layout */
   body.compact { height:860px; }
   body.compact .panel { height:860px; }
@@ -79,6 +83,51 @@
   .tab { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
          font-size:10px; font-weight:600; color:#A99A87; }
   .tab.active { color:var(--burgundy); }
+
+
+  /* ---------- P1i · iOS discover reel (App Store only; Play keeps p1) ------ */
+  .rl-head { position:absolute; top:44px; left:0; right:0; z-index:6; background:var(--surface);
+             padding:8px 16px 10px; border-bottom:1px solid var(--line); }
+  .rl-discs { display:flex; justify-content:flex-end; gap:8px; }
+  .rl-disc { width:32px; height:32px; border-radius:50%; background:rgba(128,0,32,.07);
+             display:flex; align-items:center; justify-content:center; color:var(--burgundy); position:relative; }
+  .rl-disc svg { width:16px; height:16px; }
+  .rl-dot { position:absolute; top:-1px; right:-1px; width:9px; height:9px; border-radius:50%;
+            background:var(--burgundy); border:1.5px solid var(--surface); }
+  .rl-pills { display:flex; gap:7px; margin-top:9px; }
+  .rl-pill { display:inline-flex; align-items:center; gap:5px; font-size:11.5px; font-weight:500;
+             color:var(--burgundy); background:rgba(128,0,32,.07); padding:6px 11px; border-radius:999px; white-space:nowrap; }
+  .rl-pill.gold { background:var(--gold); color:#30000c; font-weight:600; }
+  .rl-photo { position:absolute; top:124px; left:0; right:0; bottom:222px; overflow:hidden; background:var(--deep); }
+  .rl-photo img { width:100%; height:100%; object-fit:cover; object-position:50% 22%; }
+  .rl-segs { position:absolute; top:10px; left:14px; right:14px; display:flex; gap:4px; z-index:3; }
+  .rl-segs i { flex:1; height:3px; border-radius:2px; background:rgba(247,240,230,.35); }
+  .rl-segs i.on { background:#F7F0E6; }
+  .rl-scrim { position:absolute; inset:auto 0 0 0; height:40%;
+              background:linear-gradient(180deg, rgba(48,0,12,0) 0%, rgba(48,0,12,.28) 60%, rgba(48,0,12,.66) 100%); }
+  .rl-verified { position:absolute; top:26px; left:14px; z-index:3; display:inline-flex; align-items:center; gap:5px;
+                 background:rgba(48,0,12,.55); color:#F7F0E6; font-size:10.5px; font-weight:600; letter-spacing:.5px;
+                 text-transform:uppercase; padding:5px 10px; border-radius:999px; }
+  .rl-bar { position:absolute; left:0; right:0; bottom:76px; background:linear-gradient(180deg,#FFFFFF 0%,#F6F3EE 100%);
+            border-top:1px solid rgba(199,159,94,.55); border-radius:26px 26px 0 0; padding:8px 18px 16px; z-index:5; }
+  .rl-grab { width:38px; height:4px; border-radius:2px; background:#DCD2C5; margin:0 auto 10px; }
+  .rl-name { font-family:'Cormorant Garamond',serif; font-size:29px; font-weight:600; color:var(--burgundy);
+             display:flex; align-items:baseline; gap:9px; }
+  .rl-name b { font-family:'Inter',sans-serif; font-size:16px; font-weight:400; color:#6E5F57; }
+  .rl-sub { font-size:14px; color:#6E5F57; margin-top:1px; }
+  .rl-acts { display:flex; align-items:center; gap:9px; margin-top:13px; }
+  .rl-interest { flex:1; height:50px; border-radius:999px; display:flex; align-items:center; justify-content:center; gap:8px;
+                 background:linear-gradient(135deg,#800020 0%,#5C0017 100%); color:#F7F0E6; font-size:15px; font-weight:600; }
+  .rl-interest svg { width:17px; height:17px; }
+  .rl-save { width:50px; height:50px; border-radius:50%; border:1.5px solid #DCD2C5; background:#fff;
+             display:flex; align-items:center; justify-content:center; color:var(--burgundy); position:relative; }
+  .rl-save svg { width:19px; height:19px; }
+  .rl-lock { position:absolute; top:1px; right:1px; width:15px; height:15px; border-radius:50%;
+             background:var(--burgundy); border:1.5px solid #fff; display:flex; align-items:center; justify-content:center; }
+  .rl-lock svg { width:8px; height:8px; }
+  .rl-hint { display:flex; align-items:center; justify-content:center; gap:5px; margin-top:12px;
+             font-size:12.5px; font-weight:500; color:var(--burgundy); }
+  .rl-hint svg { width:14px; height:14px; }
 
   /* ---------- P2 profile detail ---------- */
   .pd-photo { height:46%; position:relative; }
@@ -189,6 +238,15 @@
 
 <script>
   const ICON = {
+    sliders:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>',
+    compassSm:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2.2 5-5 2.2 2.2-5z" fill="currentColor" stroke="none"/></svg>',
+    bookmarkSm:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M6 3h12v18l-6-4.5L6 21z"/></svg>',
+    bellSm:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M18 9a6 6 0 1 0-12 0c0 5-2 6-2 6h16s-2-1-2-6M10.5 20a1.8 1.8 0 0 0 3 0"/></svg>',
+    diamondSm:'<svg width="12" height="12" viewBox="0 0 24 24" fill="#30000c"><path d="M12 2l6 7-6 13-6-13z"/></svg>',
+    shieldSm:'<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#F7F0E6" stroke-width="2.2"><path d="M12 3l7 3v5c0 4.5-3 8.4-7 10-4-1.6-7-5.5-7-10V6z"/><path d="M8.8 12l2.2 2.2 4.2-4.6"/></svg>',
+    mailSm:'<svg viewBox="0 0 24 24" fill="none" stroke="#F7F0E6" stroke-width="1.9"><rect x="3" y="5.5" width="18" height="13" rx="2.5"/><path d="M3.5 7l8.5 6 8.5-6"/></svg>',
+    lockSm:'<svg viewBox="0 0 24 24" fill="#F7F0E6"><path d="M7 10V7a5 5 0 0 1 10 0v3h1v11H6V10z"/></svg>',
+    personSm:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="10" r="3"/><path d="M6.5 18.5a6 6 0 0 1 11 0"/></svg>',
     compass:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2.2 5-5 2.2 2.2-5z" fill="currentColor" stroke="none"/></svg>',
     heart:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 20.5c-5-3.2-8.5-6.4-8.5-10A4.6 4.6 0 0 1 12 7.6a4.6 4.6 0 0 1 8.5 2.9c0 3.6-3.5 6.8-8.5 10z"/></svg>',
     heartFill:'<svg width="22" height="22" viewBox="0 0 24 24" fill="#2A2024"><path d="M12 20.5c-5-3.2-8.5-6.4-8.5-10A4.6 4.6 0 0 1 12 7.6a4.6 4.6 0 0 1 8.5 2.9c0 3.6-3.5 6.8-8.5 10z"/></svg>',
@@ -256,6 +314,50 @@
       <div class="rbtn bm-slot"></div>
       <div class="rbtn heart hf-slot"></div>
     </div>
+    <div class="tb-slot" data-tab="Discover"></div>
+    <div class="island"></div>
+  </div></div>
+</div>
+
+<!-- P1i · iOS discover reel (App Store). Play keeps p1, since Android still ships the deck. -->
+<div class="panel" id="p1i">
+  <div class="brand"><svg viewBox="0 0 27 22"><use href="#hearts"/></svg><span>PAKIZA</span></div>
+  <h1>Marry with intention.</h1>
+  <div class="sub">One introduction at a time, guided by your values, family and culture.</div>
+  <div class="phone"><div class="screen">
+    <div class="sb-slot"></div>
+
+    <div class="rl-head">
+      <div class="rl-discs">
+        <div class="rl-disc" data-icon="sliders"><span class="rl-dot"></span></div>
+        <div class="rl-disc" data-icon="compassSm"></div>
+        <div class="rl-disc" data-icon="bookmarkSm"></div>
+        <div class="rl-disc" data-icon="bellSm"></div>
+      </div>
+      <div class="rl-pills">
+        <span class="rl-pill gold"><span data-icon="diamondSm"></span>3 interested in you</span>
+        <span class="rl-pill">7 left &middot; Go unlimited</span>
+      </div>
+    </div>
+
+    <div class="rl-photo">
+      <img src="hero-lady.png" alt="">
+      <div class="rl-segs"><i class="on"></i><i></i><i></i></div>
+      <div class="rl-verified"><span data-icon="shieldSm"></span>Verified</div>
+      <div class="rl-scrim"></div>
+    </div>
+
+    <div class="rl-bar">
+      <div class="rl-grab"></div>
+      <div class="rl-name">Jasleen Kaur <b>27</b></div>
+      <div class="rl-sub">Pharmacist &middot; Birmingham</div>
+      <div class="rl-acts">
+        <div class="rl-interest"><span data-icon="mailSm"></span>Express interest</div>
+        <div class="rl-save"><span data-icon="bookmarkSm"></span><span class="rl-lock" data-icon="lockSm"></span></div>
+      </div>
+      <div class="rl-hint"><span data-icon="personSm"></span>Tap to read Jasleen's full profile</div>
+    </div>
+
     <div class="tb-slot" data-tab="Discover"></div>
     <div class="island"></div>
   </div></div>
@@ -404,6 +506,7 @@
   // show requested panel; ?c=1 = compact (Google Play 2:1) layout
   const qs = new URLSearchParams(location.search);
   if (qs.get('c')) document.body.classList.add('compact');
+  if (qs.get('s') === '65') { document.body.classList.add('six5'); document.documentElement.classList.add('six5'); }
   const p = qs.get('p') || '1';
   document.getElementById('p' + p).classList.add('active');
 </script>

@@ -59,19 +59,7 @@ export default function Matches() {
         <Text variant="footnote" tone="muted">People you’ve both said yes to</Text>
       </View>
 
-      <Pressable
-        style={[styles.likesBanner, { backgroundColor: c.surface, borderColor: c.border }, !isDark && shadow.soft]}
-        onPress={() => router.push('/likes')}
-      >
-        <View style={[styles.likesIcon, { backgroundColor: c.accentFaint }]}>
-          <Ionicons name="heart" size={20} color={c.accent} />
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text variant="callout" tone="default" style={styles.likesTitle}>See who likes you</Text>
-          <Text variant="footnote" tone="muted">Skip ahead to people already interested</Text>
-        </View>
-        <Ionicons name="chevron-forward" size={20} color={c.textSubtle} />
-      </Pressable>
+            
 
       {loading ? (
         <SkeletonList />

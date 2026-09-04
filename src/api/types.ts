@@ -45,6 +45,118 @@ export interface RegisterResponse {
   debug_otp?: string | null; // present only when backend DEBUG=true
 }
 
+export interface MatchAdvisorProfile {
+  id: string;
+  user_id: string;
+  display_name: string;
+  headline: string | null;
+  bio: string | null;
+  city: string | null;
+  service_areas: string | null;
+  expertise_tags: string | null;
+  years_experience: number;
+  response_time_hours: number;
+  rating: number;
+  reviews_count: number;
+  profile_photo_url: string | null;
+  id_document_type: string | null;
+  id_document_url: string | null;
+  selfie_photo_url: string | null;
+  review_notes: string | null;
+  submitted_at: string | null;
+  verified_at: string | null;
+  verification_status: 'pending' | 'verified' | 'rejected' | 'suspended';
+  is_active: boolean;
+  is_verified: boolean;
+  default_platform_fee_pct: number;
+  wallet_balance_pence: number;
+  pending_payout_pence: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MatchAdvisorRequest {
+  id: string;
+  user_id: string;
+  privacy_mode: string;
+  find_for_me_enabled: boolean;
+  request_title: string;
+  summary: string | null;
+  partner_preferences: string | null;
+  deal_breakers: string | null;
+  preferred_location: string | null;
+  timeline_days: number;
+  max_budget_pence: number;
+  status: 'open' | 'reviewing' | 'offered' | 'accepted' | 'active' | 'completed' | 'cancelled' | 'expired';
+  selected_offer_id: string | null;
+  platform_fee_pct: number;
+  amount_paid_pence: number;
+  amount_escrowed_pence: number;
+  payout_status: 'pending' | 'escrow_held' | 'payout_pending' | 'paid_out' | 'disputed';
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MatchAdvisorOffer {
+  id: string;
+  advisor_id: string;
+  request_id: string;
+  title: string;
+  summary: string | null;
+  service_type: string;
+  fee_pence: number;
+  platform_fee_pct: number;
+  timeline_days: number;
+  included_items: string | null;
+  status: 'open' | 'accepted' | 'paid' | 'completed' | 'declined' | 'cancelled';
+  paid_pence: number;
+  payout_status: 'pending' | 'escrow_held' | 'payout_pending' | 'paid_out' | 'disputed';
+  accepted_at: string | null;
+  paid_at: string | null;
+  completed_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MatchAdvisorProfileInput {
+  display_name: string;
+  headline?: string | null;
+  bio?: string | null;
+  city?: string | null;
+  service_areas?: string | null;
+  expertise_tags?: string | null;
+  years_experience?: number;
+  response_time_hours?: number;
+  profile_photo_url?: string | null;
+  id_document_type?: string | null;
+  id_document_url?: string | null;
+  selfie_photo_url?: string | null;
+  default_platform_fee_pct?: number;
+}
+
+export interface MatchAdvisorRequestInput {
+  request_title: string;
+  summary?: string | null;
+  partner_preferences?: string | null;
+  deal_breakers?: string | null;
+  preferred_location?: string | null;
+  timeline_days?: number;
+  max_budget_pence?: number;
+  privacy_mode?: string;
+  find_for_me_enabled?: boolean;
+}
+
+export interface MatchAdvisorOfferInput {
+  request_id: string;
+  title: string;
+  summary?: string | null;
+  service_type?: string;
+  fee_pence: number;
+  timeline_days?: number;
+  included_items?: string | null;
+  platform_fee_pct?: number;
+}
+
 export interface Photo {
   id: string;
   cdn_url: string;
@@ -596,4 +708,26 @@ export interface PlanBoostResult {
 export interface LikesPreview {
   count: number;
   previews: { photo_url: string | null; blurred: boolean }[];
+}
+
+export type MatchAdvisorOfferMessageType = 'TEXT' | 'PROPOSAL';
+
+export interface MatchAdvisorOfferMessage {
+  id: string;
+  offer_id: string;
+  sender_id: string;
+  sender_role: 'user' | 'advisor';
+  type: MatchAdvisorOfferMessageType;
+  content: string | null;
+  proposal_details?: {
+    fee_pence: number;
+    timeline_days: number;
+    included_items?: string;
+  } | null;
+  created_at: string;
+}
+
+export interface MatchAdvisorOfferMessageInput {
+  type: MatchAdvisorOfferMessageType;
+  content?: string;
 }

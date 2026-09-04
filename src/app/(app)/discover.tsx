@@ -19,5 +19,5 @@ import DiscoverReel from '@/screens/discover/ios/DiscoverReel';
  * one to the other platform, without that being a deliberate decision.
  */
 export default function Discover() {
-  return Platform.OS === 'ios' ? <DiscoverReel /> : <DiscoverDeck />;
+  return <DiscoverReel />;
 }

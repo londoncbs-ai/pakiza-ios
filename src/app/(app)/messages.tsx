@@ -95,6 +95,34 @@ export default function Messages() {
         <Text variant="footnote" tone="muted">Begin the conversation with purpose</Text>
       </View>
 
+            
+      <View style={{ flexDirection: 'row', gap: spacing.md, paddingHorizontal: spacing.md, marginBottom: spacing.md }}>
+        <Pressable
+          style={[{ flex: 1, flexDirection: 'row', alignItems: 'center', padding: spacing.sm, borderRadius: radii.xl, borderWidth: StyleSheet.hairlineWidth }, { backgroundColor: c.surface, borderColor: c.border }, !isDark && shadow.soft]}
+          onPress={() => router.push('/likes')}
+        >
+          <View style={[{ width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', marginRight: spacing.sm }, { backgroundColor: palette.burgundy }]}>
+            <Ionicons name="heart" size={18} color="white" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text variant="subhead" tone="default">Likes</Text>
+          </View>
+        </Pressable>
+
+        <Pressable
+          style={[{ flex: 1, flexDirection: 'row', alignItems: 'center', padding: spacing.sm, borderRadius: radii.xl, borderWidth: StyleSheet.hairlineWidth }, { backgroundColor: c.surface, borderColor: c.border }, !isDark && shadow.soft]}
+          onPress={() => router.push('/(app)/matches' as any)}
+        >
+          <View style={[{ width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', marginRight: spacing.sm }, { backgroundColor: palette.gold }]}>
+            <Ionicons name="people" size={18} color="white" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text variant="subhead" tone="default">Matches</Text>
+          </View>
+        </Pressable>
+      </View>
+
+
       {loading ? (
         <SkeletonList />
       ) : error ? (
