@@ -79,63 +79,47 @@ export default function OfferChatScreen() {
     if (item.type === 'PROPOSAL') {
       return (
         <View style={styles.proposalContainer}>
-          <View style={[styles.proposalCard, { backgroundColor: c.surface, borderColor: c.accent }, !isDark && shadow.md]}>
+          <View style={[styles.proposalCard, { backgroundColor: c.surface, borderColor: c.accent }, !isDark && shadow.card]}>
             <View style={[styles.proposalHeader, { borderBottomColor: c.border }]}>
-              <Ionicons name="briefcase" size={20} color={c.accent} style={{ marginRight: spacing.sm }} />
-              <Text variant="subhead" style={{ color: c.accent, fontWeight: 'bold' }}>New Proposal</Text>
+              <Ionicons name="shield-checkmark" size={20} color={c.accent} style={{ marginRight: spacing.sm }} />
+              <Text variant="subhead" style={{ color: c.accent, fontWeight: 'bold' }}>Matchmaking Agreement</Text>
             </View>
             <View style={{ padding: spacing.md }}>
               <Text variant="body" style={{ marginBottom: spacing.sm }}>
-                {item.content || 'The advisor has sent a new proposal.'}
+                {item.content || 'Dedicated Match Advisor assigned with standard flat fee.'}
               </Text>
               
-              {item.proposal_details && (
-                <View style={[styles.proposalDetails, { backgroundColor: c.bg }]}>
-                  <Text variant="footnote" tone="default">
-                    <Text variant="footnote" tone="muted">Fee: </Text>
-                    £{(item.proposal_details.fee_pence / 100).toFixed(2)}
-                  </Text>
-                  <Text variant="footnote" tone="default">
-                    <Text variant="footnote" tone="muted">Timeline: </Text>
-                    {item.proposal_details.timeline_days} days
-                  </Text>
-                  {item.proposal_details.included_items ? (
-                    <Text variant="footnote" tone="default" style={{ marginTop: spacing.xs }}>
-                      <Text variant="footnote" tone="muted">Includes: </Text>
-                      {item.proposal_details.included_items}
-                    </Text>
-                  ) : null}
-                </View>
-              )}
+              <View style={[styles.proposalDetails, { backgroundColor: c.bg }]}>
+                <Text variant="footnote" tone="default">
+                  <Text variant="footnote" tone="muted">Service Fee: </Text>
+                  £500 Flat Fee
+                </Text>
+                <Text variant="footnote" tone="default" style={{ marginTop: spacing.xs }}>
+                  <Text variant="footnote" tone="muted">Deposit Secured: </Text>
+                  £250 (Paid)
+                </Text>
+                <Text variant="footnote" tone="default" style={{ marginTop: spacing.xs }}>
+                  <Text variant="footnote" tone="muted">Success Balance: </Text>
+                  £250 (Payable only once spouse is found)
+                </Text>
+              </View>
 
-              {offer?.status === 'OPEN' ? (
-                <View style={styles.proposalActions}>
-                  <Button 
-                    label="Negotiate" 
-                    variant="secondary" 
-                    style={{ flex: 1, marginRight: spacing.sm }}
-                    onPress={() => {
-                      setInputText("I'd like to negotiate this proposal: ");
-                    }} 
-                  />
-                  <Button 
-                    label="Accept" 
-                    variant="primary" 
-                    style={{ flex: 1 }}
-                    onPress={() => {
-                      matchAdvisorsApi.acceptOffer(offerId).then(() => {
-                        load();
-                      }).catch(err => console.error(err));
-                    }} 
-                  />
+              <View style={[styles.proposalActions, { justifyContent: 'center', marginTop: spacing.sm }]}>
+                <View style={{
+                  backgroundColor: (offer?.status === 'accepted' || offer?.status === 'paid')
+                    ? c.success
+                    : palette.burgundy,
+                  paddingVertical: 6,
+                  paddingHorizontal: 12,
+                  borderRadius: 12,
+                }}>
+                  <Text variant="label" style={{ color: 'white' }}>
+                    {(offer?.status === 'accepted' || offer?.status === 'paid')
+                      ? 'ACTIVE SEARCH IN PROGRESS'
+                      : 'PENDING ADVISOR REVIEW'}
+                  </Text>
                 </View>
-              ) : (
-                <View style={[styles.proposalActions, { justifyContent: 'center', marginTop: spacing.sm }]}>
-                  <View style={{ backgroundColor: offer?.status === 'ACCEPTED' ? palette.success : palette.muted, paddingVertical: 6, paddingHorizontal: 12, borderRadius: 12 }}>
-                    <Text variant="label" style={{ color: 'white' }}>{offer?.status || 'CLOSED'}</Text>
-                  </View>
-                </View>
-              )}
+              </View>
             </View>
           </View>
         </View>
@@ -250,7 +234,7 @@ const styles = StyleSheet.create({
   },
   proposalCard: {
     width: '90%',
-    borderRadius: radii.xl,
+    borderRadius: radii.card,
     borderWidth: 1,
     overflow: 'hidden',
   },
@@ -280,7 +264,7 @@ const styles = StyleSheet.create({
     minHeight: 40,
     maxHeight: 120,
     borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: radii.full,
+    borderRadius: radii.pill,
     paddingHorizontal: spacing.md,
     paddingTop: 10,
     paddingBottom: 10,

@@ -78,6 +78,7 @@ export interface MatchAdvisorProfile {
 export interface MatchAdvisorRequest {
   id: string;
   user_id: string;
+  advisor_id?: string | null;
   privacy_mode: string;
   find_for_me_enabled: boolean;
   request_title: string;
@@ -87,6 +88,8 @@ export interface MatchAdvisorRequest {
   preferred_location: string | null;
   timeline_days: number;
   max_budget_pence: number;
+  deposit_paid_pence?: number;
+  final_fee_pence?: number;
   status: 'open' | 'reviewing' | 'offered' | 'accepted' | 'active' | 'completed' | 'cancelled' | 'expired';
   selected_offer_id: string | null;
   platform_fee_pct: number;
@@ -135,6 +138,7 @@ export interface MatchAdvisorProfileInput {
 }
 
 export interface MatchAdvisorRequestInput {
+  advisor_id?: string | null;
   request_title: string;
   summary?: string | null;
   partner_preferences?: string | null;

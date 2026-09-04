@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import { errorMessage } from '@/api/client';
 import { matchAdvisorsApi } from '@/api/matchAdvisors';
@@ -12,69 +13,78 @@ import { Surface } from '@/components/Surface';
 import { Text } from '@/components/Text';
 import { TextField } from '@/components/TextField';
 import { ToggleRow } from '@/components/ToggleRow';
-import { spacing, palette, radii } from '@/theme';
+import { palette, radii, shadow, spacing, useTheme } from '@/theme';
 
-const defaultForm = {
-  request_title: '',
-  summary: '',
-  partner_preferences: '',
-  deal_breakers: '',
-  preferred_location: '',
-  timeline_days: '30',
-  max_budget_pence: '0',
-};
-
-export default function FindForMeScreen() {
+export default function CreateAdvisorRequestScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { c, isDark } = useTheme();
+  const params = useLocalSearchParams<{ advisorId?: string; name?: string }>();
+
   const [advisors, setAdvisors] = useState<MatchAdvisorProfile[]>([]);
+  const [selectedAdvisorId, setSelectedAdvisorId] = useState<string | null>(params.advisorId || null);
+  const [selectedAdvisorName, setSelectedAdvisorName] = useState<string>(params.name || '');
   const [saving, setSaving] = useState(false);
-  const [findForMeEnabled, setFindForMeEnabled] = useState(true);
   const [privateMode, setPrivateMode] = useState(true);
-  const [form, setForm] = useState(defaultForm);
+
+  const [form, setForm] = useState({
+    request_title: 'Private Matchmaking Search',
+    summary: '',
+    partner_preferences: '',
+    deal_breakers: '',
+    preferred_location: '',
+  });
 
   useEffect(() => {
     matchAdvisorsApi
       .listVerifiedAdvisors()
-      .then(setAdvisors)
+      .then((list) => {
+        setAdvisors(list);
+        if (!selectedAdvisorId && list.length > 0) {
+          setSelectedAdvisorId(list[0].user_id);
+          setSelectedAdvisorName(list[0].display_name);
+        }
+      })
       .catch(() => setAdvisors([]));
   }, []);
 
-  const onChange = (key: keyof typeof defaultForm, value: string) => {
+  const onChange = (key: keyof typeof form, value: string) => {
     setForm((current) => ({ ...current, [key]: value }));
   };
 
   const submit = async () => {
-    if (!form.request_title.trim()) {
-      Alert.alert('Add a short request title', 'Tell us what you are looking for in a few words.');
-      return;
-    }
     if (!form.partner_preferences.trim()) {
-      Alert.alert('Add your partner preferences', 'Describe the qualities that matter most to you.');
+      Alert.alert('Partner preferences needed', 'Please describe the qualities that matter most to you.');
       return;
     }
 
     setSaving(true);
     try {
       await matchAdvisorsApi.createRequest({
-        request_title: form.request_title.trim(),
+        advisor_id: selectedAdvisorId,
+        request_title: form.request_title.trim() || 'Private Matchmaking Search',
         summary: form.summary.trim() || null,
         partner_preferences: form.partner_preferences.trim(),
         deal_breakers: form.deal_breakers.trim() || null,
         preferred_location: form.preferred_location.trim() || null,
-        timeline_days: Number(form.timeline_days) || 30,
-        max_budget_pence: Number(form.max_budget_pence) || 0,
+        timeline_days: 30,
+        max_budget_pence: 50000,
         privacy_mode: privateMode ? 'private' : 'public',
-        find_for_me_enabled: findForMeEnabled,
+        find_for_me_enabled: true,
       });
+
       Alert.alert(
-        'Your request is live',
-        'We have sent your preferences to the Match Advisor network. You will receive offers with timeline, fee and approach details.',
-        [{ text: 'View Match Advisors', onPress: () => router.push('/') }],
+        'Advisor Booked',
+        `Your request has been sent to ${selectedAdvisorName || 'your Match Advisor'}. Your £250 deposit is secured, and your profile is now in private search mode.`,
+        [
+          {
+            text: 'View in Messages',
+            onPress: () => router.push('/(app)/messages' as any),
+          },
+        ]
       );
-      setForm(defaultForm);
     } catch (err) {
-      Alert.alert('Could not send request', errorMessage(err, 'Please try again in a moment.'));
+      Alert.alert('Could not book advisor', errorMessage(err, 'Please try again in a moment.'));
     } finally {
       setSaving(false);
     }
@@ -83,75 +93,127 @@ export default function FindForMeScreen() {
   return (
     <Screen>
       <ScrollView
-        contentContainerStyle={{ paddingTop: insets.top + spacing.md, paddingBottom: spacing.xxxl }}
+        contentContainerStyle={{ paddingTop: insets.top + spacing.sm, paddingBottom: spacing.xxxl }}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.hero}>
-          <Text variant="footnote" tone="burgundy" style={styles.eyebrow}>Find for me</Text>
-          <Text variant="title" tone="default" style={styles.title}>A calmer, private way to find the right match.</Text>
-          <Text variant="body" tone="muted" style={styles.subtitle}>
-            Your profile stays private while trusted Match Advisors help you shape the search, shortlist the strongest options,
-            and keep the process respectful and structured.
-          </Text>
+        {/* Back + Header */}
+        <View style={styles.headerRow}>
+          <Button
+            label="Back"
+            variant="ghost"
+            onPress={() => router.back()}
+          />
+          <Text variant="heading" tone="default">Book Match Advisor</Text>
+          <View style={{ width: 60 }} />
         </View>
 
+        {/* Selected Advisor Callout */}
         <Surface elevated style={styles.panel}>
-          <Text variant="heading" tone="burgundy" style={styles.sectionTitle}>How it works</Text>
-          {[
-            'Tell us what you want and your key preferences.',
-            'We keep your profile private unless you choose otherwise.',
-            'Verified Match Advisors send tailored offers with price, timeline and approach.',
-            'You compare, pay securely and choose the advisor that feels right.',
-          ].map((step, index) => (
-            <View key={step} style={styles.stepRow}>
-              <View style={styles.stepBadge}><Text variant="label" color={palette.cream}>{index + 1}</Text></View>
-              <Text variant="body" tone="default" style={styles.stepText}>{step}</Text>
+          <Text variant="label" tone="accent" style={{ textTransform: 'uppercase', fontWeight: '800', letterSpacing: 0.8 }}>
+            DEDICATED ADVISOR
+          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: spacing.xs }}>
+            <Ionicons name="person-circle" size={32} color={palette.burgundy} style={{ marginRight: spacing.sm }} />
+            <View style={{ flex: 1 }}>
+              <Text variant="subhead" tone="default" style={{ fontWeight: '700' }}>
+                {selectedAdvisorName || 'Selected Match Advisor'}
+              </Text>
+              <Text variant="label" tone="muted">Verified Private Specialist</Text>
             </View>
-          ))}
+          </View>
         </Surface>
 
+        {/* Flat Fee Transparency Panel */}
+        <Surface elevated style={[styles.panel, { backgroundColor: palette.burgundy }]}>
+          <View style={styles.priceRow}>
+            <Text variant="label" style={{ color: palette.gold, fontWeight: '800', letterSpacing: 0.8 }}>
+              STANDARD PRICING
+            </Text>
+            <Text variant="subhead" style={{ color: palette.gold, fontWeight: '800' }}>
+              £500 Flat Fee
+            </Text>
+          </View>
+          <View style={styles.splitRow}>
+            <View style={styles.splitBox}>
+              <Text variant="label" style={{ color: 'rgba(245,240,230,0.7)' }}>DUE TODAY</Text>
+              <Text variant="heading" style={{ color: palette.cream, fontWeight: '800' }}>£250</Text>
+              <Text variant="label" style={{ color: 'rgba(245,240,230,0.7)' }}>Deposit to begin</Text>
+            </View>
+            <View style={styles.divider} />
+            <View style={styles.splitBox}>
+              <Text variant="label" style={{ color: 'rgba(245,240,230,0.7)' }}>SUCCESS FEE</Text>
+              <Text variant="heading" style={{ color: palette.cream, fontWeight: '800' }}>£250</Text>
+              <Text variant="label" style={{ color: 'rgba(245,240,230,0.7)' }}>Only after partner found</Text>
+            </View>
+          </View>
+        </Surface>
+
+        {/* Privacy Setting */}
         <Surface elevated style={styles.panel}>
-          <Text variant="heading" tone="burgundy" style={styles.sectionTitle}>Your privacy</Text>
+          <Text variant="heading" tone="burgundy" style={styles.sectionTitle}>Privacy Protection</Text>
           <ToggleRow
             label="Hide profile from public Discover"
-            hint="While your advisor searches for you, your profile will be completely hidden from the public Discover feed."
+            hint="While your Match Advisor actively searches for you, your profile remains completely hidden from the public feed."
             value={privateMode}
             onValueChange={setPrivateMode}
             onDark={false}
           />
-          
         </Surface>
 
+        {/* Preferences Form */}
         <Surface elevated style={styles.panel}>
-          <Text variant="heading" tone="burgundy" style={styles.sectionTitle}>Tell us what you need</Text>
-          <TextField label="Request title" value={form.request_title} onChangeText={(v) => onChange('request_title', v)} placeholder="e.g. Calm, faith-aligned matches in London" />
-          <TextField label="Summary" value={form.summary} onChangeText={(v) => onChange('summary', v)} placeholder="Share your goals, timeline and what matters most." multiline numberOfLines={4} textAlignVertical="top" style={styles.textArea} />
-          <TextField label="Partner preferences" value={form.partner_preferences} onChangeText={(v) => onChange('partner_preferences', v)} placeholder="Age, faith, location, education, values, family background, lifestyle..." multiline numberOfLines={5} textAlignVertical="top" style={styles.textArea} />
-          <TextField label="Deal breakers" value={form.deal_breakers} onChangeText={(v) => onChange('deal_breakers', v)} placeholder="Anything you would not consider." multiline numberOfLines={3} textAlignVertical="top" style={styles.textArea} />
-          <TextField label="Preferred location" value={form.preferred_location} onChangeText={(v) => onChange('preferred_location', v)} placeholder="City, region or country" />
-          <View style={styles.twoFields}>
-            <TextField label="Timeline (days)" value={form.timeline_days} onChangeText={(v) => onChange('timeline_days', v)} keyboardType="number-pad" style={styles.halfField} />
-            <TextField label="Budget (£)" value={form.max_budget_pence} onChangeText={(v) => onChange('max_budget_pence', v)} keyboardType="number-pad" style={styles.halfField} />
-          </View>
-          <Button label="Send my request" onPress={submit} loading={saving} />
-        </Surface>
+          <Text variant="heading" tone="burgundy" style={styles.sectionTitle}>Your Match Criteria</Text>
 
-        <Surface elevated style={styles.panel}>
-          <Text variant="heading" tone="burgundy" style={styles.sectionTitle}>Trusted Match Advisors</Text>
-          {advisors.length === 0 ? (
-            <Text variant="body" tone="muted">No verified advisors are live yet, but your request can still be reviewed as soon as one joins.</Text>
-          ) : (
-            advisors.slice(0, 3).map((advisor) => (
-              <View key={advisor.id} style={styles.advisorCard}>
-                <Text variant="callout" tone="default">{advisor.display_name}</Text>
-                <Text variant="footnote" tone="muted">
-                  {advisor.city ?? 'Remote'} · {advisor.response_time_hours}h response · {advisor.default_platform_fee_pct}% platform fee
-                </Text>
-              </View>
-            ))
-          )}
-          <View style={{ marginTop: spacing.md }}>
-            <Button label="Become a Match Advisor" variant="outlineAccent" onPress={() => router.push('/')} />
+          <TextField
+            label="Partner preferences *"
+            value={form.partner_preferences}
+            onChangeText={(v) => onChange('partner_preferences', v)}
+            placeholder="Age range, faith background, values, lifestyle, education, family..."
+            multiline
+            numberOfLines={5}
+            textAlignVertical="top"
+            style={styles.textArea}
+          />
+
+          <TextField
+            label="Deal breakers (optional)"
+            value={form.deal_breakers}
+            onChangeText={(v) => onChange('deal_breakers', v)}
+            placeholder="Qualities or factors you will not consider..."
+            multiline
+            numberOfLines={3}
+            textAlignVertical="top"
+            style={styles.textArea}
+          />
+
+          <TextField
+            label="Preferred location"
+            value={form.preferred_location}
+            onChangeText={(v) => onChange('preferred_location', v)}
+            placeholder="e.g. London, UK, or open to relocation"
+          />
+
+          <TextField
+            label="Additional notes for advisor"
+            value={form.summary}
+            onChangeText={(v) => onChange('summary', v)}
+            placeholder="Any background or specific timelines you have in mind..."
+            multiline
+            numberOfLines={3}
+            textAlignVertical="top"
+            style={styles.textArea}
+          />
+
+          <View style={{ marginTop: spacing.lg }}>
+            <Button
+              label="Confirm & Book Advisor (£250 Deposit)"
+              variant="primary"
+              onPress={submit}
+              loading={saving}
+            />
+            <Text variant="label" tone="muted" style={styles.disclaimer}>
+              By confirming, you agree to the £500 flat fee service terms. The remaining £250 is only charged after your advisor finds your partner.
+            </Text>
           </View>
         </Surface>
       </ScrollView>
@@ -160,31 +222,50 @@ export default function FindForMeScreen() {
 }
 
 const styles = StyleSheet.create({
-  hero: { paddingHorizontal: spacing.lg, marginBottom: spacing.md },
-  eyebrow: { textTransform: 'uppercase', letterSpacing: 1.4 },
-  title: { marginTop: spacing.xs, lineHeight: 34 },
-  subtitle: { marginTop: spacing.sm, lineHeight: 24 },
-  panel: { marginHorizontal: spacing.lg, marginTop: spacing.lg, padding: spacing.lg, borderRadius: radii.lg },
-  sectionTitle: { marginBottom: spacing.md },
-  stepRow: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.md },
-  stepBadge: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: palette.burgundy,
+  headerRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: spacing.sm,
-  },
-  stepText: { flex: 1, lineHeight: 24 },
-  textArea: { minHeight: 120, textAlignVertical: 'top' },
-  twoFields: { flexDirection: 'row', gap: spacing.sm },
-  halfField: { flex: 1 },
-  advisorCard: {
-    borderWidth: 1,
-    borderColor: palette.burgundy,
-    borderRadius: radii.md,
-    padding: spacing.md,
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.md,
     marginBottom: spacing.sm,
+  },
+  panel: {
+    marginHorizontal: spacing.lg,
+    marginTop: spacing.md,
+    padding: spacing.lg,
+    borderRadius: radii.card,
+  },
+  sectionTitle: {
+    marginBottom: spacing.md,
+  },
+  priceRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
+  splitRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-around',
+    paddingTop: spacing.xs,
+  },
+  splitBox: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  divider: {
+    width: 1,
+    height: 44,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+  },
+  textArea: {
+    minHeight: 90,
+    textAlignVertical: 'top',
+  },
+  disclaimer: {
+    textAlign: 'center',
+    marginTop: spacing.sm,
+    lineHeight: 16,
   },
 });
