@@ -27,8 +27,9 @@ function formatTime(iso?: string): string {
 }
 
 export default function OfferChatScreen() {
-  const { offerId, name: paramName, photo: paramPhoto } = useLocalSearchParams<{
-    offerId: string;
+  const params = useLocalSearchParams<{
+    offerId?: string;
+    id?: string;
     name?: string;
     photo?: string;
   }>();
@@ -36,6 +37,17 @@ export default function OfferChatScreen() {
   const insets = useSafeAreaInsets();
   const { c, isDark } = useTheme();
   const { userId } = useAuth();
+
+  const initialOfferId =
+    params.offerId && params.offerId !== '[offerId]' && params.offerId !== ':offerId'
+      ? params.offerId
+      : params.id && params.id !== '[offerId]'
+      ? params.id
+      : null;
+
+  const [resolvedOfferId, setResolvedOfferId] = useState<string | null>(initialOfferId);
+  const resolvedOfferIdRef = useRef<string | null>(initialOfferId);
+  resolvedOfferIdRef.current = resolvedOfferId;
 
   const [offer, setOffer] = useState<MatchAdvisorOffer | null>(null);
   const [messages, setMessages] = useState<MatchAdvisorOfferMessage[]>([]);
@@ -46,24 +58,53 @@ export default function OfferChatScreen() {
   const [sending, setSending] = useState(false);
   const flatListRef = useRef<FlatList>(null);
 
-  const advisorDisplayName = offer?.advisor_name || paramName || 'Match Advisor';
-  const advisorAvatar = offer?.advisor_photo_url || paramPhoto || null;
+  const advisorDisplayName = offer?.advisor_name || params.name || 'Match Advisor';
+  const advisorAvatar = offer?.advisor_photo_url || params.photo || null;
 
   const load = useCallback(async () => {
+    let targetId = resolvedOfferIdRef.current;
+
+    // If ID is missing or placeholder, resolve from user's active request
+    if (!targetId) {
+      try {
+        const myRequests = await matchAdvisorsApi.getMyRequests();
+        const activeReq =
+          myRequests.find(
+            (r) =>
+              r.selected_offer_id &&
+              (r.status === 'open' || r.status === 'accepted' || r.status === 'active' || r.status === 'completed')
+          ) || myRequests.find((r) => r.selected_offer_id);
+
+        if (activeReq?.selected_offer_id) {
+          targetId = activeReq.selected_offer_id;
+          resolvedOfferIdRef.current = targetId;
+          setResolvedOfferId(targetId);
+        }
+      } catch (reqErr) {
+        console.warn('Could not auto-resolve advisor offer ID:', reqErr);
+      }
+    }
+
+    if (!targetId) {
+      setLoading(false);
+      setError('No active Match Advisor case found. Please book an advisor first.');
+      return;
+    }
+
     try {
       const [offerData, messagesData] = await Promise.all([
-        matchAdvisorsApi.getOffer(offerId),
-        matchAdvisorsApi.getOfferMessages(offerId),
+        matchAdvisorsApi.getOffer(targetId).catch(() => null),
+        matchAdvisorsApi.getOfferMessages(targetId),
       ]);
-      setOffer(offerData);
-      setMessages(messagesData);
+      if (offerData) setOffer(offerData);
+      setMessages(messagesData || []);
       setError(null);
     } catch (err) {
       console.warn('Chat load err:', err);
       // Fallback: if getOffer fails, try just messages
       try {
-        const messagesData = await matchAdvisorsApi.getOfferMessages(offerId);
-        setMessages(messagesData);
+        const messagesData = await matchAdvisorsApi.getOfferMessages(targetId);
+        setMessages(messagesData || []);
         setError(null);
       } catch (innerErr) {
         setError(errorMessage(err));
@@ -71,7 +112,7 @@ export default function OfferChatScreen() {
     } finally {
       setLoading(false);
     }
-  }, [offerId]);
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
@@ -83,13 +124,14 @@ export default function OfferChatScreen() {
 
   const handleSend = async () => {
     const textToSend = inputText.trim();
-    if (!textToSend || sending) return;
+    const targetId = resolvedOfferIdRef.current;
+    if (!textToSend || sending || !targetId) return;
 
     // Optimistic message
     const tempId = `temp-${Date.now()}`;
     const optimisticMsg: MatchAdvisorOfferMessage = {
       id: tempId,
-      offer_id: offerId,
+      offer_id: targetId,
       sender_id: userId || 'me',
       sender_role: 'user',
       type: 'TEXT',
@@ -102,7 +144,7 @@ export default function OfferChatScreen() {
 
     try {
       setSending(true);
-      const newMessage = await matchAdvisorsApi.sendOfferMessage(offerId, {
+      const newMessage = await matchAdvisorsApi.sendOfferMessage(targetId, {
         type: 'TEXT',
         content: textToSend,
       });

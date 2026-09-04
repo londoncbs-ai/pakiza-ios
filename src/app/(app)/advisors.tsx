@@ -120,8 +120,9 @@ export default function MatchAdvisorsDirectoryScreen() {
                     onPress={() => {
                       if (activeRequest.selected_offer_id) {
                         router.push({
-                          pathname: `/advisor-chat/${activeRequest.selected_offer_id}`,
+                          pathname: '/advisor-chat/[offerId]',
                           params: {
+                            offerId: String(activeRequest.selected_offer_id),
                             name: activeRequest.advisor_name || '',
                             photo: activeRequest.advisor_photo_url || '',
                           },

@@ -60,7 +60,7 @@ export default function CreateAdvisorRequestScreen() {
 
     setSaving(true);
     try {
-      await matchAdvisorsApi.createRequest({
+      const created = await matchAdvisorsApi.createRequest({
         advisor_id: selectedAdvisorId,
         request_title: form.request_title.trim() || 'Private Matchmaking Search',
         summary: form.summary.trim() || null,
@@ -78,8 +78,25 @@ export default function CreateAdvisorRequestScreen() {
         `Your request has been sent to ${selectedAdvisorName || 'your Match Advisor'}. Your £250 deposit is secured, and your profile is now in private search mode.`,
         [
           {
-            text: 'View in Messages',
-            onPress: () => router.push('/(app)/messages' as any),
+            text: 'Open Advisor Chat',
+            onPress: () => {
+              if (created?.selected_offer_id) {
+                router.replace({
+                  pathname: '/advisor-chat/[offerId]',
+                  params: {
+                    offerId: String(created.selected_offer_id),
+                    name: selectedAdvisorName || '',
+                  },
+                } as any);
+              } else {
+                router.replace('/(app)/advisors' as any);
+              }
+            },
+          },
+          {
+            text: 'View Advisors',
+            style: 'cancel',
+            onPress: () => router.replace('/(app)/advisors' as any),
           },
         ]
       );
