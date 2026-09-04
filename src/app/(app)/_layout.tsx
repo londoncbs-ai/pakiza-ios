@@ -54,9 +54,9 @@ export default function AppTabsLayout() {
       <Tabs.Screen
         name="advisors"
         options={{
-          title: 'Find For Me',
+          title: 'Advisors',
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'search' : 'search-outline'} size={23} color={color} />
+            <Ionicons name={focused ? 'people' : 'people-outline'} size={23} color={color} />
           ),
         }}
       />
