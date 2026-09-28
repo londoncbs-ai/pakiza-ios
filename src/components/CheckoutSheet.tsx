@@ -34,12 +34,15 @@ export function CheckoutSheet({
   visible,
   onClose,
   onPurchased,
+  displayPrice,
 }: {
   plan: SubscriptionPlan | null;
   planName: string;
   visible: boolean;
   onClose: () => void;
   onPurchased: (s: Subscription) => void;
+  /** The store's own localized price, when known; overrides the fallback list price. */
+  displayPrice?: string;
 }) {
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -84,7 +87,8 @@ export function CheckoutSheet({
     }
   };
 
-  const price = plan ? PRICE[plan] ?? '' : '';
+  const price = displayPrice ?? (plan ? PRICE[plan] ?? '' : '');
+  const viaApple = appleBillingAvailable();
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -126,10 +130,21 @@ export function CheckoutSheet({
 
         {/* Billing terms */}
         <View style={styles.terms}>
-          <Term text={`Billed ${price} every month to your payment method.`} />
-          <Term text="Renews automatically until cancelled. Cancel anytime from Profile → Pakiza Premium." />
-          <Term text="Your plan benefits start immediately and last for the paid period if you cancel." />
-          <Term text="Prices include applicable taxes. No refunds for partial periods." />
+          {viaApple ? (
+            <>
+              <Term text={`Billed ${price} every month to your Apple ID.`} />
+              <Term text="Renews automatically unless cancelled at least 24 hours before the end of the current period. Manage or cancel any time in your Apple ID account settings." />
+              <Term text="Your plan benefits start immediately and last for the paid period if you cancel." />
+              <Term text="Payment is charged to your Apple ID account when you confirm the purchase. Prices include applicable taxes." />
+            </>
+          ) : (
+            <>
+              <Term text={`Billed ${price} every month to your payment method.`} />
+              <Term text="Renews automatically until cancelled. Cancel anytime from Profile → Pakiza Premium." />
+              <Term text="Your plan benefits start immediately and last for the paid period if you cancel." />
+              <Term text="Prices include applicable taxes. No refunds for partial periods." />
+            </>
+          )}
         </View>
 
         {/* Agreement */}

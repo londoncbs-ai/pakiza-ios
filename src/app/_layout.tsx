@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { Platform } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -83,6 +84,7 @@ function RootNavigator() {
       <Stack.Screen name="(onboarding)" />
       <Stack.Screen name="(app)" />
       <Stack.Screen name="chat/[id]" />
+      <Stack.Screen name="introductions" />
       <Stack.Screen name="book-meet" />
       <Stack.Screen name="meeting/[id]" />
       <Stack.Screen name="meeting/[id]/chat" />
@@ -125,10 +127,12 @@ export default function RootLayout() {
     if (fontsLoaded) SplashScreen.hideAsync().catch(() => {});
   }, [fontsLoaded]);
 
-  // Start Meta analytics once, after the app is interactive (so the iOS
-  // tracking prompt does not land over the splash). No-ops without the SDK.
+  // Start Meta analytics once the app is interactive. No-ops without the SDK.
+  // iOS is deliberately left out: it must show the App Tracking Transparency
+  // prompt, and that waits until the member is signed in and verified so it
+  // never lands over the welcome screen (see (app)/_layout.tsx).
   useEffect(() => {
-    initAnalytics();
+    if (Platform.OS !== 'ios') initAnalytics();
   }, []);
 
   if (!fontsLoaded) return null;

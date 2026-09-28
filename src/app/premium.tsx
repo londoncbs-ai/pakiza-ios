@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Linking, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -7,7 +7,7 @@ import { Redirect, useFocusEffect, useRouter } from 'expo-router';
 import { errorMessage } from '@/api/client';
 import { matchesApi } from '@/api/matches';
 import { subscriptionsApi } from '@/api/subscriptions';
-import { restoreAppleSubscription } from '@/lib/appleBilling';
+import { fetchAppleDisplayPrices, restoreAppleSubscription } from '@/lib/appleBilling';
 import { restorePlaySubscription } from '@/lib/playBilling';
 import type { Subscription, SubscriptionPlan } from '@/api/types';
 import { Button } from '@/components/Button';
@@ -18,11 +18,16 @@ import { SUBSCRIPTIONS_ENABLED } from '@/lib/features';
 import { haptics } from '@/lib/haptics';
 import { palette, radii, spacing, useTheme } from '@/theme';
 
+// The iOS copy avoids swipe-app vocabulary and drops the rewind perk, because
+// the iOS Discover screen has no "go back" (see screens/discover/ios).
+// Android keeps its original wording, since its deck still has the feature.
+const IOS = Platform.OS === 'ios';
+
 const PLANS: { plan: SubscriptionPlan; name: string; price: string; period: string; perDay: string; tagline: string; perks: string[]; highlight?: boolean }[] = [
   {
     plan: 'free',
     name: 'Free',
-    price: '£0',
+    price: IOS ? 'Free' : '£0',
     period: '',
     perDay: '',
     tagline: 'Start meeting people.',
@@ -35,12 +40,18 @@ const PLANS: { plan: SubscriptionPlan; name: string; price: string; period: stri
     period: '/mo',
     perDay: 'about 50p a day',
     tagline: 'Move at your own pace.',
-    perks: [
-      'Unlimited likes and unlimited open matches',
-      'Undo an accidental pass',
-      'Save profiles to revisit later',
-      'A profile boost every month (a £5 value)',
-    ],
+    perks: IOS
+      ? [
+          'Unlimited introductions and open matches',
+          'A shortlist to revisit profiles later',
+          'A profile boost every month (a £5 value)',
+        ]
+      : [
+          'Unlimited likes and unlimited open matches',
+          'Undo an accidental pass',
+          'Save profiles to revisit later',
+          'A profile boost every month (a £5 value)',
+        ],
   },
   {
     plan: 'gold',
@@ -48,14 +59,22 @@ const PLANS: { plan: SubscriptionPlan; name: string; price: string; period: stri
     price: '£24.99',
     period: '/mo',
     perDay: 'about 83p a day',
-    tagline: 'Skip the queue. Meet first.',
-    perks: [
-      'Everything in Premium',
-      'See everyone who likes you and match instantly',
-      '5 profile boosts every month (a £25 value)',
-      'Priority placement in discovery',
-      'Gold badge on your profile',
-    ],
+    tagline: IOS ? 'Be introduced first.' : 'Skip the queue. Meet first.',
+    perks: IOS
+      ? [
+          'Everything in Premium',
+          'See who has expressed interest in you and connect straight away',
+          '5 profile boosts every month (a £25 value)',
+          'Priority placement in introductions',
+          'Gold badge on your profile',
+        ]
+      : [
+          'Everything in Premium',
+          'See everyone who likes you and match instantly',
+          '5 profile boosts every month (a £25 value)',
+          'Priority placement in discovery',
+          'Gold badge on your profile',
+        ],
     highlight: true,
   },
 ];
@@ -76,6 +95,26 @@ function PremiumScreen() {
   const [selected, setSelected] = useState<SubscriptionPlan>('gold');
   const [likesWaiting, setLikesWaiting] = useState(0);
   const [checkout, setCheckout] = useState<{ plan: SubscriptionPlan; name: string } | null>(null);
+
+  // iOS shows what the App Store will actually charge in the member's
+  // storefront. The hard-coded £ prices are only the fallback if that lookup
+  // fails, and are never shown on iOS while it is still loading.
+  const [storePrices, setStorePrices] = useState<Partial<Record<SubscriptionPlan, string>>>({});
+  const [pricesReady, setPricesReady] = useState(!IOS);
+  useEffect(() => {
+    if (!IOS) return;
+    let alive = true;
+    fetchAppleDisplayPrices().then((prices) => {
+      if (!alive) return;
+      setStorePrices(prices);
+      setPricesReady(true);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
+  const priceOf = (p: (typeof PLANS)[number]) =>
+    p.plan === 'free' ? p.price : storePrices[p.plan] ?? (pricesReady ? p.price : '…');
 
   const load = useCallback(async () => {
     matchesApi.likesPreview().then((p) => setLikesWaiting(p.count)).catch(() => {});
@@ -171,7 +210,7 @@ function PremiumScreen() {
               <View style={[styles.likesBanner, { backgroundColor: c.accentFaint, borderColor: c.accent }]}>
                 <Ionicons name="heart" size={18} color={c.accent} />
                 <Text variant="footnote" tone="accent" style={{ flex: 1 }}>
-                  {likesWaiting} {likesWaiting === 1 ? 'person has' : 'people have'} already liked you. Gold reveals them instantly.
+                  {likesWaiting} {likesWaiting === 1 ? 'person has' : 'people have'} already expressed interest in you. Gold shows you who.
                 </Text>
               </View>
             ) : null}
@@ -230,9 +269,9 @@ function PremiumScreen() {
                   </View>
 
                   <View style={styles.priceRow}>
-                    <Text variant="title" tone="default">{p.price}</Text>
+                    <Text variant="title" tone="default">{priceOf(p)}</Text>
                     {p.period ? <Text variant="callout" tone="subtle" style={styles.period}>{p.period}</Text> : null}
-                    {p.perDay ? <Text variant="footnote" tone="subtle" style={styles.perDay}>{p.perDay}</Text> : null}
+                    {p.perDay && !IOS ? <Text variant="footnote" tone="subtle" style={styles.perDay}>{p.perDay}</Text> : null}
                     {isCurrent ? (
                       <View style={[styles.currentTag, { borderColor: c.borderStrong }]}>
                         <Text variant="label" tone="muted" style={styles.currentTagText}>Current</Text>
@@ -255,9 +294,21 @@ function PremiumScreen() {
             })}
 
             {activePremium && sub!.auto_renews ? (
-              <Pressable onPress={cancel} style={styles.cancel} hitSlop={8}>
-                <Text variant="footnote" tone="muted">Cancel auto-renewal</Text>
-              </Pressable>
+              IOS ? (
+                // An App Store subscription can only be cancelled with Apple;
+                // our own cancel endpoint would leave Apple still billing.
+                <Pressable
+                  onPress={() => Linking.openURL('https://apps.apple.com/account/subscriptions')}
+                  style={styles.cancel}
+                  hitSlop={8}
+                >
+                  <Text variant="footnote" tone="muted">Manage or cancel in your Apple ID</Text>
+                </Pressable>
+              ) : (
+                <Pressable onPress={cancel} style={styles.cancel} hitSlop={8}>
+                  <Text variant="footnote" tone="muted">Cancel auto-renewal</Text>
+                </Pressable>
+              )
             ) : null}
 
             <Text variant="footnote" tone="subtle" center style={styles.disclaimer}>
@@ -296,7 +347,7 @@ function PremiumScreen() {
                 ? 'Current plan'
                 : selected === 'free'
                   ? 'Your free plan'
-                  : `Get ${selectedPlan.name} · ${selectedPlan.price}${selectedPlan.period}`
+                  : `Get ${selectedPlan.name} · ${priceOf(selectedPlan)}${selectedPlan.period}`
             }
             variant="primary"
             disabled={selectedIsCurrent || selected === 'free'}
@@ -309,6 +360,7 @@ function PremiumScreen() {
         plan={checkout?.plan ?? null}
         planName={checkout?.name ?? ''}
         visible={!!checkout}
+        displayPrice={checkout && IOS ? storePrices[checkout.plan] : undefined}
         onClose={() => setCheckout(null)}
         onPurchased={(s) => {
           setSub(s);

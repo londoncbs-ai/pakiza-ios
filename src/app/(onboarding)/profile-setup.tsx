@@ -20,6 +20,7 @@ import { AcceptCheckbox } from '@/components/AcceptCheckbox';
 import { Button } from '@/components/Button';
 import { MultiSelectField } from '@/components/MultiSelectField';
 import { DatePickerField } from '@/components/DatePickerField';
+import { isOldEnough, MIN_AGE, UNDER_AGE_MESSAGE } from '@/lib/age';
 import { FormScroll } from '@/components/FormScroll';
 import { OptionGroup } from '@/components/OptionGroup';
 import { PressableScale } from '@/components/PressableScale';
@@ -137,6 +138,7 @@ export default function ProfileSetup() {
       if (name.trim().length < 2) return 'Please enter your name';
       if (!gender) return 'Please tell us who you are';
       if (!dob) return 'Please select your date of birth';
+      if (!isOldEnough(dob)) return UNDER_AGE_MESSAGE;
     }
     if (step === 3) {
       if (photos.length < 1) return 'Please add at least one photo of yourself';
@@ -237,7 +239,7 @@ export default function ProfileSetup() {
           <>
             <TextField label="Your name" value={name} onChangeText={setName} placeholder="e.g. Aisha" />
             <OptionGroup label="I am a…" options={GENDERS} value={gender} onChange={setGender} onDark={false} clearable={false} />
-            <DatePickerField label="Date of birth" value={dob} onChange={setDob} onDark={false} />
+            <DatePickerField label="Date of birth" value={dob} onChange={setDob} onDark={false} minAge={MIN_AGE} />
             <TextField label="City (optional)" value={city} onChangeText={setCity} placeholder="e.g. London" />
             <MultiSelectField label="Ethnicity (optional)" sheetTitle="Your ethnicity" options={ETHNICITIES} value={ethnicity || null} onChange={(v) => setEthnicity(v ?? '')} placeholder="Choose your background" addPlaceholder="Add your ethnicity" />
           </>

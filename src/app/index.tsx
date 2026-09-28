@@ -3,7 +3,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 
+import { AgeNotice } from '@/components/AgeNotice';
 import { Button } from '@/components/Button';
+import { Text } from '@/components/Text';
 import { spacing } from '@/theme';
 
 /**
@@ -26,6 +28,15 @@ export default function Onboarding() {
       />
       <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom + spacing.xl }]}>
         <View style={styles.actions}>
+          {/* What this is, before asking anyone to sign up. */}
+          <View style={styles.pitch}>
+            <Text variant="title" tone="onDark" center>
+              Marriage, with family at the centre.
+            </Text>
+            <Text variant="callout" tone="onDarkMuted" center>
+              Every member is identity-verified. Meetings happen with a wali present. A community fund helps couples begin.
+            </Text>
+          </View>
           <Button label="Begin our journey" variant="dark" onPress={() => router.push('/(auth)/sign-up')} />
           <Button
             label="I already have an account"
@@ -33,6 +44,7 @@ export default function Onboarding() {
             onDark
             onPress={() => router.push('/(auth)/sign-in')}
           />
+          <AgeNotice compact onDark />
         </View>
       </View>
     </View>
@@ -43,4 +55,5 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#2b0511' },
   container: { flex: 1, paddingHorizontal: spacing.xl, justifyContent: 'flex-end' },
   actions: { width: '100%', gap: spacing.md },
+  pitch: { gap: spacing.sm, marginBottom: spacing.md },
 });

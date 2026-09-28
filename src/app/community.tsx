@@ -34,6 +34,10 @@ export default function Community() {
           h: '7. Reporting',
           p: 'Use the report or block option on any profile or chat. Our team reviews reports and takes appropriate action.',
         },
+        {
+          h: '8. Adults only',
+          p: 'Pakiza is for adults aged 18 and over. Members under 18 are not permitted, and we remove accounts we believe belong to someone under 18. If you think a member is under 18, report them and choose "Underage".',
+        },
       ]}
     />
   );

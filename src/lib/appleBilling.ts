@@ -26,6 +26,52 @@ export function appleBillingAvailable(): boolean {
   return Platform.OS === 'ios';
 }
 
+// A price lookup opens and closes its own StoreKit connection. Purchase and
+// restore wait for it, so one can never close the connection under the other.
+let pendingPrices: Promise<unknown> | null = null;
+
+/**
+ * The App Store's own, localized price strings ("$14.99", "£11.99"...) by plan.
+ * App Review requires the paywall to show what the store will actually charge,
+ * and that differs by storefront, so a hard-coded price is wrong for most
+ * reviewers and members. Resolves {} on any failure; callers fall back.
+ */
+export async function fetchAppleDisplayPrices(): Promise<Partial<Record<SubscriptionPlan, string>>> {
+  if (!appleBillingAvailable()) return {};
+  const run = async (): Promise<Partial<Record<SubscriptionPlan, string>>> => {
+    try {
+      const IAP = require('react-native-iap');
+      await IAP.initConnection();
+      try {
+        const products: any[] =
+          (await IAP.fetchProducts({ skus: Object.values(APPLE_SKUS) as string[], type: 'subs' })) ?? [];
+        const out: Partial<Record<SubscriptionPlan, string>> = {};
+        for (const [plan, sku] of Object.entries(APPLE_SKUS)) {
+          const p = products.find((x) => (x?.id ?? x?.productId) === sku);
+          const price = p?.displayPrice ?? p?.localizedPrice;
+          if (price) out[plan as SubscriptionPlan] = String(price);
+        }
+        return out;
+      } finally {
+        try {
+          await IAP.endConnection();
+        } catch {
+          // Ignore teardown failures.
+        }
+      }
+    } catch {
+      return {};
+    }
+  };
+  const p = run();
+  pendingPrices = p;
+  try {
+    return await p;
+  } finally {
+    if (pendingPrices === p) pendingPrices = null;
+  }
+}
+
 /**
  * Run the full purchase flow for a plan. Resolves with the activated
  * subscription from the backend, or rejects with a user-presentable Error
@@ -40,6 +86,7 @@ export async function purchaseAppleSubscription(
 
   const IAP = require('react-native-iap');
 
+  await pendingPrices;
   await IAP.initConnection();
   try {
     const products = await IAP.fetchProducts({ skus: [sku], type: 'subs' });
@@ -98,6 +145,7 @@ export async function purchaseAppleSubscription(
 export async function restoreAppleSubscription(): Promise<Subscription | null> {
   if (!appleBillingAvailable()) return null;
   const IAP = require('react-native-iap');
+  await pendingPrices;
   await IAP.initConnection();
   try {
     const purchases: any[] = (await IAP.getAvailablePurchases()) ?? [];

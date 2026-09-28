@@ -118,7 +118,7 @@ export default function Messages() {
             <Ionicons name="heart" size={18} color="white" />
           </View>
           <View style={{ flex: 1 }}>
-            <Text variant="subhead" tone="default">Likes</Text>
+            <Text variant="subhead" tone="default">Interest</Text>
           </View>
         </Pressable>
 

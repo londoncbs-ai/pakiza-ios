@@ -6,9 +6,10 @@
  * The native module is required lazily (like lib/stripeSheet.ts) so a build
  * without it - Expo Go, web - simply no-ops instead of crashing at import.
  *
- * initAnalytics() runs once at startup. On iOS it asks for App Tracking
- * Transparency and tells the SDK whether it may use the advertising identifier,
- * then initializes the SDK. App install / app activate events flow automatically
+ * initAnalytics() runs once: at startup on Android, and on iOS once the member
+ * is signed in and verified (see (app)/_layout.tsx). On iOS it asks for App
+ * Tracking Transparency and tells the SDK whether it may use the advertising
+ * identifier, then initializes the SDK. App install / app activate events flow automatically
  * from there (autoLogAppEventsEnabled in app.json); business events (sign-up,
  * verified, subscribe/purchase) are logged explicitly via the helpers below.
  */

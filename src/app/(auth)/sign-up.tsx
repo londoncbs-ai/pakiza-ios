@@ -5,6 +5,7 @@ import { useRouter } from 'expo-router';
 import { authApi } from '@/api/auth';
 import { errorMessage } from '@/api/client';
 import { logRegistration } from '@/lib/analytics';
+import { AgeNotice } from '@/components/AgeNotice';
 import { AuthScaffold } from '@/components/AuthScaffold';
 import { Button } from '@/components/Button';
 import { Text } from '@/components/Text';
@@ -59,6 +60,7 @@ export default function SignUp() {
 
   return (
     <AuthScaffold title="Create your account" subtitle="Begin your journey to a purposeful match.">
+      <AgeNotice onDark style={{ marginBottom: spacing.lg }} />
       <TextField
         label="Phone number (optional)"
         onDark

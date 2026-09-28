@@ -20,7 +20,7 @@ const SECTIONS: { h: string; p: string }[] = [
   },
   {
     h: '4. Eligibility',
-    p: 'You must be at least 18 years old and legally able to marry to use Pakiza. You agree to provide accurate information and to treat other members with respect.',
+    p: 'You must be at least 18 years old and legally able to marry to use Pakiza. Members under 18 are not permitted, and we remove any account we believe belongs to someone under 18. If you are under 18, do not create an account. You agree to provide accurate information and to treat other members with respect.',
   },
   {
     h: '5. Conduct & safety',

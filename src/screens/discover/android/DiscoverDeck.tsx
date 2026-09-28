@@ -28,7 +28,7 @@ const PAGE = 12;
 /**
  * The original swipe-deck presentation: one profile at a time with a circular
  * action bar. Retained verbatim for Android, which ships unchanged. iOS renders
- * DiscoverRegister instead - see src/app/(app)/discover.tsx.
+ * DiscoverIntroductions instead - see src/app/(app)/discover.tsx.
  */
 export default function DiscoverDeck() {
   const router = useRouter();

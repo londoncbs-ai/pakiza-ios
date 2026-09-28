@@ -58,7 +58,9 @@ export default function LikesYou() {
       if (action === 'pass') await matchesApi.pass(p.user_id);
       else {
         const res = await matchesApi.like(p.user_id);
-        if (res.is_matched) Alert.alert("It's a match!", `You and ${p.display_name} matched.`);
+        if (res.is_matched) {
+          Alert.alert("You're both interested", `You and ${p.display_name} have expressed interest in each other. You can now start a conversation.`);
+        }
       }
     } catch {
       /* ignore */
@@ -71,7 +73,7 @@ export default function LikesYou() {
         <Pressable onPress={() => router.back()} hitSlop={12} style={{ width: 30 }}>
           <Ionicons name="chevron-back" size={26} color={c.accent} />
         </Pressable>
-        <Text variant="heading" tone="accent">Likes You</Text>
+        <Text variant="heading" tone="accent">Interest received</Text>
         <View style={{ width: 30 }} />
       </View>
 
@@ -82,7 +84,7 @@ export default function LikesYou() {
           {preview && preview.count > 0 ? (
             <>
               <Text variant="title" tone="accent" center style={styles.lockTitle}>
-                {preview.count} {preview.count === 1 ? 'person likes' : 'people like'} you
+                {preview.count} {preview.count === 1 ? 'person has' : 'people have'} expressed interest in you
               </Text>
               <Text variant="body" tone="muted" center style={styles.lockBody}>
                 They are real members waiting for your answer.
@@ -108,18 +110,18 @@ export default function LikesYou() {
                 <Ionicons name="lock-closed" size={40} color={c.accent} />
               </View>
               <Text variant="title" tone="accent" center style={styles.lockTitle}>
-                See who already likes you
+                See who has expressed interest
               </Text>
             </>
           )}
           <Text variant="body" tone="muted" center style={styles.lockBody}>
             {SUBSCRIPTIONS_ENABLED
-              ? 'Gold shows you everyone who has liked you. Like them back and you match instantly, no waiting to find each other in Discover.'
-              : 'Keep discovering. When you like each other, you match instantly and they appear here.'}
+              ? 'Gold shows you everyone who has expressed interest in you. Respond with interest of your own and you are matched straight away, without waiting to find each other in Discover.'
+              : 'Keep discovering. When you both express interest, you are matched straight away and they appear here.'}
           </Text>
           {SUBSCRIPTIONS_ENABLED ? (
             <Button
-              label={preview && preview.count > 0 ? 'See who likes you with Gold' : 'Upgrade to Gold'}
+              label={preview && preview.count > 0 ? 'See who is interested with Gold' : 'Upgrade to Gold'}
               variant="primary"
               onPress={() => router.push('/premium')}
               style={{ marginTop: spacing.lg, alignSelf: 'stretch' }}
@@ -129,7 +131,7 @@ export default function LikesYou() {
       ) : profiles.length === 0 ? (
         <EmptyState
           icon="heart-outline"
-          title="No new likes right now"
+          title="No new interest right now"
           message="Keep your profile fresh and check back soon. New interest will appear here."
         />
       ) : (

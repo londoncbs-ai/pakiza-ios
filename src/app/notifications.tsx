@@ -146,7 +146,7 @@ export default function Notifications() {
         <EmptyState
           icon="notifications-outline"
           title="You're all caught up"
-          message="Likes, matches and messages will show up here as they happen."
+          message="Interest, matches and messages will show up here as they happen."
         />
       ) : (
         <FlatList

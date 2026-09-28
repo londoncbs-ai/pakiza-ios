@@ -716,9 +716,12 @@ export default function MatchAdvisorsDirectoryScreen() {
                     <Ionicons name="star" size={13} color={palette.gold} />
                     <Text variant="label" style={{ fontWeight: '700' }}>{item.rating ? Number(item.rating).toFixed(1) : 'New'}</Text>
                   </View>
-                  <Text variant="label" tone="muted">
-                    {item.years_experience || 5}y exp
-                  </Text>
+                  {/* Only what the advisor has actually recorded - never a made-up figure. */}
+                  {item.years_experience > 0 ? (
+                    <Text variant="label" tone="muted">
+                      {item.years_experience}y exp
+                    </Text>
+                  ) : null}
                 </View>
               </View>
             </View>
@@ -851,7 +854,7 @@ export default function MatchAdvisorsDirectoryScreen() {
                 <View style={styles.statCol}>
                   <Text variant="label" tone="muted">EXPERIENCE</Text>
                   <Text variant="subhead" tone="default" style={{ fontWeight: '700', marginTop: 2 }}>
-                    {viewingAdvisor.years_experience || 5} Years
+                    {viewingAdvisor.years_experience > 0 ? `${viewingAdvisor.years_experience} Years` : 'New advisor'}
                   </Text>
                 </View>
                 <View style={styles.statDivider} />

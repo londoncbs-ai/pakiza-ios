@@ -1,18 +1,28 @@
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect } from 'react';
-import { StyleSheet } from 'react-native';
+import { Platform, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { profilesApi } from '@/api/profiles';
+import { initAnalytics } from '@/lib/analytics';
 import { syncContactHashes } from '@/lib/contactPrivacy';
+import { useAuth } from '@/store/auth';
 import { useRealtime } from '@/store/realtime';
 import { fonts, palette, useTheme } from '@/theme';
 
 export default function AppTabsLayout() {
   const { c } = useTheme();
   const { unreadCount } = useRealtime();
+  const { verifyRequired } = useAuth();
   const insets = useSafeAreaInsets();
+
+  // iOS asks for App Tracking Transparency inside initAnalytics(). Ask here,
+  // once the member is signed in and past verification, rather than at launch
+  // over the welcome screen. initAnalytics() only ever runs once.
+  useEffect(() => {
+    if (Platform.OS === 'ios' && !verifyRequired) initAnalytics();
+  }, [verifyRequired]);
 
   useEffect(() => {
     (async () => {
@@ -45,16 +55,21 @@ export default function AppTabsLayout() {
       <Tabs.Screen
         name="discover"
         options={{
-          title: 'Discover',
-          tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'sparkles' : 'sparkles-outline'} size={22} color={color} />
-          ),
+          // iOS opens on the Journey (see discover.tsx); Android keeps Discover.
+          title: Platform.OS === 'ios' ? 'Journey' : 'Discover',
+          tabBarIcon: ({ color, focused }) =>
+            Platform.OS === 'ios' ? (
+              <Ionicons name={focused ? 'trail-sign' : 'trail-sign-outline'} size={23} color={color} />
+            ) : (
+              <Ionicons name={focused ? 'sparkles' : 'sparkles-outline'} size={22} color={color} />
+            ),
         }}
       />
       <Tabs.Screen
         name="advisors"
         options={{
-          title: 'Advisors',
+          // On iOS the tab is named for what it is: a personal human matchmaker.
+          title: Platform.OS === 'ios' ? 'Matchmaker' : 'Advisors',
           tabBarIcon: ({ color, focused }) => (
             <Ionicons name={focused ? 'people' : 'people-outline'} size={23} color={color} />
           ),

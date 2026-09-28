@@ -39,6 +39,7 @@ export default function FaceVerify() {
   const [permission, requestPermission] = useCameraPermissions();
   const cameraRef = useRef<CameraView>(null);
   const [phase, setPhase] = useState<Phase>('camera');
+  const [consented, setConsented] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const reduceMotion = useReducedMotion();
 
@@ -89,6 +90,39 @@ export default function FaceVerify() {
       setPhase('error');
     }
   };
+
+  // A face scan is biometric processing, so it starts with a plain explanation
+  // and an explicit "I agree" - before the camera is even requested.
+  if (!consented) {
+    return (
+      <View
+        style={[
+          styles.black,
+          { paddingTop: insets.top + spacing.xxl, paddingBottom: insets.bottom + spacing.xl, paddingHorizontal: spacing.xl },
+        ]}
+      >
+        <View style={{ flex: 1, justifyContent: 'center' }}>
+          <Ionicons name="scan-outline" size={52} color={palette.gold} style={{ alignSelf: 'center' }} />
+          <Text variant="title" tone="onDark" center style={{ marginTop: spacing.lg }}>
+            Verify it’s really you
+          </Text>
+          <View style={{ gap: spacing.md, marginTop: spacing.xl }}>
+            <ConsentPoint text="We take a live selfie and compare it with your profile photos to confirm you are a real person, and the person in your photos." />
+            <ConsentPoint text="The comparison is carried out by Amazon Web Services (Amazon Rekognition). It uses your face, which is biometric information, and we use it only for verification." />
+            <ConsentPoint text="Your selfie is never shown on your profile or to other members." />
+            <ConsentPoint text="Verification is required to use Pakiza. If you would rather not, you can sign out and delete your account." />
+          </View>
+        </View>
+        <Button label="I agree, continue" onPress={() => setConsented(true)} />
+        <Pressable onPress={() => router.push('/privacy')} hitSlop={10} style={styles.escape}>
+          <Text variant="footnote" tone="onDarkMuted">Read our Privacy Policy</Text>
+        </Pressable>
+        <Pressable onPress={signOut} hitSlop={10} style={styles.escape}>
+          <Text variant="footnote" tone="onDarkMuted">Sign out</Text>
+        </Pressable>
+      </View>
+    );
+  }
 
   if (!permission) return <View style={styles.black} />;
 
@@ -201,6 +235,15 @@ export default function FaceVerify() {
           )}
         </View>
       </View>
+    </View>
+  );
+}
+
+function ConsentPoint({ text }: { text: string }) {
+  return (
+    <View style={{ flexDirection: 'row', gap: spacing.sm, alignItems: 'flex-start' }}>
+      <Ionicons name="checkmark-circle" size={18} color={palette.gold} style={{ marginTop: 2 }} />
+      <Text variant="callout" tone="onDarkMuted" style={{ flex: 1 }}>{text}</Text>
     </View>
   );
 }
