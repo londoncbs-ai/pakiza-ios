@@ -1,12 +1,18 @@
-import { useCallback, useState } from 'react';
-import { Alert, FlatList, Modal, ScrollView, StyleSheet, View, Pressable } from 'react-native';
+import { useCallback, useRef, useState } from 'react';
+import { Alert, FlatList, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 
 import { errorMessage } from '@/api/client';
-import { getSearchDisplayTitle, getSearchStatusConfig, matchAdvisorsApi } from '@/api/matchAdvisors';
+import {
+  findOngoingRequest,
+  getSearchDisplayTitle,
+  getSearchStatusConfig,
+  isOngoingSearchStatus,
+  matchAdvisorsApi,
+} from '@/api/matchAdvisors';
 import type { MatchAdvisorProfile, MatchAdvisorRequest } from '@/api/types';
 import { Button } from '@/components/Button';
 import { EmptyState } from '@/components/EmptyState';
@@ -16,6 +22,18 @@ import { SkeletonList } from '@/components/Skeleton';
 import { Text } from '@/components/Text';
 import { palette, radii, shadow, spacing, useTheme } from '@/theme';
 
+/**
+ * Find for Me: a dedicated Match Advisor searches privately on the member's
+ * behalf, for a flat £500 fee (£250 to begin, £250 on success). One search
+ * runs at a time, so the whole screen is built around one question - where
+ * is my search right now, and what, if anything, needs me?
+ *
+ * `findOngoingRequest` (api/matchAdvisors.ts) is the single source of truth
+ * for "is a search open". It used to be reimplemented inline here and in
+ * create-request.tsx, each missing 'reviewing' and 'offered' - which meant a
+ * member with an unanswered offer could quietly book a second advisor,
+ * breaking the one-search policy this whole screen exists to enforce.
+ */
 export default function MatchAdvisorsDirectoryScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -26,9 +44,15 @@ export default function MatchAdvisorsDirectoryScreen() {
   const [activeTab, setActiveTab] = useState<'case' | 'browse'>('browse');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  // Selected advisor for dedicated profile viewing
   const [viewingAdvisor, setViewingAdvisor] = useState<MatchAdvisorProfile | null>(null);
+
+  // Tracks the ongoing request we last showed the member, so a background
+  // refresh (useFocusEffect fires on every return to this tab) never yanks
+  // them off a deliberate "browse" visit. It DOES jump them to the case when
+  // a search first opens, or when it newly needs their decision (an offer
+  // just arrived) - both moments where staying on "browse" would bury
+  // something that needs them.
+  const shownOngoingKey = useRef<string | null>(null);
 
   const loadData = useCallback(async () => {
     try {
@@ -38,9 +62,14 @@ export default function MatchAdvisorsDirectoryScreen() {
       ]);
       setAdvisors(advList);
       setMyRequests(reqList);
-      if (reqList.some((r) => r.status === 'open' || r.status === 'accepted' || r.status === 'active')) {
-        setActiveTab('case');
-      }
+
+      const ongoing = findOngoingRequest(reqList);
+      const key = ongoing ? `${ongoing.id}:${ongoing.status}` : null;
+      const justOpened = ongoing && shownOngoingKey.current === null;
+      const justOffered = ongoing?.status === 'offered' && shownOngoingKey.current !== key;
+      if (justOpened || justOffered) setActiveTab('case');
+      shownOngoingKey.current = key;
+
       setError(null);
     } catch (err) {
       setError(errorMessage(err));
@@ -55,18 +84,17 @@ export default function MatchAdvisorsDirectoryScreen() {
     }, [loadData])
   );
 
-  const ongoingReq =
-    myRequests.find((r) => r.status === 'open' || r.status === 'accepted' || r.status === 'active') || null;
+  const ongoingReq = findOngoingRequest(myRequests);
   const activeReq = ongoingReq || myRequests[0] || null;
   const hasActiveSearch = Boolean(ongoingReq);
 
   const handleBookAdvisor = (advisor: MatchAdvisorProfile) => {
-    if (hasActiveSearch) {
+    if (hasActiveSearch && ongoingReq) {
       Alert.alert(
-        'Active Search in Progress',
-        `You currently have an active matchmaking search underway (${getSearchDisplayTitle(activeReq)}).\n\nPlatform policy allows one private search at a time so your advisor can dedicate full attention to your search. You can book a new advisor once your current search is completed.`,
+        'A search is already open',
+        `You have an open search with ${getSearchDisplayTitle(ongoingReq)}. One private search runs at a time, so your advisor can give it their full attention - you can book someone new once this one closes.`,
         [
-          { text: 'View Current Search', onPress: () => setActiveTab('case') },
+          { text: 'View my search', onPress: () => setActiveTab('case') },
           { text: 'OK', style: 'cancel' },
         ]
       );
@@ -75,113 +103,22 @@ export default function MatchAdvisorsDirectoryScreen() {
     setViewingAdvisor(null);
     router.push({
       pathname: '/(app)/create-request',
-      params: {
-        advisorId: advisor.user_id,
-        name: advisor.display_name,
-      },
+      params: { advisorId: advisor.user_id, name: advisor.display_name },
     } as any);
   };
 
   return (
     <View style={[styles.root, { backgroundColor: c.bg, paddingTop: insets.top + spacing.sm }]}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Text variant="title" tone="accent">Find for Me</Text>
-          <View
-            style={{
-              paddingHorizontal: 10,
-              paddingVertical: 4,
-              borderRadius: radii.pill,
-              backgroundColor: hasActiveSearch ? 'rgba(34, 197, 94, 0.12)' : 'rgba(128, 0, 32, 0.08)',
-              borderWidth: 1,
-              borderColor: hasActiveSearch ? 'rgba(34, 197, 94, 0.3)' : 'rgba(128, 0, 32, 0.2)',
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 5,
-            }}
-          >
-            <View
-              style={{
-                width: 6,
-                height: 6,
-                borderRadius: 3,
-                backgroundColor: hasActiveSearch ? '#16a34a' : palette.burgundy,
-              }}
-            />
-            <Text
-              variant="label"
-              style={{
-                fontSize: 10,
-                fontWeight: '800',
-                color: hasActiveSearch ? '#16a34a' : palette.burgundy,
-                letterSpacing: 0.4,
-              }}
-            >
-              {hasActiveSearch ? '1 ACTIVE SEARCH' : '1 SEARCH POLICY'}
-            </Text>
-          </View>
-        </View>
-        <Text variant="footnote" tone="muted">Personal matchmaking • Dedicated 1-on-1 advisor</Text>
-      </View>
+      <Header hasActiveSearch={hasActiveSearch} ongoingReq={ongoingReq} />
 
-      {/* Segmented Controller (Always Visible) */}
       <View style={styles.segmentBar}>
-        <Pressable
+        <Segment
+          label={hasActiveSearch ? 'My Search' : myRequests.length > 0 ? 'My Case' : 'How It Works'}
+          active={activeTab === 'case'}
+          dotColor={activeReq ? getSearchStatusConfig(activeReq.status).color : undefined}
           onPress={() => setActiveTab('case')}
-          style={[
-            styles.segmentBtn,
-            {
-              backgroundColor: activeTab === 'case' ? palette.burgundy : c.surfaceAlt,
-              borderColor: activeTab === 'case' ? palette.burgundy : c.borderStrong,
-            },
-            !isDark && shadow.soft,
-          ]}
-        >
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            {activeReq && (
-              <View
-                style={{
-                  width: 7,
-                  height: 7,
-                  borderRadius: 4,
-                  backgroundColor: getSearchStatusConfig(activeReq.status).color,
-                }}
-              />
-            )}
-            <Text
-              variant="subhead"
-              style={{
-                fontWeight: '800',
-                color: activeTab === 'case' ? palette.cream : c.text,
-              }}
-            >
-              {hasActiveSearch ? 'My Active Search' : myRequests.length > 0 ? 'My Case' : 'How It Works'}
-            </Text>
-          </View>
-        </Pressable>
-
-        <Pressable
-          onPress={() => setActiveTab('browse')}
-          style={[
-            styles.segmentBtn,
-            {
-              backgroundColor: activeTab === 'browse' ? palette.burgundy : c.surfaceAlt,
-              borderColor: activeTab === 'browse' ? palette.burgundy : c.borderStrong,
-            },
-            !isDark && shadow.soft,
-          ]}
-        >
-          <Text
-            variant="subhead"
-            style={{
-              fontWeight: '800',
-              color: activeTab === 'browse' ? palette.cream : c.text,
-            }}
-          >
-            Advisors ({advisors.length})
-          </Text>
-        </Pressable>
+        />
+        <Segment label={`Advisors (${advisors.length})`} active={activeTab === 'browse'} onPress={() => setActiveTab('browse')} />
       </View>
 
       {loading ? (
@@ -190,943 +127,747 @@ export default function MatchAdvisorsDirectoryScreen() {
         <ErrorState message={error} onRetry={loadData} />
       ) : activeTab === 'case' ? (
         activeReq ? (
-          <ScrollView
-            contentContainerStyle={{ padding: spacing.md, paddingBottom: 120 }}
-            showsVerticalScrollIndicator={false}
-          >
-            {/* Main Active Case Card */}
-            <View
-              style={[
-                styles.caseCard,
-                { backgroundColor: c.surface, borderColor: c.border },
-                !isDark ? shadow.card : undefined,
-              ]}
-            >
-            {(() => {
-              const statusCfg = getSearchStatusConfig(activeReq.status);
-              const isClosedOrCancelled =
-                activeReq.status === 'cancelled' ||
-                activeReq.status === 'completed' ||
-                activeReq.status === 'expired';
-              return (
-                <>
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.xs }}>
-                    <View
-                      style={{
-                        paddingHorizontal: 8,
-                        paddingVertical: 3,
-                        borderRadius: radii.pill,
-                        backgroundColor: statusCfg.bg,
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        gap: 5,
-                      }}
-                    >
-                      <View
-                        style={{
-                          width: 7,
-                          height: 7,
-                          borderRadius: 4,
-                          backgroundColor: statusCfg.color,
-                        }}
-                      />
-                      <Text
-                        variant="label"
-                        style={{
-                          fontWeight: '800',
-                          color: statusCfg.color,
-                          letterSpacing: 0.5,
-                          fontSize: 10,
-                        }}
-                      >
-                        {statusCfg.label}
-                      </Text>
-                    </View>
-                    <Text variant="footnote" tone="muted">
-                      #{String(activeReq.id).slice(0, 8).toUpperCase()}
-                    </Text>
-                  </View>
-
-                  <Text variant="heading" style={{ fontWeight: '800', marginTop: 4, marginBottom: 2 }}>
-                    {getSearchDisplayTitle(activeReq)}
-                  </Text>
-                  <Text variant="footnote" tone="muted" style={{ marginBottom: spacing.md }}>
-                    Confidential search handled by dedicated Match Advisor
-                  </Text>
-
-                  {/* Status Announcement Banner if not active */}
-                  {activeReq.status === 'cancelled' && (
-                    <View
-                      style={{
-                        backgroundColor: 'rgba(194, 65, 12, 0.08)',
-                        borderRadius: radii.md,
-                        padding: spacing.sm,
-                        borderWidth: 1,
-                        borderColor: 'rgba(194, 65, 12, 0.25)',
-                        marginBottom: spacing.md,
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        gap: spacing.xs,
-                      }}
-                    >
-                      <Ionicons name="alert-circle" size={18} color={palette.sienna} />
-                      <Text variant="footnote" style={{ color: palette.sienna, flex: 1, fontWeight: '600' }}>
-                        This search was cancelled. Deposit settled according to platform terms.
-                      </Text>
-                    </View>
-                  )}
-                  {activeReq.status === 'completed' && (
-                    <View
-                      style={{
-                        backgroundColor: 'rgba(217, 119, 6, 0.08)',
-                        borderRadius: radii.md,
-                        padding: spacing.sm,
-                        borderWidth: 1,
-                        borderColor: 'rgba(217, 119, 6, 0.25)',
-                        marginBottom: spacing.md,
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        gap: spacing.xs,
-                      }}
-                    >
-                      <Ionicons name="checkmark-circle" size={18} color={palette.gold} />
-                      <Text variant="footnote" style={{ color: palette.gold, flex: 1, fontWeight: '600' }}>
-                        Spouse found! Case successfully concluded.
-                      </Text>
-                    </View>
-                  )}
-                  {activeReq.status === 'expired' && (
-                    <View
-                      style={{
-                        backgroundColor: 'rgba(100, 116, 139, 0.08)',
-                        borderRadius: radii.md,
-                        padding: spacing.sm,
-                        borderWidth: 1,
-                        borderColor: 'rgba(100, 116, 139, 0.25)',
-                        marginBottom: spacing.md,
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        gap: spacing.xs,
-                      }}
-                    >
-                      <Ionicons name="time" size={18} color="#64748b" />
-                      <Text variant="footnote" style={{ color: '#64748b', flex: 1, fontWeight: '600' }}>
-                        This search period has concluded and is currently inactive.
-                      </Text>
-                    </View>
-                  )}
-
-                  {/* Advisor Strip */}
-                  <View
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      padding: spacing.sm,
-                      backgroundColor: c.surfaceAlt,
-                      borderRadius: radii.md,
-                      marginBottom: spacing.md,
-                      borderWidth: 1,
-                      borderColor: c.border,
-                    }}
-                  >
-                    {activeReq.advisor_photo_url ? (
-                      <Image
-                        source={{ uri: activeReq.advisor_photo_url }}
-                        style={{ width: 50, height: 50, borderRadius: 25, marginRight: spacing.sm }}
-                        contentFit="cover"
-                      />
-                    ) : (
-                      <View
-                        style={{
-                          width: 50,
-                          height: 50,
-                          borderRadius: 25,
-                          backgroundColor: palette.burgundy,
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          marginRight: spacing.sm,
-                        }}
-                      >
-                        <Ionicons name="shield-checkmark" size={24} color={palette.cream} />
-                      </View>
-                    )}
-                    <View style={{ flex: 1 }}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                        <Text variant="subhead" style={{ fontWeight: '700' }}>
-                          {activeReq.advisor_name || 'Assigned Match Advisor'}
-                        </Text>
-                        <Ionicons name="checkmark-circle" size={16} color={c.success} />
-                      </View>
-                      <Text variant="footnote" tone="accent" style={{ marginTop: 2 }}>
-                        {isClosedOrCancelled ? 'Private Matchmaker' : 'Private Matchmaker • £250 Deposit Secured'}
-                      </Text>
-                    </View>
-                  </View>
-
-                  {/* Action Buttons */}
-                  <View style={{ flexDirection: 'row', gap: spacing.sm }}>
-                    {isClosedOrCancelled ? (
-                      <Button
-                        label="Book New Search"
-                        variant="primary"
-                        style={{ flex: 1 }}
-                        onPress={() => setActiveTab('browse')}
-                      />
-                    ) : activeReq.selected_offer_id ? (
-                      <Button
-                        label="Message Advisor"
-                        variant="primary"
-                        style={{ flex: 1 }}
-                        onPress={() =>
-                          router.push({
-                            pathname: '/advisor-chat/[offerId]',
-                            params: {
-                              offerId: String(activeReq.selected_offer_id),
-                              name: activeReq.advisor_name || '',
-                              photo: activeReq.advisor_photo_url || '',
-                            },
-                          } as any)
-                        }
-                      />
-                    ) : null}
-                    <Button
-                      label="Case Details"
-                      variant="outline"
-                      style={{ flex: 1 }}
-                      onPress={() =>
-                        router.push({
-                          pathname: '/(app)/requests/[id]',
-                          params: { id: activeReq.id },
-                        } as any)
-                      }
-                    />
-                  </View>
-                </>
-              );
-            })()}
-          </View>
-
-          {/* Stepper Card */}
-          <View
-            style={[
-              styles.caseCard,
-              { backgroundColor: c.surface, borderColor: c.border },
-              !isDark ? shadow.soft : undefined,
-            ]}
-          >
-            <Text variant="subhead" style={{ fontWeight: '800', marginBottom: spacing.md }}>
-              Search Progress
-            </Text>
-            <View style={styles.stepperWrap}>
-              <View style={styles.stepItem}>
-                <View style={[styles.stepDot, { backgroundColor: c.success }]}>
-                  <Ionicons name="checkmark" size={13} color="#FFF" />
-                </View>
-                <Text variant="label" style={{ fontSize: 10, fontWeight: '700', textAlign: 'center' }}>Deposit</Text>
-                <Text variant="footnote" tone="muted" style={{ fontSize: 10 }}>£250 Paid</Text>
-              </View>
-              <View style={[styles.stepLine, { backgroundColor: c.success }]} />
-              <View style={styles.stepItem}>
-                <View style={[styles.stepDot, { backgroundColor: palette.burgundy }]}>
-                  <Text variant="label" style={{ color: '#FFF', fontWeight: '800', fontSize: 11 }}>2</Text>
-                </View>
-                <Text variant="label" style={{ fontSize: 10, fontWeight: '700', textAlign: 'center' }}>Consultation</Text>
-                <Text variant="footnote" tone="muted" style={{ fontSize: 10 }}>In Progress</Text>
-              </View>
-              <View style={[styles.stepLine, { backgroundColor: c.border }]} />
-              <View style={styles.stepItem}>
-                <View style={[styles.stepDot, { backgroundColor: c.border }]}>
-                  <Text variant="label" style={{ color: c.textMuted, fontWeight: '800', fontSize: 11 }}>3</Text>
-                </View>
-                <Text variant="label" tone="muted" style={{ fontSize: 10, textAlign: 'center' }}>Sourcing</Text>
-                <Text variant="footnote" tone="muted" style={{ fontSize: 10 }}>Vetting</Text>
-              </View>
-              <View style={[styles.stepLine, { backgroundColor: c.border }]} />
-              <View style={styles.stepItem}>
-                <View style={[styles.stepDot, { backgroundColor: c.border }]}>
-                  <Text variant="label" style={{ color: c.textMuted, fontWeight: '800', fontSize: 11 }}>4</Text>
-                </View>
-                <Text variant="label" tone="muted" style={{ fontSize: 10, textAlign: 'center' }}>Spouse</Text>
-                <Text variant="footnote" tone="muted" style={{ fontSize: 10 }}>£250 Due</Text>
-              </View>
-            </View>
-          </View>
-
-          {/* Criteria & Confidentiality Card */}
-          <View
-            style={[
-              styles.caseCard,
-              { backgroundColor: c.surface, borderColor: c.border },
-              !isDark ? shadow.soft : undefined,
-            ]}
-          >
-            <Text variant="subhead" style={{ fontWeight: '800', marginBottom: spacing.xs }}>
-              Preferences & Criteria
-            </Text>
-            <Text variant="footnote" tone="muted" style={{ lineHeight: 20, marginBottom: spacing.sm }}>
-              {activeReq.partner_preferences || 'Your preferences are active and handled with 100% discretion.'}
-            </Text>
-            {activeReq.preferred_location && (
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
-                <Ionicons name="location-outline" size={15} color={c.accent} />
-                <Text variant="footnote" tone="default" style={{ fontWeight: '600' }}>
-                  Target Location: {activeReq.preferred_location}
-                </Text>
-              </View>
-            )}
-          </View>
-
-          {/* Other Searches if user has more than 1 */}
-          {myRequests.length > 1 && (
-            <View style={{ marginTop: spacing.sm, marginBottom: spacing.md }}>
-              <Text variant="subhead" tone="muted" style={{ fontWeight: '800', fontSize: 11, letterSpacing: 0.8, marginBottom: spacing.xs }}>
-                SEARCH HISTORY
-              </Text>
-              {myRequests
-                .filter((r) => r.id !== activeReq.id)
-                .map((req) => {
-                  const itemBadge = getSearchStatusConfig(req.status);
-                  return (
-                    <PressableScale
-                      key={req.id}
-                      onPress={() =>
-                        router.push({
-                          pathname: '/(app)/requests/[id]',
-                          params: { id: req.id },
-                        } as any)
-                      }
-                      style={[
-                        styles.activeCard,
-                        { backgroundColor: c.surface, borderColor: c.border, marginBottom: 8 },
-                        !isDark && shadow.soft,
-                      ] as any}
-                    >
-                      <View style={{ flex: 1, marginRight: spacing.md }}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                          <View
-                            style={{
-                              paddingHorizontal: 7,
-                              paddingVertical: 2,
-                              borderRadius: radii.pill,
-                              backgroundColor: itemBadge.bg,
-                              flexDirection: 'row',
-                              alignItems: 'center',
-                              gap: 4,
-                            }}
-                          >
-                            <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: itemBadge.color }} />
-                            <Text style={{ fontSize: 10, fontWeight: '800', color: itemBadge.color }}>
-                              {itemBadge.short}
-                            </Text>
-                          </View>
-                          <Text variant="footnote" tone="muted" style={{ fontSize: 11 }}>
-                            #{String(req.id).slice(0, 8).toUpperCase()}
-                          </Text>
-                        </View>
-                        <Text variant="subhead" tone="default" numberOfLines={1} style={{ fontWeight: '700' }}>
-                          {getSearchDisplayTitle(req)}
-                        </Text>
-                      </View>
-                      <Ionicons name="chevron-forward" size={18} color={c.textMuted} />
-                    </PressableScale>
-                  );
-                })}
-            </View>
-          )}
-
-          {/* Browse Directory CTA */}
-          <Button
-            label="Browse All Advisors Directory"
-            variant="outline"
-            style={{ marginTop: spacing.sm }}
-            onPress={() => setActiveTab('browse')}
+          <CaseTab
+            activeReq={activeReq}
+            otherRequests={myRequests.filter((r) => r.id !== activeReq.id)}
+            onBrowse={() => setActiveTab('browse')}
           />
-        </ScrollView>
+        ) : (
+          <HowItWorksTab onBrowse={() => setActiveTab('browse')} />
+        )
       ) : (
-        <ScrollView
-          contentContainerStyle={{ padding: spacing.md, paddingBottom: 120 }}
-          showsVerticalScrollIndicator={false}
-        >
-          <View
-            style={[
-              styles.caseCard,
-              { backgroundColor: c.surface, borderColor: c.border },
-              !isDark ? shadow.card : undefined,
-            ]}
-          >
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: spacing.xs }}>
-              <View
-                style={{
-                  paddingHorizontal: 10,
-                  paddingVertical: 4,
-                  borderRadius: radii.pill,
-                  backgroundColor: 'rgba(128, 0, 32, 0.1)',
-                }}
-              >
-                <Text variant="label" style={{ color: palette.burgundy, fontWeight: '800', fontSize: 11 }}>
-                  ONE SEARCH AT A TIME POLICY
-                </Text>
-              </View>
-            </View>
-
-            <Text variant="title" tone="accent" style={{ marginTop: spacing.xs, marginBottom: 4 }}>
-              Private Matchmaking Hub
-            </Text>
-            <Text variant="footnote" tone="muted" style={{ lineHeight: 20, marginBottom: spacing.md }}>
-              Find for Me pairs you with 1 dedicated, verified Match Advisor. To maintain complete discretion and dedicated individual attention, you run one confidential search at a time until your spouse is found.
-            </Text>
-
-            <View style={{ gap: spacing.sm, marginBottom: spacing.lg }}>
-              <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center', padding: spacing.sm, backgroundColor: c.surfaceAlt, borderRadius: radii.md }}>
-                <Ionicons name="person" size={22} color={palette.burgundy} />
-                <View style={{ flex: 1 }}>
-                  <Text variant="subhead" style={{ fontWeight: '700' }}>Dedicated Individual Search</Text>
-                  <Text variant="footnote" tone="muted">Your advisor dedicates focus to your criteria with zero competing requests.</Text>
-                </View>
-              </View>
-
-              <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center', padding: spacing.sm, backgroundColor: c.surfaceAlt, borderRadius: radii.md }}>
-                <Ionicons name="eye-off" size={22} color={palette.burgundy} />
-                <View style={{ flex: 1 }}>
-                  <Text variant="subhead" style={{ fontWeight: '700' }}>100% Private & Hidden</Text>
-                  <Text variant="footnote" tone="muted">Your profile is hidden from the public feed while your advisor actively searches.</Text>
-                </View>
-              </View>
-
-              <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center', padding: spacing.sm, backgroundColor: c.surfaceAlt, borderRadius: radii.md }}>
-                <Ionicons name="shield-checkmark" size={22} color={palette.burgundy} />
-                <View style={{ flex: 1 }}>
-                  <Text variant="subhead" style={{ fontWeight: '700' }}>Standard Flat £500 Fee</Text>
-                  <Text variant="footnote" tone="muted">£250 deposit to begin • £250 success fee only after your spouse is found.</Text>
-                </View>
-              </View>
-            </View>
-
-            <Button
-              label="Choose Advisor & Start Search"
-              variant="primary"
-              onPress={() => setActiveTab('browse')}
-            />
-          </View>
-        </ScrollView>
-      )
-    ) : (
-      <FlatList
-        data={advisors}
-        keyExtractor={(a) => a.id}
-        contentContainerStyle={{ padding: spacing.md, paddingBottom: 110 }}
-        showsVerticalScrollIndicator={false}
-        ListHeaderComponent={
-          <View style={{ marginBottom: spacing.lg }}>
-            {hasActiveSearch && ongoingReq ? (
-              <View
-                style={{
-                  backgroundColor: 'rgba(128, 0, 32, 0.08)',
-                  borderColor: palette.burgundy,
-                  borderWidth: 1.5,
-                  borderRadius: radii.card,
-                  padding: spacing.md,
-                  marginBottom: spacing.md,
-                }}
-              >
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                  <Ionicons name="shield-checkmark" size={18} color={palette.burgundy} />
-                  <Text variant="subhead" style={{ fontWeight: '800', color: palette.burgundy }}>
-                    Active Search Underway (1 Search Policy)
-                  </Text>
-                </View>
-                <Text variant="footnote" tone="default" style={{ lineHeight: 18, marginBottom: spacing.sm }}>
-                  You currently have an active search with {ongoingReq.advisor_name || 'your Match Advisor'}. Each member may run one private search at a time.
-                </Text>
-                <Button
-                  label="View My Active Search"
-                  variant="primary"
-                  onPress={() => setActiveTab('case')}
-                />
-              </View>
-            ) : (
-              <View
-                style={{
-                  backgroundColor: 'rgba(128, 0, 32, 0.05)',
-                  borderColor: 'rgba(128, 0, 32, 0.2)',
-                  borderWidth: 1.5,
-                  borderRadius: radii.card,
-                  padding: spacing.md,
-                  marginBottom: spacing.md,
-                }}
-              >
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                  <Ionicons name="sparkles" size={18} color={palette.burgundy} />
-                  <Text variant="subhead" style={{ fontWeight: '800', color: palette.burgundy }}>
-                    Find for Me — 1 Search at a Time
-                  </Text>
-                </View>
-                <Text variant="footnote" tone="default" style={{ lineHeight: 18, marginBottom: spacing.xs }}>
-                  Every member is paired with 1 dedicated Match Advisor for 1 search at a time. Browse accredited advisors below to start your private search.
-                </Text>
-              </View>
-            )}
-
-            {/* Flat Fee Transparency Banner */}
-            <View style={[styles.pricingCard, { backgroundColor: palette.burgundy }]}>
-              <View style={styles.badgeRow}>
-                <View style={styles.pill}>
-                  <Text variant="label" style={styles.pillText}>STANDARD PRICING</Text>
-                </View>
-                <Text variant="callout" style={styles.pricingFigure}>£500 Flat Fee</Text>
-              </View>
-              <Text variant="heading" style={styles.pricingTitle}>£250 deposit upfront • £250 on success</Text>
-              <Text variant="footnote" style={styles.pricingBody}>
-                Select a verified Match Advisor to lead your search. Your profile stays 100% private. The remaining £250 balance is only paid once we find your spouse.
-              </Text>
-            </View>
-
-            <View style={{ marginTop: spacing.md, marginBottom: spacing.xs }}>
-              <Text variant="heading" tone="default">Verified Match Advisors</Text>
-              <Text variant="footnote" tone="muted">Tap an advisor to view their full credentials, bio, and ratings</Text>
-            </View>
-          </View>
-        }
-        renderItem={({ item }) => (
-          <PressableScale
-            onPress={() => setViewingAdvisor(item)}
-            style={[styles.advisorCard, { backgroundColor: c.surface, borderColor: c.border }, !isDark ? shadow.soft : null] as any}
-          >
-            <View style={styles.advisorTopRow}>
-              <View style={styles.avatarWrap}>
-                {item.profile_photo_url ? (
-                  <Image source={{ uri: item.profile_photo_url }} style={styles.avatarImg} />
-                ) : (
-                  <View style={[styles.avatarPlaceholder, { backgroundColor: palette.burgundy }]}>
-                    <Text variant="heading" style={{ color: palette.cream }}>
-                      {item.display_name.charAt(0).toUpperCase()}
-                    </Text>
-                  </View>
-                )}
-              </View>
-
-              <View style={{ flex: 1, marginLeft: spacing.md }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <Text variant="subhead" tone="default" style={{ fontWeight: '700' }}>{item.display_name}</Text>
-                  <Ionicons name="checkmark-circle" size={16} color={c.success} />
-                </View>
-                <Text variant="footnote" tone="accent" style={{ marginTop: 2 }}>{item.headline || 'Verified Match Advisor'}</Text>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 4 }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
-                    <Ionicons name="star" size={13} color={palette.gold} />
-                    <Text variant="label" style={{ fontWeight: '700' }}>{item.rating ? Number(item.rating).toFixed(1) : 'New'}</Text>
-                  </View>
-                  {/* Only what the advisor has actually recorded - never a made-up figure. */}
-                  {item.years_experience > 0 ? (
-                    <Text variant="label" tone="muted">
-                      {item.years_experience}y exp
-                    </Text>
-                  ) : null}
-                </View>
-              </View>
-            </View>
-
-            {item.bio && (
-              <Text variant="body" tone="default" numberOfLines={2} style={{ marginTop: spacing.sm, lineHeight: 20 }}>
-                {item.bio}
-              </Text>
-            )}
-
-            {item.expertise_tags && (
-              <View style={styles.tagsRow}>
-                {item.expertise_tags.split(',').slice(0, 3).map((tag) => (
-                  <View key={tag.trim()} style={[styles.tag, { backgroundColor: c.surfaceAlt }]}>
-                    <Text variant="label" tone="muted">{tag.trim()}</Text>
-                  </View>
-                ))}
-              </View>
-            )}
-
-            <View style={[styles.cardFoot, { borderTopColor: c.border }]}>
-              <View>
-                <Text variant="label" tone="muted">FLAT FEE</Text>
-                <Text variant="callout" tone="accent" style={{ fontWeight: '700' }}>£500 (£250 dep)</Text>
-              </View>
-
-              <View style={{ flexDirection: 'row', gap: 8 }}>
-                <Button
-                  label="View Profile"
-                  variant="outline"
-                  size="sm"
-                  onPress={() => setViewingAdvisor(item)}
-                />
-                <Button
-                  label={hasActiveSearch ? 'In Progress' : 'Book Advisor'}
-                  variant={hasActiveSearch ? 'outline' : 'primary'}
-                  size="sm"
-                  onPress={() => handleBookAdvisor(item)}
-                />
-              </View>
-            </View>
-          </PressableScale>
-        )}
-          ListEmptyComponent={
-            <EmptyState
-              icon="people"
-              title="No Advisors Found"
-              message="Verified advisors will appear here shortly."
-            />
-          }
+        <BrowseTab
+          advisors={advisors}
+          hasActiveSearch={hasActiveSearch}
+          ongoingReq={ongoingReq}
+          onViewCase={() => setActiveTab('case')}
+          onOpenAdvisor={setViewingAdvisor}
+          onBookAdvisor={handleBookAdvisor}
         />
       )}
 
-      {/* ── Detailed Advisor Profile Modal ── */}
-      <Modal
-        visible={Boolean(viewingAdvisor)}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => setViewingAdvisor(null)}
-      >
-        {viewingAdvisor && (
-          <View style={[styles.modalRoot, { backgroundColor: c.bg }]}>
-            {/* Modal Header */}
-            <View style={[styles.modalHeader, { borderBottomColor: c.border }]}>
-              <Text variant="subhead" tone="default" style={{ fontWeight: '700' }}>Advisor Profile</Text>
-              <PressableScale onPress={() => setViewingAdvisor(null)} style={styles.closeBtn}>
-                <Ionicons name="close" size={24} color={c.text} />
-              </PressableScale>
-            </View>
+      <AdvisorProfileModal
+        advisor={viewingAdvisor}
+        hasActiveSearch={hasActiveSearch}
+        onClose={() => setViewingAdvisor(null)}
+        onBook={handleBookAdvisor}
+      />
+    </View>
+  );
+}
 
-            <ScrollView contentContainerStyle={{ padding: spacing.lg, paddingBottom: 120 }}>
-              {/* Profile Top Hero */}
-              <View style={{ alignItems: 'center', marginBottom: spacing.lg }}>
-                <View style={styles.modalAvatarWrap}>
-                  {viewingAdvisor.profile_photo_url ? (
-                    <Image source={{ uri: viewingAdvisor.profile_photo_url }} style={styles.avatarImg} />
-                  ) : (
-                    <View style={[styles.avatarPlaceholder, { backgroundColor: palette.burgundy }]}>
-                      <Text variant="display" style={{ color: palette.cream }}>
-                        {viewingAdvisor.display_name.charAt(0).toUpperCase()}
-                      </Text>
-                    </View>
-                  )}
-                </View>
+// ── Header ───────────────────────────────────────────────────────────────────
 
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: spacing.sm }}>
-                  <Text variant="heading" tone="default" style={{ fontWeight: '800' }}>{viewingAdvisor.display_name}</Text>
-                  <Ionicons name="checkmark-circle" size={20} color={c.success} />
-                </View>
+function Header({
+  hasActiveSearch,
+  ongoingReq,
+}: {
+  hasActiveSearch: boolean;
+  ongoingReq: MatchAdvisorRequest | null;
+}) {
+  const { c } = useTheme();
+  const needsAction = !!ongoingReq && getSearchStatusConfig(ongoingReq.status).needsAction;
 
-                <Text variant="subhead" tone="accent" style={{ marginTop: 2, textAlign: 'center' }}>
-                  {viewingAdvisor.headline || 'Private Matchmaking Specialist'}
+  return (
+    <View style={styles.header}>
+      <View style={styles.headerTop}>
+        <Text variant="title" tone="accent">Find for Me</Text>
+        <View
+          style={[
+            styles.policyPill,
+            { backgroundColor: needsAction ? 'rgba(199, 159, 94, 0.18)' : c.accentFaint },
+          ]}
+        >
+          {needsAction ? <Ionicons name="mail-unread" size={11} color={palette.gold} /> : null}
+          <Text
+            variant="label"
+            style={{ fontSize: 10, color: needsAction ? palette.burgundyDeep : c.accent }}
+          >
+            {needsAction ? 'Offer to review' : hasActiveSearch ? 'Search open' : 'One search at a time'}
+          </Text>
+        </View>
+      </View>
+      <Text variant="footnote" tone="muted">Personal matchmaking, from a dedicated advisor</Text>
+    </View>
+  );
+}
+
+function Segment({
+  label,
+  active,
+  dotColor,
+  onPress,
+}: {
+  label: string;
+  active: boolean;
+  dotColor?: string;
+  onPress: () => void;
+}) {
+  const { c, isDark } = useTheme();
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityState={{ selected: active }}
+      style={[
+        styles.segmentBtn,
+        { backgroundColor: active ? palette.burgundy : c.surfaceAlt, borderColor: active ? palette.burgundy : c.borderStrong },
+        !isDark && shadow.soft,
+      ]}
+    >
+      <View style={styles.segmentInner}>
+        {dotColor ? <View style={[styles.segmentDot, { backgroundColor: dotColor }]} /> : null}
+        <Text variant="subhead" style={{ fontWeight: '700', color: active ? palette.cream : c.text }}>
+          {label}
+        </Text>
+      </View>
+    </Pressable>
+  );
+}
+
+// ── Shared pieces ────────────────────────────────────────────────────────────
+
+/** Dot + label, coloured per-status. The one place a request's status becomes words. */
+function StatusChip({ status, size = 'md' }: { status: string; size?: 'sm' | 'md' }) {
+  const cfg = getSearchStatusConfig(status);
+  const small = size === 'sm';
+  return (
+    <View style={[styles.statusChip, { backgroundColor: cfg.bg }]}>
+      <View style={[styles.statusDot, { backgroundColor: cfg.color }]} />
+      <Text variant="label" style={{ fontSize: small ? 9.5 : 10.5, color: cfg.color }}>
+        {small ? cfg.short : cfg.label}
+      </Text>
+    </View>
+  );
+}
+
+/** The flat-fee structure, shown consistently wherever a price is quoted. */
+function FeeBreakdown({ tone = 'surface' }: { tone?: 'surface' | 'brand' }) {
+  const { c } = useTheme();
+  const onBrand = tone === 'brand';
+  return (
+    <View
+      style={[
+        styles.feeCard,
+        onBrand ? { backgroundColor: palette.burgundy } : { backgroundColor: c.surfaceAlt, borderColor: c.border, borderWidth: StyleSheet.hairlineWidth },
+      ]}
+    >
+      <View style={styles.feeHead}>
+        <Text variant="footnote" style={{ color: onBrand ? 'rgba(245,240,230,0.75)' : c.textSubtle }}>
+          A standard flat fee
+        </Text>
+        <Text variant="heading" style={{ color: onBrand ? palette.cream : c.text }}>£500</Text>
+      </View>
+      <View style={[styles.feeDivider, { backgroundColor: onBrand ? 'rgba(245,240,230,0.18)' : c.border }]} />
+      <View style={styles.feeRow}>
+        <Text variant="callout" style={{ color: onBrand ? 'rgba(245,240,230,0.9)' : c.textMuted }}>To begin your search</Text>
+        <Text variant="callout" style={{ fontWeight: '700', color: onBrand ? palette.cream : c.text }}>£250</Text>
+      </View>
+      <View style={styles.feeRow}>
+        <Text variant="callout" style={{ color: onBrand ? 'rgba(245,240,230,0.9)' : c.textMuted }}>Only once your spouse is found</Text>
+        <Text variant="callout" style={{ fontWeight: '700', color: onBrand ? palette.cream : c.text }}>£250</Text>
+      </View>
+    </View>
+  );
+}
+
+/** The four-step search journey, computed from what has actually happened. */
+function ProgressStepper({ req }: { req: MatchAdvisorRequest }) {
+  const { c } = useTheme();
+  const ended = req.status === 'cancelled' || req.status === 'expired';
+  // Each step is DONE once it's actually finished, CURRENT while it's under
+  // way, never the other way round - "sourcing has started" is not the same
+  // fact as "sourcing is done", and status 'active' means the former.
+  const depositPaid = !!req.deposit_paid;
+  const matchedDone = ['accepted', 'active', 'completed'].includes(req.status);
+  const sourcingDone = req.status === 'completed';
+  const sourcingCurrent = req.status === 'active';
+  const spouseFound = req.status === 'completed';
+
+  type StepState = 'done' | 'current' | 'pending';
+  const state = (done: boolean, current: boolean): StepState => (done ? 'done' : ended ? 'pending' : current ? 'current' : 'pending');
+
+  const steps: { label: string; sub: string; state: StepState }[] = [
+    { label: 'Deposit', sub: depositPaid ? '£250 paid' : '£250 due', state: state(depositPaid, !depositPaid) },
+    { label: 'Matched', sub: matchedDone ? 'Engaged' : 'Pending', state: state(matchedDone, depositPaid && !matchedDone) },
+    { label: 'Sourcing', sub: sourcingDone ? 'Complete' : sourcingCurrent ? 'Underway' : 'Not started', state: state(sourcingDone, sourcingCurrent) },
+    // No distinct "current" moment for this step - the API has nothing between
+    // "sourcing" and "completed" to say a match is pending confirmation.
+    { label: 'Spouse', sub: spouseFound ? 'Found' : 'Final £250', state: state(spouseFound, false) },
+  ];
+
+  return (
+    <View style={styles.stepperWrap}>
+      {steps.map((s, i) => (
+        <View key={s.label} style={styles.stepUnit}>
+          <View style={styles.stepItem}>
+            <View
+              style={[
+                styles.stepDot,
+                s.state === 'done' && { backgroundColor: c.success },
+                s.state === 'current' && { backgroundColor: palette.burgundy },
+                s.state === 'pending' && { backgroundColor: c.surfaceAlt, borderWidth: 1.5, borderColor: c.border },
+              ]}
+            >
+              {s.state === 'done' ? (
+                <Ionicons name="checkmark" size={13} color="#FFF" />
+              ) : (
+                <Text variant="label" style={{ fontSize: 11, color: s.state === 'current' ? palette.cream : c.textSubtle }}>
+                  {i + 1}
                 </Text>
-
-                {/* Rating Badge */}
-                <View style={[styles.ratingBadge, { backgroundColor: c.surfaceAlt, borderColor: c.border }]}>
-                  {viewingAdvisor.reviews_count > 0 ? (
-                    <>
-                      <Ionicons name="star" size={16} color={palette.gold} />
-                      <Text variant="subhead" tone="default" style={{ fontWeight: '800' }}>
-                        {viewingAdvisor.rating.toFixed(1)}
-                      </Text>
-                      <Text variant="footnote" tone="muted">
-                        ({viewingAdvisor.reviews_count} verified {viewingAdvisor.reviews_count === 1 ? 'review' : 'reviews'})
-                      </Text>
-                    </>
-                  ) : (
-                    <>
-                      <Ionicons name="shield-checkmark" size={16} color={palette.burgundy} />
-                      <Text variant="subhead" tone="accent" style={{ fontWeight: '800' }}>
-                        New Advisor
-                      </Text>
-                      <Text variant="footnote" tone="muted">
-                        (0 verified reviews)
-                      </Text>
-                    </>
-                  )}
-                </View>
-              </View>
-
-              {/* Key Credentials Strip */}
-              <View style={[styles.statsStrip, { backgroundColor: c.surface, borderColor: c.border }, !isDark ? shadow.soft : undefined]}>
-                <View style={styles.statCol}>
-                  <Text variant="label" tone="muted">LOCATION</Text>
-                  <Text variant="subhead" tone="default" style={{ fontWeight: '700', marginTop: 2 }}>
-                    {viewingAdvisor.city || 'London, UK'}
-                  </Text>
-                </View>
-                <View style={styles.statDivider} />
-                <View style={styles.statCol}>
-                  <Text variant="label" tone="muted">EXPERIENCE</Text>
-                  <Text variant="subhead" tone="default" style={{ fontWeight: '700', marginTop: 2 }}>
-                    {viewingAdvisor.years_experience > 0 ? `${viewingAdvisor.years_experience} Years` : 'New advisor'}
-                  </Text>
-                </View>
-                <View style={styles.statDivider} />
-                <View style={styles.statCol}>
-                  <Text variant="label" tone="muted">RESPONSE</Text>
-                  <Text variant="subhead" tone="default" style={{ fontWeight: '700', marginTop: 2 }}>
-                    {viewingAdvisor.response_time_hours || 24} Hours
-                  </Text>
-                </View>
-              </View>
-
-              {/* About & Bio */}
-              <View style={{ marginTop: spacing.lg }}>
-                <Text variant="heading" tone="default" style={{ marginBottom: spacing.xs }}>About Advisor</Text>
-                <Text variant="body" tone="default" style={{ lineHeight: 24 }}>
-                  {viewingAdvisor.bio || 'Dedicated Match Advisor committed to facilitating values-aligned, respectful, and confidential introductions.'}
-                </Text>
-              </View>
-
-              {/* Service Areas & Specialisms */}
-              {(viewingAdvisor.service_areas || viewingAdvisor.expertise_tags) && (
-                <View style={{ marginTop: spacing.lg }}>
-                  <Text variant="heading" tone="default" style={{ marginBottom: spacing.xs }}>Specialisms & Coverage</Text>
-                  {viewingAdvisor.service_areas && (
-                    <Text variant="footnote" tone="muted" style={{ marginBottom: spacing.xs }}>
-                      Coverage Areas: {viewingAdvisor.service_areas}
-                    </Text>
-                  )}
-                  {viewingAdvisor.expertise_tags && (
-                    <View style={styles.tagsRow}>
-                      {viewingAdvisor.expertise_tags.split(',').map((tag) => (
-                        <View key={tag.trim()} style={[styles.tag, { backgroundColor: c.surfaceAlt }]}>
-                          <Text variant="label" tone="default">{tag.trim()}</Text>
-                        </View>
-                      ))}
-                    </View>
-                  )}
-                </View>
               )}
+            </View>
+            <Text variant="label" style={{ fontSize: 10, textAlign: 'center', color: s.state === 'pending' ? c.textSubtle : c.text }}>
+              {s.label}
+            </Text>
+            <Text variant="footnote" tone="muted" style={{ fontSize: 10 }} numberOfLines={1}>
+              {s.sub}
+            </Text>
+          </View>
+          {i < steps.length - 1 ? (
+            <View style={[styles.stepLine, { backgroundColor: steps[i + 1].state !== 'pending' || s.state === 'done' ? c.success : c.border }]} />
+          ) : null}
+        </View>
+      ))}
+    </View>
+  );
+}
 
-              {/* Transparent Pricing Card */}
-              <View style={[styles.pricingCard, { backgroundColor: palette.burgundy, marginTop: spacing.xl }]}>
-                <View style={styles.badgeRow}>
-                  <Text variant="label" style={styles.pillText}>MATCHMAKING PRICING</Text>
-                  <Text variant="callout" style={styles.pricingFigure}>£500 Flat Fee</Text>
-                </View>
-                <Text variant="heading" style={styles.pricingTitle}>Guaranteed Flat Pricing</Text>
-                <Text variant="footnote" style={styles.pricingBody}>
-                  • £250 upfront deposit secures your advisor and initiates search.
+// ── Case tab ─────────────────────────────────────────────────────────────────
 
-                  • Remaining £250 is only charged once your spouse / partner is found.
+function CaseTab({
+  activeReq,
+  otherRequests,
+  onBrowse,
+}: {
+  activeReq: MatchAdvisorRequest;
+  otherRequests: MatchAdvisorRequest[];
+  onBrowse: () => void;
+}) {
+  const router = useRouter();
+  const { c, isDark } = useTheme();
+  const cfg = getSearchStatusConfig(activeReq.status);
+  const ended = ['cancelled', 'completed', 'expired'].includes(activeReq.status);
 
-                  • Your profile is 100% private and hidden from public search.
-                </Text>
+  const bannerCopy: Partial<Record<MatchAdvisorRequest['status'], { icon: keyof typeof Ionicons.glyphMap; text: string }>> = {
+    cancelled: { icon: 'information-circle', text: 'This search was cancelled. Any deposit was settled according to the Match Advisor terms.' },
+    completed: { icon: 'heart-circle', text: 'Congratulations - this search concluded successfully.' },
+    expired: { icon: 'time', text: 'This search period has ended and is no longer active.' },
+  };
+  const banner = bannerCopy[activeReq.status];
+
+  return (
+    <ScrollView contentContainerStyle={styles.scrollBody} showsVerticalScrollIndicator={false}>
+      {activeReq.status === 'offered' ? (
+        <View style={[styles.offerBanner, { borderColor: palette.gold }]}>
+          <View style={styles.offerBannerIcon}>
+            <Ionicons name="mail-unread" size={20} color={palette.burgundyDeep} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text variant="subhead" style={{ fontWeight: '800', color: palette.burgundyDeep }}>
+              {activeReq.advisor_name ? `${activeReq.advisor_name} sent you an offer` : 'You have a new offer'}
+            </Text>
+            <Text variant="footnote" style={{ color: palette.burgundyDeep, marginTop: 2, lineHeight: 17 }}>
+              Review the terms and accept to begin your search.
+            </Text>
+          </View>
+        </View>
+      ) : null}
+
+      <View style={[styles.card, { backgroundColor: c.surface, borderColor: c.border }, !isDark && shadow.card]}>
+        <View style={styles.caseTopRow}>
+          <StatusChip status={activeReq.status} />
+          <Text variant="footnote" tone="muted">#{String(activeReq.id).slice(0, 8).toUpperCase()}</Text>
+        </View>
+
+        <Text variant="heading" style={{ marginTop: spacing.sm }}>{getSearchDisplayTitle(activeReq)}</Text>
+        <Text variant="footnote" tone="muted" style={{ marginTop: 2, marginBottom: spacing.md }}>
+          Handled in confidence by a dedicated Match Advisor
+        </Text>
+
+        {banner ? (
+          <View style={[styles.noticeRow, { backgroundColor: c.surfaceAlt, borderColor: c.border }]}>
+            <Ionicons name={banner.icon} size={17} color={cfg.color} />
+            <Text variant="footnote" style={{ flex: 1, color: c.textMuted, lineHeight: 18 }}>{banner.text}</Text>
+          </View>
+        ) : null}
+
+        {activeReq.advisor_name ? (
+          <View style={[styles.advisorStrip, { backgroundColor: c.surfaceAlt, borderColor: c.border }]}>
+            {activeReq.advisor_photo_url ? (
+              <Image source={{ uri: activeReq.advisor_photo_url }} style={styles.advisorStripAvatar} contentFit="cover" />
+            ) : (
+              <View style={[styles.advisorStripAvatar, styles.advisorStripAvatarFallback]}>
+                <Ionicons name="shield-checkmark" size={22} color={palette.cream} />
               </View>
-            </ScrollView>
-
-            {/* Sticky Bottom CTA */}
-            <View style={[styles.modalFoot, { backgroundColor: c.surface, borderTopColor: c.border }]}>
-              <View>
-                <Text variant="label" tone="muted">DUE TODAY</Text>
-                <Text variant="subhead" tone="accent" style={{ fontWeight: '800' }}>£250 Deposit</Text>
+            )}
+            <View style={{ flex: 1 }}>
+              <View style={styles.rowGap}>
+                <Text variant="subhead" style={{ fontWeight: '700' }}>{activeReq.advisor_name}</Text>
+                <Ionicons name="checkmark-circle" size={15} color={c.success} />
               </View>
-              <Button
-                label={hasActiveSearch ? 'Case Already Active' : `Book ${viewingAdvisor.display_name.split(' ')[0]}`}
-                variant={hasActiveSearch ? 'outline' : 'primary'}
-                style={{ flex: 1, marginLeft: spacing.md }}
-                onPress={() => handleBookAdvisor(viewingAdvisor)}
-              />
+              <Text variant="footnote" tone="accent" style={{ marginTop: 1 }}>
+                {ended ? 'Your Match Advisor' : activeReq.deposit_paid ? 'Deposit secured' : 'Deposit due'}
+              </Text>
             </View>
           </View>
-        )}
-      </Modal>
+        ) : null}
+
+        <View style={styles.actionRow}>
+          {ended ? (
+            <Button label="Book a New Search" variant="primary" style={styles.flex1} onPress={onBrowse} />
+          ) : activeReq.status === 'offered' || activeReq.selected_offer_id == null ? (
+            <Button
+              label="Review & Open Case"
+              variant="primary"
+              style={styles.flex1}
+              onPress={() => router.push({ pathname: '/(app)/requests/[id]', params: { id: activeReq.id } } as any)}
+            />
+          ) : (
+            <Button
+              label="Message Advisor"
+              variant="primary"
+              style={styles.flex1}
+              onPress={() =>
+                router.push({
+                  pathname: '/advisor-chat/[offerId]',
+                  params: {
+                    offerId: String(activeReq.selected_offer_id),
+                    name: activeReq.advisor_name || '',
+                    photo: activeReq.advisor_photo_url || '',
+                  },
+                } as any)
+              }
+            />
+          )}
+          {ended ? null : (
+            <Button
+              label="Case Details"
+              variant="outline"
+              style={styles.flex1}
+              onPress={() => router.push({ pathname: '/(app)/requests/[id]', params: { id: activeReq.id } } as any)}
+            />
+          )}
+        </View>
+      </View>
+
+      {!ended ? (
+        <View style={[styles.card, { backgroundColor: c.surface, borderColor: c.border }, !isDark && shadow.soft]}>
+          <Text variant="subhead" style={{ fontWeight: '700', marginBottom: spacing.sm }}>Search progress</Text>
+          <ProgressStepper req={activeReq} />
+        </View>
+      ) : null}
+
+      <View style={[styles.card, { backgroundColor: c.surface, borderColor: c.border }, !isDark && shadow.soft]}>
+        <Text variant="subhead" style={{ fontWeight: '700', marginBottom: spacing.xs }}>Preferences & criteria</Text>
+        <Text variant="footnote" tone="muted" style={{ lineHeight: 19 }}>
+          {activeReq.partner_preferences || 'Shared with your advisor in confidence.'}
+        </Text>
+        {activeReq.preferred_location ? (
+          <View style={[styles.rowGap, { marginTop: spacing.sm }]}>
+            <Ionicons name="location-outline" size={15} color={c.accent} />
+            <Text variant="footnote" style={{ fontWeight: '600' }}>Preferred location: {activeReq.preferred_location}</Text>
+          </View>
+        ) : null}
+      </View>
+
+      {otherRequests.length > 0 ? (
+        <View style={{ marginBottom: spacing.md }}>
+          <Text variant="label" tone="muted" style={{ marginBottom: spacing.xs }}>Search history</Text>
+          {otherRequests.map((req) => (
+            <PressableScale
+              key={req.id}
+              onPress={() => router.push({ pathname: '/(app)/requests/[id]', params: { id: req.id } } as any)}
+              style={{ ...styles.historyRow, backgroundColor: c.surface, borderColor: c.border, ...(isDark ? null : shadow.soft) }}
+            >
+              <View style={{ flex: 1, marginRight: spacing.md }}>
+                <StatusChip status={req.status} size="sm" />
+                <Text variant="subhead" tone="default" numberOfLines={1} style={{ fontWeight: '700', marginTop: 6 }}>
+                  {getSearchDisplayTitle(req)}
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={c.textSubtle} />
+            </PressableScale>
+          ))}
+        </View>
+      ) : null}
+
+      <Button label="Browse All Advisors" variant="outline" onPress={onBrowse} />
+    </ScrollView>
+  );
+}
+
+function HowItWorksTab({ onBrowse }: { onBrowse: () => void }) {
+  const { c, isDark } = useTheme();
+  const points: { icon: keyof typeof Ionicons.glyphMap; title: string; body: string }[] = [
+    { icon: 'person', title: 'One dedicated advisor', body: 'Your search has their full attention - no competing requests.' },
+    { icon: 'eye-off', title: 'Completely private', body: 'Your profile is hidden from the public feed while your advisor searches.' },
+    { icon: 'shield-checkmark', title: 'A clear flat fee', body: 'No surprises - the breakdown below is the whole cost.' },
+  ];
+  return (
+    <ScrollView contentContainerStyle={styles.scrollBody} showsVerticalScrollIndicator={false}>
+      <View style={[styles.card, { backgroundColor: c.surface, borderColor: c.border }, !isDark && shadow.card]}>
+        <Text variant="title" tone="accent" style={{ marginBottom: 4 }}>Private matchmaking</Text>
+        <Text variant="footnote" tone="muted" style={{ lineHeight: 20, marginBottom: spacing.lg }}>
+          Find for Me pairs you with one verified Match Advisor. To give your search real attention and complete discretion, one confidential search runs at a time, until your spouse is found.
+        </Text>
+
+        <View style={{ gap: spacing.sm, marginBottom: spacing.lg }}>
+          {points.map((p) => (
+            <View key={p.title} style={[styles.pointRow, { backgroundColor: c.surfaceAlt }]}>
+              <Ionicons name={p.icon} size={20} color={palette.burgundy} />
+              <View style={{ flex: 1 }}>
+                <Text variant="subhead" style={{ fontWeight: '700' }}>{p.title}</Text>
+                <Text variant="footnote" tone="muted" style={{ marginTop: 1 }}>{p.body}</Text>
+              </View>
+            </View>
+          ))}
+        </View>
+
+        <FeeBreakdown />
+        <Button label="Choose an Advisor" variant="primary" style={{ marginTop: spacing.lg }} onPress={onBrowse} />
+      </View>
+    </ScrollView>
+  );
+}
+
+// ── Browse tab ───────────────────────────────────────────────────────────────
+
+function BrowseTab({
+  advisors,
+  hasActiveSearch,
+  ongoingReq,
+  onViewCase,
+  onOpenAdvisor,
+  onBookAdvisor,
+}: {
+  advisors: MatchAdvisorProfile[];
+  hasActiveSearch: boolean;
+  ongoingReq: MatchAdvisorRequest | null;
+  onViewCase: () => void;
+  onOpenAdvisor: (a: MatchAdvisorProfile) => void;
+  onBookAdvisor: (a: MatchAdvisorProfile) => void;
+}) {
+  const { c, isDark } = useTheme();
+
+  return (
+    <FlatList
+      data={advisors}
+      keyExtractor={(a) => a.id}
+      contentContainerStyle={styles.scrollBody}
+      showsVerticalScrollIndicator={false}
+      ListHeaderComponent={
+        <View style={{ marginBottom: spacing.lg }}>
+          {hasActiveSearch && ongoingReq ? (
+            <View style={[styles.notice, { backgroundColor: c.accentFaint, borderColor: palette.burgundy }]}>
+              <View style={styles.rowGap}>
+                <Ionicons name="shield-checkmark" size={17} color={palette.burgundy} />
+                <Text variant="subhead" style={{ fontWeight: '700', color: palette.burgundy }}>A search is already open</Text>
+              </View>
+              <Text variant="footnote" style={{ lineHeight: 18, marginTop: 4, marginBottom: spacing.sm, color: c.text }}>
+                You're working with {ongoingReq.advisor_name || 'your Match Advisor'}. One private search runs at a time.
+              </Text>
+              <Button label="View My Search" variant="primary" onPress={onViewCase} />
+            </View>
+          ) : (
+            <View style={[styles.notice, { backgroundColor: c.surfaceAlt, borderColor: c.border }]}>
+              <Text variant="subhead" style={{ fontWeight: '700' }}>Every advisor here is verified</Text>
+              <Text variant="footnote" tone="muted" style={{ lineHeight: 18, marginTop: 4 }}>
+                Tap an advisor to see their credentials, or book directly to begin your private search.
+              </Text>
+            </View>
+          )}
+
+          <FeeBreakdown tone="brand" />
+
+          <View style={{ marginTop: spacing.md }}>
+            <Text variant="heading">Verified Match Advisors</Text>
+            <Text variant="footnote" tone="muted">Tap an advisor for their full credentials and reviews</Text>
+          </View>
+        </View>
+      }
+      renderItem={({ item }) => (
+        <AdvisorCard
+          advisor={item}
+          hasActiveSearch={hasActiveSearch}
+          onOpen={() => onOpenAdvisor(item)}
+          onBook={() => onBookAdvisor(item)}
+        />
+      )}
+      ListEmptyComponent={
+        <EmptyState icon="people" title="No advisors yet" message="Verified advisors will appear here shortly." />
+      }
+    />
+  );
+}
+
+function AdvisorCard({
+  advisor,
+  hasActiveSearch,
+  onOpen,
+  onBook,
+}: {
+  advisor: MatchAdvisorProfile;
+  hasActiveSearch: boolean;
+  onOpen: () => void;
+  onBook: () => void;
+}) {
+  const { c, isDark } = useTheme();
+  const isNew = advisor.reviews_count <= 0;
+
+  return (
+    <PressableScale
+      onPress={onOpen}
+      style={{ ...styles.card, backgroundColor: c.surface, borderColor: c.border, ...(isDark ? null : shadow.soft) }}
+    >
+      <View style={styles.advisorTopRow}>
+        <Avatar name={advisor.display_name} photoUrl={advisor.profile_photo_url} size={58} />
+        <View style={{ flex: 1, marginLeft: spacing.md }}>
+          <View style={styles.rowGap}>
+            <Text variant="subhead" style={{ fontWeight: '700' }}>{advisor.display_name}</Text>
+            <Ionicons name="checkmark-circle" size={15} color={c.success} />
+          </View>
+          <Text variant="footnote" tone="accent" style={{ marginTop: 2 }}>{advisor.headline || 'Verified Match Advisor'}</Text>
+          <View style={[styles.rowGap, { marginTop: 4, gap: 10 }]}>
+            {isNew ? (
+              <Text variant="label" tone="accent" style={{ fontSize: 10 }}>New advisor</Text>
+            ) : (
+              <View style={styles.rowGap}>
+                <Ionicons name="star" size={13} color={palette.gold} />
+                <Text variant="label" style={{ fontSize: 10 }}>{Number(advisor.rating).toFixed(1)} ({advisor.reviews_count})</Text>
+              </View>
+            )}
+            {advisor.years_experience > 0 ? (
+              <Text variant="label" tone="muted" style={{ fontSize: 10 }}>{advisor.years_experience}y experience</Text>
+            ) : null}
+          </View>
+        </View>
+      </View>
+
+      {advisor.bio ? (
+        <Text variant="callout" numberOfLines={2} style={{ marginTop: spacing.sm, lineHeight: 20 }}>{advisor.bio}</Text>
+      ) : null}
+
+      {advisor.expertise_tags ? (
+        <View style={styles.tagsRow}>
+          {advisor.expertise_tags.split(',').slice(0, 3).map((tag) => (
+            <View key={tag.trim()} style={[styles.tag, { backgroundColor: c.surfaceAlt }]}>
+              <Text variant="label" tone="muted" style={{ fontSize: 9.5 }}>{tag.trim()}</Text>
+            </View>
+          ))}
+        </View>
+      ) : null}
+
+      <View style={[styles.cardFoot, { borderTopColor: c.border }]}>
+        <View>
+          <Text variant="label" tone="muted" style={{ fontSize: 9.5 }}>Flat fee</Text>
+          <Text variant="callout" tone="accent" style={{ fontWeight: '700' }}>£500 (£250 to begin)</Text>
+        </View>
+        <View style={styles.rowGap}>
+          <Button label="Profile" variant="outline" size="sm" onPress={onOpen} />
+          <Button label={hasActiveSearch ? 'In progress' : 'Book'} variant={hasActiveSearch ? 'outline' : 'primary'} size="sm" onPress={onBook} />
+        </View>
+      </View>
+    </PressableScale>
+  );
+}
+
+function Avatar({ name, photoUrl, size }: { name: string; photoUrl?: string | null; size: number }) {
+  return photoUrl ? (
+    <Image source={{ uri: photoUrl }} style={{ width: size, height: size, borderRadius: size / 2 }} contentFit="cover" />
+  ) : (
+    <View style={[styles.avatarFallback, { width: size, height: size, borderRadius: size / 2 }]}>
+      <Text variant={size > 70 ? 'display' : 'heading'} style={{ color: palette.cream }}>
+        {name.charAt(0).toUpperCase()}
+      </Text>
+    </View>
+  );
+}
+
+// ── Advisor profile modal ────────────────────────────────────────────────────
+
+function AdvisorProfileModal({
+  advisor,
+  hasActiveSearch,
+  onClose,
+  onBook,
+}: {
+  advisor: MatchAdvisorProfile | null;
+  hasActiveSearch: boolean;
+  onClose: () => void;
+  onBook: (a: MatchAdvisorProfile) => void;
+}) {
+  const { c, isDark } = useTheme();
+  if (!advisor) return null;
+  const hasReviews = advisor.reviews_count > 0;
+
+  return (
+    <Modal visible={Boolean(advisor)} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+      <View style={[styles.modalRoot, { backgroundColor: c.bg }]}>
+        <View style={[styles.modalHeader, { borderBottomColor: c.border }]}>
+          <Text variant="subhead" style={{ fontWeight: '700' }}>Advisor profile</Text>
+          <PressableScale onPress={onClose} style={styles.closeBtn} accessibilityLabel="Close">
+            <Ionicons name="close" size={24} color={c.text} />
+          </PressableScale>
+        </View>
+
+        <ScrollView contentContainerStyle={styles.modalBody}>
+          <View style={{ alignItems: 'center', marginBottom: spacing.lg }}>
+            <Avatar name={advisor.display_name} photoUrl={advisor.profile_photo_url} size={96} />
+
+            <View style={[styles.rowGap, { marginTop: spacing.sm }]}>
+              <Text variant="heading">{advisor.display_name}</Text>
+              <Ionicons name="checkmark-circle" size={19} color={c.success} />
+            </View>
+            <Text variant="subhead" tone="accent" style={{ marginTop: 2, textAlign: 'center' }}>
+              {advisor.headline || 'Private Matchmaking Specialist'}
+            </Text>
+
+            <View style={[styles.ratingBadge, { backgroundColor: c.surfaceAlt, borderColor: c.border }]}>
+              {hasReviews ? (
+                <>
+                  <Ionicons name="star" size={16} color={palette.gold} />
+                  <Text variant="subhead" style={{ fontWeight: '800' }}>{Number(advisor.rating).toFixed(1)}</Text>
+                  <Text variant="footnote" tone="muted">
+                    ({advisor.reviews_count} {advisor.reviews_count === 1 ? 'review' : 'reviews'})
+                  </Text>
+                </>
+              ) : (
+                <>
+                  <Ionicons name="shield-checkmark" size={16} color={palette.burgundy} />
+                  <Text variant="subhead" tone="accent" style={{ fontWeight: '800' }}>New advisor</Text>
+                </>
+              )}
+            </View>
+          </View>
+
+          <View style={[styles.statsStrip, { backgroundColor: c.surface, borderColor: c.border }, !isDark && shadow.soft]}>
+            <StatCol label="Location" value={advisor.city || 'United Kingdom'} />
+            <View style={[styles.statDivider, { backgroundColor: c.border }]} />
+            <StatCol label="Experience" value={advisor.years_experience > 0 ? `${advisor.years_experience} years` : 'New advisor'} />
+            <View style={[styles.statDivider, { backgroundColor: c.border }]} />
+            <StatCol label="Response" value={`${advisor.response_time_hours || 24}h`} />
+          </View>
+
+          <View style={{ marginTop: spacing.lg }}>
+            <Text variant="heading" style={{ marginBottom: spacing.xs }}>About</Text>
+            <Text variant="body" style={{ lineHeight: 24 }}>
+              {advisor.bio || 'A dedicated Match Advisor, committed to values-aligned, respectful and confidential introductions.'}
+            </Text>
+          </View>
+
+          {advisor.service_areas || advisor.expertise_tags ? (
+            <View style={{ marginTop: spacing.lg }}>
+              <Text variant="heading" style={{ marginBottom: spacing.xs }}>Coverage & specialisms</Text>
+              {advisor.service_areas ? (
+                <Text variant="footnote" tone="muted" style={{ marginBottom: spacing.xs }}>{advisor.service_areas}</Text>
+              ) : null}
+              {advisor.expertise_tags ? (
+                <View style={styles.tagsRow}>
+                  {advisor.expertise_tags.split(',').map((tag) => (
+                    <View key={tag.trim()} style={[styles.tag, { backgroundColor: c.surfaceAlt }]}>
+                      <Text variant="label" style={{ fontSize: 10 }}>{tag.trim()}</Text>
+                    </View>
+                  ))}
+                </View>
+              ) : null}
+            </View>
+          ) : null}
+
+          <View style={{ marginTop: spacing.xl }}>
+            <FeeBreakdown tone="brand" />
+          </View>
+        </ScrollView>
+
+        <View style={[styles.modalFoot, { backgroundColor: c.surface, borderTopColor: c.border }]}>
+          <View>
+            <Text variant="label" tone="muted" style={{ fontSize: 9.5 }}>Due today</Text>
+            <Text variant="subhead" tone="accent" style={{ fontWeight: '800' }}>£250 deposit</Text>
+          </View>
+          <Button
+            label={hasActiveSearch ? 'Search already open' : `Book ${advisor.display_name.split(' ')[0]}`}
+            variant={hasActiveSearch ? 'outline' : 'primary'}
+            style={{ flex: 1, marginLeft: spacing.md }}
+            onPress={() => onBook(advisor)}
+          />
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+function StatCol({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={styles.statCol}>
+      <Text variant="label" tone="muted" style={{ fontSize: 9.5 }}>{label}</Text>
+      <Text variant="subhead" style={{ fontWeight: '700', marginTop: 2 }} numberOfLines={1}>{value}</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
+  flex1: { flex: 1 },
+  rowGap: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+
   header: { paddingHorizontal: spacing.lg, paddingBottom: spacing.sm },
-  pricingCard: {
-    padding: spacing.lg,
-    borderRadius: radii.card,
-    marginBottom: spacing.md,
-  },
-  badgeRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.xs,
-  },
-  pill: {
-    backgroundColor: 'rgba(255,255,255,0.18)',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: radii.pill,
-  },
-  pillText: {
-    color: palette.gold,
-    fontWeight: '800',
-    letterSpacing: 0.6,
-  },
-  pricingFigure: {
-    color: palette.gold,
-    fontWeight: '700',
-  },
-  pricingTitle: {
-    color: palette.cream,
-    fontWeight: '700',
-    marginTop: spacing.xs,
-    marginBottom: spacing.xs,
-    lineHeight: 24,
-  },
-  pricingBody: {
-    color: 'rgba(245, 240, 230, 0.88)',
-    lineHeight: 20,
-  },
-  activeCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: spacing.md,
-    borderRadius: radii.card,
-    borderWidth: StyleSheet.hairlineWidth,
-    marginBottom: spacing.sm,
-  },
-  advisorCard: {
-    padding: spacing.md,
-    borderRadius: radii.card,
-    borderWidth: StyleSheet.hairlineWidth,
-    marginBottom: spacing.md,
-  },
-  advisorTopRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  avatarWrap: {
-    width: 58,
-    height: 58,
-    borderRadius: 29,
-    overflow: 'hidden',
-  },
-  avatarImg: {
-    width: '100%',
-    height: '100%',
-  },
-  avatarPlaceholder: {
-    width: '100%',
-    height: '100%',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  tagsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-    marginTop: spacing.sm,
-  },
-  tag: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: radii.pill,
-  },
-  cardFoot: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: spacing.md,
-    paddingTop: spacing.sm,
-    borderTopWidth: StyleSheet.hairlineWidth,
-  },
-  modalRoot: {
-    flex: 1,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  closeBtn: {
-    padding: 4,
-  },
-  modalAvatarWrap: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    overflow: 'hidden',
-  },
-  ratingBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: radii.pill,
-    borderWidth: StyleSheet.hairlineWidth,
-    marginTop: spacing.sm,
-  },
-  statsStrip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-around',
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.sm,
-    borderRadius: radii.card,
-    borderWidth: StyleSheet.hairlineWidth,
-  },
-  statCol: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  statDivider: {
-    width: 1,
-    height: 28,
-    backgroundColor: 'rgba(0,0,0,0.1)',
-  },
-  modalFoot: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    paddingBottom: spacing.xl,
-    borderTopWidth: StyleSheet.hairlineWidth,
-  },
-  segmentBar: {
-    flexDirection: 'row',
-    paddingHorizontal: spacing.lg,
-    marginBottom: spacing.md,
-    gap: spacing.sm,
-  },
-  segmentBtn: {
-    flex: 1,
-    paddingVertical: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: radii.pill,
-    borderWidth: 1.5,
-  },
-  caseCard: {
-    padding: spacing.lg,
-    borderRadius: radii.card,
-    borderWidth: 1,
-    marginBottom: spacing.md,
-  },
-  stepperWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: spacing.xs,
-  },
-  stepItem: {
-    alignItems: 'center',
-    width: 68,
-  },
-  stepDot: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 4,
-  },
-  stepLine: {
-    flex: 1,
-    height: 2,
-    marginBottom: 16,
-    marginHorizontal: 2,
-  },
+  headerTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  policyPill: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 5, borderRadius: radii.pill },
+
+  segmentBar: { flexDirection: 'row', paddingHorizontal: spacing.lg, marginBottom: spacing.md, gap: spacing.sm },
+  segmentBtn: { flex: 1, paddingVertical: 12, alignItems: 'center', justifyContent: 'center', borderRadius: radii.pill, borderWidth: 1.5 },
+  segmentInner: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  segmentDot: { width: 7, height: 7, borderRadius: 3.5 },
+
+  scrollBody: { padding: spacing.md, paddingBottom: 120 },
+
+  statusChip: { flexDirection: 'row', alignItems: 'center', gap: 5, alignSelf: 'flex-start', paddingHorizontal: 9, paddingVertical: 4, borderRadius: radii.pill },
+  statusDot: { width: 6, height: 6, borderRadius: 3 },
+
+  card: { padding: spacing.lg, borderRadius: radii.card, borderWidth: 1, marginBottom: spacing.md },
+
+  offerBanner: { flexDirection: 'row', gap: spacing.sm, alignItems: 'flex-start', backgroundColor: 'rgba(199, 159, 94, 0.14)', borderWidth: 1.5, borderRadius: radii.card, padding: spacing.md, marginBottom: spacing.md },
+  offerBannerIcon: { width: 38, height: 38, borderRadius: 19, backgroundColor: palette.gold, alignItems: 'center', justifyContent: 'center' },
+
+  caseTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+
+  noticeRow: { flexDirection: 'row', gap: spacing.sm, alignItems: 'flex-start', borderRadius: radii.md, borderWidth: 1, padding: spacing.sm, marginBottom: spacing.md },
+
+  advisorStrip: { flexDirection: 'row', alignItems: 'center', padding: spacing.sm, borderRadius: radii.md, borderWidth: 1, marginBottom: spacing.md, gap: spacing.sm },
+  advisorStripAvatar: { width: 46, height: 46, borderRadius: 23 },
+  advisorStripAvatarFallback: { backgroundColor: palette.burgundy, alignItems: 'center', justifyContent: 'center' },
+
+  actionRow: { flexDirection: 'row', gap: spacing.sm },
+
+  stepperWrap: { flexDirection: 'row', alignItems: 'flex-start' },
+  stepUnit: { flex: 1, flexDirection: 'row', alignItems: 'flex-start' },
+  stepItem: { alignItems: 'center', width: 76 },
+  stepDot: { width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginBottom: 5 },
+  stepLine: { flex: 1, height: 2, marginTop: 11, marginHorizontal: -4 },
+
+  historyRow: { flexDirection: 'row', alignItems: 'center', padding: spacing.md, borderRadius: radii.card, borderWidth: StyleSheet.hairlineWidth, marginBottom: spacing.sm },
+
+  notice: { borderRadius: radii.card, borderWidth: 1.5, padding: spacing.md, marginBottom: spacing.md },
+  pointRow: { flexDirection: 'row', gap: spacing.sm, alignItems: 'center', padding: spacing.sm, borderRadius: radii.md },
+
+  feeCard: { borderRadius: radii.card, padding: spacing.lg, marginBottom: spacing.md },
+  feeHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
+  feeDivider: { height: StyleSheet.hairlineWidth, marginVertical: spacing.sm },
+  feeRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 3 },
+
+  advisorTopRow: { flexDirection: 'row', alignItems: 'center' },
+  avatarFallback: { backgroundColor: palette.burgundy, alignItems: 'center', justifyContent: 'center' },
+  tagsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: spacing.sm },
+  tag: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: radii.pill },
+  cardFoot: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: spacing.md, paddingTop: spacing.sm, borderTopWidth: StyleSheet.hairlineWidth },
+
+  modalRoot: { flex: 1 },
+  modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.lg, paddingVertical: spacing.md, borderBottomWidth: StyleSheet.hairlineWidth },
+  closeBtn: { padding: 4 },
+  modalBody: { padding: spacing.lg, paddingBottom: 120 },
+  ratingBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 5, borderRadius: radii.pill, borderWidth: StyleSheet.hairlineWidth, marginTop: spacing.sm },
+  statsStrip: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around', paddingVertical: spacing.md, paddingHorizontal: spacing.sm, borderRadius: radii.card, borderWidth: StyleSheet.hairlineWidth },
+  statCol: { alignItems: 'center', flex: 1 },
+  statDivider: { width: 1, height: 28 },
+  modalFoot: { position: 'absolute', bottom: 0, left: 0, right: 0, flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.lg, paddingVertical: spacing.md, paddingBottom: spacing.xl, borderTopWidth: StyleSheet.hairlineWidth },
 });

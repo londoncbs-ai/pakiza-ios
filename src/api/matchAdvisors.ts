@@ -109,39 +109,107 @@ export const matchAdvisorsApi = {
   },
 };
 
+/**
+ * Every non-terminal request status. Anything not in TERMINAL_SEARCH_STATUSES
+ * counts against the platform's one-search-at-a-time policy, including
+ * 'reviewing' and 'offered' - a member waiting on a decision, or waiting to
+ * accept an offer, still has a search open. Getting this wrong lets someone
+ * book a second advisor while their first request is still pending, which is
+ * exactly what the policy exists to prevent.
+ */
+const TERMINAL_SEARCH_STATUSES = new Set(['completed', 'cancelled', 'expired']);
+
+export function isOngoingSearchStatus(status?: string | null): boolean {
+  return !!status && !TERMINAL_SEARCH_STATUSES.has(status.toLowerCase());
+}
+
+/** The one ongoing request, if any - the single source of truth for "does this member already have a search open?" */
+export function findOngoingRequest(requests: MatchAdvisorRequest[]): MatchAdvisorRequest | null {
+  return requests.find((r) => isOngoingSearchStatus(r.status)) ?? null;
+}
+
 export const getSearchStatusConfig = (status?: string) => {
   switch (status?.toLowerCase()) {
+    case 'open':
+      return {
+        label: 'Awaiting an advisor',
+        short: 'PENDING',
+        color: '#8A7B72',
+        bg: 'rgba(138, 123, 114, 0.12)',
+        icon: 'hourglass-outline' as const,
+        needsAction: false,
+      };
+    case 'reviewing':
+      return {
+        label: 'Under review',
+        short: 'REVIEWING',
+        color: '#8A7B72',
+        bg: 'rgba(138, 123, 114, 0.12)',
+        icon: 'search-outline' as const,
+        needsAction: false,
+      };
+    case 'offered':
+      return {
+        label: 'New offer - your review needed',
+        short: 'NEW OFFER',
+        color: '#C79F5E',
+        bg: 'rgba(199, 159, 94, 0.16)',
+        icon: 'mail-unread' as const,
+        needsAction: true,
+      };
+    case 'accepted':
+      return {
+        label: 'Advisor engaged',
+        short: 'ENGAGED',
+        color: '#800020',
+        bg: 'rgba(128, 0, 32, 0.1)',
+        icon: 'checkmark-circle' as const,
+        needsAction: false,
+      };
+    case 'active':
+      return {
+        label: 'Search in progress',
+        short: 'IN PROGRESS',
+        color: '#2f7d52',
+        bg: 'rgba(47, 125, 82, 0.12)',
+        icon: 'compass' as const,
+        needsAction: false,
+      };
     case 'cancelled':
       return {
-        label: 'CANCELLED SEARCH',
+        label: 'Cancelled',
         short: 'CANCELLED',
-        color: '#c2410c',
-        bg: 'rgba(194, 65, 12, 0.12)',
+        color: '#b00020',
+        bg: 'rgba(176, 0, 32, 0.1)',
         icon: 'close-circle' as const,
+        needsAction: false,
       };
     case 'completed':
       return {
-        label: 'CLOSED • SUCCESSFUL',
-        short: 'CLOSED',
-        color: '#d97706',
-        bg: 'rgba(217, 119, 6, 0.12)',
-        icon: 'checkmark-circle' as const,
+        label: 'Spouse found',
+        short: 'COMPLETE',
+        color: '#C79F5E',
+        bg: 'rgba(199, 159, 94, 0.16)',
+        icon: 'heart-circle' as const,
+        needsAction: false,
       };
     case 'expired':
       return {
-        label: 'INACTIVE SEARCH',
+        label: 'Inactive',
         short: 'INACTIVE',
-        color: '#64748b',
-        bg: 'rgba(100, 116, 139, 0.12)',
+        color: '#8A7B72',
+        bg: 'rgba(138, 123, 114, 0.12)',
         icon: 'time' as const,
+        needsAction: false,
       };
     default:
       return {
-        label: 'ACTIVE PRIVATE SEARCH',
+        label: 'In progress',
         short: 'ACTIVE',
-        color: '#16a34a',
-        bg: 'rgba(34, 197, 94, 0.12)',
-        icon: 'radio-button-on' as const,
+        color: '#800020',
+        bg: 'rgba(128, 0, 32, 0.1)',
+        icon: 'ellipse' as const,
+        needsAction: false,
       };
   }
 };

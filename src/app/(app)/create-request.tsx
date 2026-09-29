@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import { errorMessage } from '@/api/client';
-import { getSearchDisplayTitle, matchAdvisorsApi } from '@/api/matchAdvisors';
+import { findOngoingRequest, getSearchDisplayTitle, matchAdvisorsApi } from '@/api/matchAdvisors';
 import type { MatchAdvisorProfile, MatchAdvisorRequest } from '@/api/types';
 import { Button } from '@/components/Button';
 import { Screen } from '@/components/Screen';
@@ -48,7 +48,7 @@ export default function CreateAdvisorRequestScreen() {
         setSelectedAdvisorId(list[0].user_id);
         setSelectedAdvisorName(list[0].display_name);
       }
-      const ongoing = myReqs.find((r) => r.status === 'open' || r.status === 'accepted' || r.status === 'active');
+      const ongoing = findOngoingRequest(myReqs);
       if (ongoing) {
         setActiveRequest(ongoing);
       }
@@ -100,26 +100,27 @@ export default function CreateAdvisorRequestScreen() {
         find_for_me_enabled: true,
       });
 
-      // Initiate Stripe payment for the £250 deposit
+      // Initiate Stripe payment for the £250 deposit. The request itself is
+      // already created at this point; only the wording of the follow-up
+      // alert depends on whether the deposit actually went through - it must
+      // never claim "deposit secured" unless confirmDeposit truly succeeded,
+      // whether the member cancelled the sheet or the payment simply failed
+      // (declined card, dropped connection, server-side confirm error).
       try {
         const session = await matchAdvisorsApi.checkoutDeposit(created.id);
         const paymentIntentId = await presentStripePayment(session);
         await matchAdvisorsApi.confirmDeposit(created.id, paymentIntentId);
       } catch (payErr: any) {
-        if (payErr?.name === 'PaymentCancelledError') {
-          Alert.alert(
-            'Deposit Pending',
-            'Your matchmaking request was created, but the £250 deposit has not yet been paid. You can complete payment at any time from your Case Hub.',
-            [
-              {
-                text: 'View Case',
-                onPress: () => router.replace('/(app)/advisors' as any),
-              },
-            ]
-          );
-          return;
-        }
-        console.warn('Deposit payment error:', payErr);
+        const cancelled = payErr?.name === 'PaymentCancelledError';
+        if (!cancelled) console.warn('Deposit payment error:', payErr);
+        Alert.alert(
+          cancelled ? 'Deposit Pending' : 'Payment Could Not Be Completed',
+          cancelled
+            ? 'Your matchmaking request was created, but the £250 deposit has not yet been paid. You can complete payment at any time from your Case Hub.'
+            : `Your matchmaking request was created, but ${errorMessage(payErr, 'the £250 deposit payment failed')}. Nothing has been charged. You can retry the deposit at any time from your Case Hub.`,
+          [{ text: 'View Case', onPress: () => router.replace('/(app)/advisors' as any) }]
+        );
+        return;
       }
 
       Alert.alert(
