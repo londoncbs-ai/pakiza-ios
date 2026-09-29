@@ -9,7 +9,7 @@ import { errorMessage } from '@/api/client';
 import { inboxApi } from '@/api/inbox';
 import { profilesApi } from '@/api/profiles';
 import { ProfileDetail } from '@/components/ProfileDetail';
-import { matchAdvisorsApi, getSearchDisplayTitle } from '@/api/matchAdvisors';
+import { matchAdvisorsApi, getSearchDisplayTitle, findOngoingRequest } from '@/api/matchAdvisors';
 import type { MatchAdvisorOffer, MatchAdvisorOfferMessage, MatchAdvisorRequest, PublicProfile } from '@/api/types';
 import { EmptyState } from '@/components/EmptyState';
 import { ErrorState } from '@/components/ErrorState';
@@ -79,12 +79,11 @@ export default function OfferChatScreen() {
     if (!targetId) {
       try {
         const myRequests = await matchAdvisorsApi.getMyRequests();
+        const ongoing = findOngoingRequest(myRequests);
         const activeReq =
-          myRequests.find(
-            (r) =>
-              r.selected_offer_id &&
-              (r.status === 'open' || r.status === 'accepted' || r.status === 'active' || r.status === 'completed')
-          ) || myRequests.find((r) => r.selected_offer_id);
+          (ongoing?.selected_offer_id ? ongoing : null) ||
+          myRequests.find((r) => r.selected_offer_id && r.status === 'completed') ||
+          myRequests.find((r) => r.selected_offer_id);
 
         if (activeReq?.selected_offer_id) {
           targetId = activeReq.selected_offer_id;
@@ -724,7 +723,6 @@ export default function OfferChatScreen() {
               </Text>
             </View>
           )}
-          <View style={[styles.onlineIndicator, { borderColor: c.surface }]} />
         </View>
 
         {/* Advisor Title & Details */}
@@ -1069,16 +1067,6 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  onlineIndicator: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-    width: 11,
-    height: 11,
-    borderRadius: 6,
-    backgroundColor: '#22c55e',
-    borderWidth: 2,
   },
   headerDetails: {
     flex: 1,

@@ -182,10 +182,13 @@ export default function RequestDetailsScreen() {
   const statusCfg = getSearchStatusConfig(req.status);
 
   // Determine active step (1: Deposit Secured, 2: Advisor Consultation, 3: Sourcing Candidates, 4: Partner Found)
+  // Keyed off req.status (the source of truth used everywhere else), not the
+  // narrower offer.status enum, which has no 'active' equivalent and was
+  // making this regress to "Advisor Consultation" once the deposit was paid.
   let currentStep = 2;
   if (isCompleted) currentStep = 4;
   else if (isCancelled) currentStep = 1;
-  else if (assignedOffer && (assignedOffer.status === 'accepted' || assignedOffer.status === 'open')) currentStep = 3;
+  else if (req.status === 'active') currentStep = 3;
 
   return (
     <Screen>
