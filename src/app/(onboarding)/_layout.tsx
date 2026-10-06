@@ -13,6 +13,7 @@ export default function OnboardingLayout() {
     >
       <Stack.Screen name="profile-setup" />
       <Stack.Screen name="face-verify" options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="id-verify" options={{ animation: 'slide_from_right' }} />
     </Stack>
   );
 }

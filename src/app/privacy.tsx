@@ -20,7 +20,7 @@ export default function Privacy() {
         },
         {
           h: '4. Photos & verification',
-          p: 'Profile photos are stored with Amazon Web Services and delivered through its CloudFront network, and are checked by automated moderation (Amazon Rekognition). Every member completes face verification: with your agreement, a live selfie is compared with your profile photos by Amazon Rekognition to confirm it is really you. This is biometric information; we use it only for verification, and the selfie is not shown on your profile or to other members.',
+          p: 'Profile photos are stored with Amazon Web Services and delivered through its CloudFront network, and are checked by automated moderation (Amazon Rekognition). Every member completes face verification: with your agreement, a live selfie is compared with your profile photos by Amazon Rekognition to confirm it is really you. This is biometric information; we use it only for verification, and the selfie is not shown on your profile or to other members. New members also upload a photo of a government-issued ID (a passport, driving licence or national ID card). A member of our team checks it against your date of birth and your verification selfie to confirm that you are 18 or over and are the person on your profile, and the ID photo is also compared with your selfie by Amazon Rekognition to assist that check. The image is stored privately and encrypted, is seen only by authorised staff, is never shown on your profile or to other members, and is deleted as soon as the check is decided. We keep only the outcome: the type of document, whether it was accepted, and when.',
         },
         {
           h: '5. Sharing',

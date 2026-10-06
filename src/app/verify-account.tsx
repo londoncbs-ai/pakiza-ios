@@ -29,6 +29,9 @@ export default function VerifyAccount() {
   const [selfieVerified, setSelfieVerified] = useState(false);
   const [photoReady, setPhotoReady] = useState(true);
   const [underReview, setUnderReview] = useState(false);
+  const [idRequired, setIdRequired] = useState(false);
+  const [idStatus, setIdStatus] = useState<'none' | 'pending' | 'approved' | 'rejected'>('none');
+  const [idReason, setIdReason] = useState<string | null>(null);
 
   // Resend cooldown + "link sent" feedback.
   const [cooldown, setCooldown] = useState(0);
@@ -48,6 +51,9 @@ export default function VerifyAccount() {
       setSelfieVerified(a.is_selfie_verified);
       setPhotoReady(a.profile_complete && a.has_primary_photo);
       setUnderReview(a.under_review ?? false);
+      setIdRequired(a.id_verification_required ?? false);
+      setIdStatus(a.id_status ?? 'none');
+      setIdReason(a.id_rejection_reason ?? null);
 
       // Celebrate the moment a step flips to verified.
       if (a.email_verified && !emailVerifiedRef.current) haptics.success();
@@ -99,7 +105,9 @@ export default function VerifyAccount() {
     }
   };
 
-  const allDone = (!phoneRequired || phoneVerified) && emailVerified && selfieVerified;
+  // Submitted counts as done for the member: the rest is our team's check.
+  const idDone = !idRequired || idStatus === 'pending' || idStatus === 'approved';
+  const allDone = (!phoneRequired || phoneVerified) && emailVerified && selfieVerified && idDone;
   // Verified members wait here while our team completes its final review of
   // the account; the 5s poll flips this the moment they are cleared.
   const cleared = allDone && !underReview;
@@ -209,6 +217,35 @@ export default function VerifyAccount() {
               )
             }
           />
+          {idRequired ? (
+            <>
+              <Divider c={c} />
+              <StepRow
+                c={c}
+                done={idDone}
+                icon="card-outline"
+                title="Photo ID"
+                subtitle={
+                  idStatus === 'approved'
+                    ? 'Verified'
+                    : idStatus === 'pending'
+                      ? 'Received. Our team is checking it.'
+                      : idStatus === 'rejected'
+                        ? `We couldn’t accept your ID${idReason ? `: ${idReason}` : '.'} Please upload another.`
+                        : selfieVerified
+                          ? 'Passport, driving licence or national ID'
+                          : 'Complete face verification first'
+                }
+                action={
+                  idDone || !selfieVerified ? undefined : (
+                    <Pressable onPress={() => router.push('/(onboarding)/id-verify')} hitSlop={8}>
+                      <Text variant="callout" tone="accent">Upload</Text>
+                    </Pressable>
+                  )
+                }
+              />
+            </>
+          ) : null}
         </Surface>
 
         {allDone && underReview ? (
@@ -217,12 +254,12 @@ export default function VerifyAccount() {
               <Ionicons name="shield-checkmark-outline" size={20} color={c.accent} />
             </View>
             <Text variant="callout" tone="default" center style={{ marginTop: spacing.sm }}>
-              You're verified
+              {idRequired ? 'Your steps are complete' : "You're verified"}
             </Text>
             <Text variant="footnote" tone="muted" center style={{ marginTop: spacing.xs }}>
-              Our team is completing a final check on your account, as we do for
-              every new member. We'll email you as soon as it's done, and this
-              screen will update by itself. Nothing more is needed from you.
+              {idRequired
+                ? "Our team is checking your ID against your profile, as we do for every new member. We'll email you as soon as it's done, and this screen will update by itself. Nothing more is needed from you."
+                : "Our team is completing a final check on your account, as we do for every new member. We'll email you as soon as it's done, and this screen will update by itself. Nothing more is needed from you."}
             </Text>
           </Surface>
         ) : null}

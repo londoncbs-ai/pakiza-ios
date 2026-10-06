@@ -73,6 +73,11 @@ export const authApi = {
         // Fully verified but waiting on the team's final review; the hub shows
         // "our team is completing final checks" until this flips false.
         under_review: boolean;
+        // Government photo ID, checked by our team after the selfie. Absent
+        // on older API versions, so both are optional.
+        id_verification_required?: boolean;
+        id_status?: 'none' | 'pending' | 'approved' | 'rejected';
+        id_rejection_reason?: string | null;
       }>('/auth/me')
       .then((r) => r.data);
   },

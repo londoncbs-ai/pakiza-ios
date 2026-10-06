@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Alert, Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
@@ -386,6 +386,10 @@ export default function ProfileTab() {
             <SettingRow icon="shield-outline" label="Privacy Policy" onPress={() => router.push('/privacy')} />
             <Divider />
             <SettingRow icon="people-circle-outline" label="Community Guidelines" onPress={() => router.push('/community')} />
+            <Divider />
+            <SettingRow icon="alert-circle-outline" label="Acceptable Use Policy" onPress={() => Linking.openURL('https://pakiza.co.uk/aup')} />
+            <Divider />
+            <SettingRow icon="briefcase-outline" label="Law Enforcement Requests" onPress={() => Linking.openURL('https://pakiza.co.uk/law-enforcement')} />
           </Surface>
         </Section>
       </ScrollView>

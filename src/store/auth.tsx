@@ -44,6 +44,7 @@ async function fetchVerifyRequired(): Promise<boolean | null> {
       (me.phone_verification_required && !me.phone_verified) ||
       !me.email_verified ||
       !me.is_selfie_verified ||
+      (!!me.id_verification_required && me.id_status !== 'pending' && me.id_status !== 'approved') ||
       me.under_review
     );
   } catch {

@@ -34,7 +34,7 @@ export default function Onboarding() {
               Marriage, with family at the centre.
             </Text>
             <Text variant="callout" tone="onDarkMuted" center>
-              Every member is identity-verified. Meetings happen with a wali present. A community fund helps couples begin.
+              Members are verified by our team. Meetings happen with a wali present. A community fund helps couples begin.
             </Text>
           </View>
           <Button label="Begin our journey" variant="dark" onPress={() => router.push('/(auth)/sign-up')} />

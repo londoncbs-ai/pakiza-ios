@@ -86,4 +86,16 @@ export const profilesApi = {
       .post('/profiles/me/verify-selfie', form, { headers: { 'Content-Type': 'multipart/form-data' }, timeout: 120000 })
       .then((r) => r.data);
   },
+
+  /** Upload a photo of a government ID for our team to check. */
+  verifyId(uri: string, documentType: 'passport' | 'driving_licence' | 'national_id') {
+    const form = new FormData();
+    const name = uri.split('/').pop() || 'id.jpg';
+    const ext = (name.split('.').pop() || 'jpg').toLowerCase();
+    form.append('file', { uri, name, type: ext === 'png' ? 'image/png' : 'image/jpeg' } as any);
+    form.append('document_type', documentType);
+    return api
+      .post('/profiles/me/verify-id', form, { headers: { 'Content-Type': 'multipart/form-data' }, timeout: 120000 })
+      .then((r) => r.data);
+  },
 };

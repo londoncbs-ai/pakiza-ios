@@ -71,15 +71,15 @@ export default function FaceVerify() {
       haptics.success();
       // Show the verified moment before moving on; back to the checklist when
       // the scan was opened from there, otherwise into the app. If the account
-      // is now waiting on the team's final review, the hub explains that
-      // instead of the app bouncing them back here.
+      // still has its ID to upload, or is now waiting on the team's review,
+      // the hub handles that instead of the app bouncing them back here.
       setPhase('success');
       const held =
         from === 'hub'
           ? false
           : await authApi
               .me()
-              .then((a) => a.under_review ?? false)
+              .then((a) => (a.under_review ?? false) || (a.id_verification_required ?? false))
               .catch(() => false);
       setTimeout(() => {
         router.replace(from === 'hub' || held ? '/verify-account' : '/(app)/discover');
