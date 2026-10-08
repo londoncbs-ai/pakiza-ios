@@ -55,21 +55,18 @@ export default function AppTabsLayout() {
       <Tabs.Screen
         name="discover"
         options={{
-          // iOS opens on the Journey (see discover.tsx); Android keeps Discover.
-          title: Platform.OS === 'ios' ? 'Journey' : 'Discover',
-          tabBarIcon: ({ color, focused }) =>
-            Platform.OS === 'ios' ? (
-              <Ionicons name={focused ? 'trail-sign' : 'trail-sign-outline'} size={23} color={color} />
-            ) : (
-              <Ionicons name={focused ? 'sparkles' : 'sparkles-outline'} size={22} color={color} />
-            ),
+          // Opens on the Journey (see discover.tsx).
+          title: 'Journey',
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? 'trail-sign' : 'trail-sign-outline'} size={23} color={color} />
+          ),
         }}
       />
       <Tabs.Screen
         name="advisors"
         options={{
-          // On iOS the tab is named for what it is: a personal human matchmaker.
-          title: Platform.OS === 'ios' ? 'Matchmaker' : 'Advisors',
+          // Named for what it is: a personal human matchmaker.
+          title: 'Matchmaker',
           tabBarIcon: ({ color, focused }) => (
             <Ionicons name={focused ? 'people' : 'people-outline'} size={23} color={color} />
           ),

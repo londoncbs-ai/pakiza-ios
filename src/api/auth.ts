@@ -75,6 +75,8 @@ export const authApi = {
         under_review: boolean;
         // Government photo ID, checked by our team after the selfie. Absent
         // on older API versions, so both are optional.
+        // True when the face scan must use the multi-pose liveness capture.
+        selfie_liveness_required?: boolean;
         id_verification_required?: boolean;
         id_status?: 'none' | 'pending' | 'approved' | 'rejected';
         id_rejection_reason?: string | null;

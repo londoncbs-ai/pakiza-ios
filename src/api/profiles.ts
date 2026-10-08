@@ -87,6 +87,27 @@ export const profilesApi = {
       .then((r) => r.data);
   },
 
+  /** Start a liveness challenge: an ordered list of poses to capture. */
+  startLiveness() {
+    return api
+      .post<{ challenge_id: string; expires_in: number; steps: { key: string; prompt: string }[] }>(
+        '/profiles/me/liveness/start',
+      )
+      .then((r) => r.data);
+  },
+
+  /** Submit one photo per liveness step, in order; the first is the selfie that is matched. */
+  verifySelfieLive(challengeId: string, uris: string[]) {
+    const form = new FormData();
+    form.append('challenge_id', challengeId);
+    uris.forEach((uri, i) => {
+      form.append('files', { uri, name: `pose-${i}.jpg`, type: 'image/jpeg' } as any);
+    });
+    return api
+      .post('/profiles/me/verify-selfie-live', form, { headers: { 'Content-Type': 'multipart/form-data' }, timeout: 120000 })
+      .then((r) => r.data);
+  },
+
   /** Upload a photo of a government ID for our team to check. */
   verifyId(uri: string, documentType: 'passport' | 'driving_licence' | 'national_id') {
     const form = new FormData();

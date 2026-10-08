@@ -27,7 +27,11 @@ import { hexA, palette, spacing } from '@/theme';
 const FRAME = 288;
 const RADIUS = 30;
 
-type Phase = 'camera' | 'analyzing' | 'success' | 'error';
+type Phase = 'camera' | 'posing' | 'analyzing' | 'success' | 'error';
+
+// How long each liveness prompt stays up before its photo is taken.
+const POSE_HOLD_MS = 2800;
+const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /** Non-skippable AI-style face scan: verifies the live selfie matches the
  * member's uploaded profile photos (POST /profiles/me/verify-selfie). */
@@ -41,7 +45,18 @@ export default function FaceVerify() {
   const [phase, setPhase] = useState<Phase>('camera');
   const [consented, setConsented] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Liveness: the server may require a short sequence of poses instead of one
+  // photo. `pose` is the prompt on screen while that sequence is captured.
+  const [liveness, setLiveness] = useState(false);
+  const [pose, setPose] = useState<{ prompt: string; index: number; total: number } | null>(null);
   const reduceMotion = useReducedMotion();
+
+  useEffect(() => {
+    authApi
+      .me()
+      .then((a) => setLiveness(a.selfie_liveness_required ?? false))
+      .catch(() => {});
+  }, []);
 
   const scan = useSharedValue(0);
   useEffect(() => {
@@ -59,14 +74,36 @@ export default function FaceVerify() {
     else requestPermission();
   };
 
-  const capture = async () => {
-    if (!cameraRef.current || phase === 'analyzing') return;
-    setError(null);
-    setPhase('analyzing');
-    try {
-      const shot = await cameraRef.current.takePictureAsync({ quality: 0.7, skipProcessing: true });
+  // One photo per pose the server asked for, each taken a moment after its
+  // prompt appears, then all sent together.
+  const captureLiveness = async () => {
+    const challenge = await profilesApi.startLiveness();
+    const uris: string[] = [];
+    for (let i = 0; i < challenge.steps.length; i += 1) {
+      setPose({ prompt: challenge.steps[i].prompt, index: i + 1, total: challenge.steps.length });
+      haptics.selection();
+      await wait(POSE_HOLD_MS);
+      const shot = await cameraRef.current?.takePictureAsync({ quality: 0.6, skipProcessing: true });
       if (!shot?.uri) throw new Error('Could not capture your photo');
-      await profilesApi.verifySelfie(shot.uri);
+      uris.push(shot.uri);
+    }
+    setPose(null);
+    setPhase('analyzing');
+    await profilesApi.verifySelfieLive(challenge.challenge_id, uris);
+  };
+
+  const capture = async () => {
+    if (!cameraRef.current || phase === 'analyzing' || phase === 'posing') return;
+    setError(null);
+    setPhase(liveness ? 'posing' : 'analyzing');
+    try {
+      if (liveness) {
+        await captureLiveness();
+      } else {
+        const shot = await cameraRef.current.takePictureAsync({ quality: 0.7, skipProcessing: true });
+        if (!shot?.uri) throw new Error('Could not capture your photo');
+        await profilesApi.verifySelfie(shot.uri);
+      }
       logVerified();
       haptics.success();
       // Show the verified moment before moving on; back to the checklist when
@@ -85,6 +122,7 @@ export default function FaceVerify() {
         router.replace(from === 'hub' || held ? '/verify-account' : '/(app)/discover');
       }, 1600);
     } catch (err) {
+      setPose(null);
       haptics.error();
       setError(errorMessage(err, "We couldn't verify your selfie. Make sure your face is well lit and centred, then try again."));
       setPhase('error');
@@ -107,7 +145,7 @@ export default function FaceVerify() {
             Verify it’s really you
           </Text>
           <View style={{ gap: spacing.md, marginTop: spacing.xl }}>
-            <ConsentPoint text="We take a live selfie and compare it with your profile photos to confirm you are a real person, and the person in your photos." />
+            <ConsentPoint text="We take a live selfie and compare it with your profile photos to confirm you are a real person, and the person in your photos. We may ask for a few quick poses, such as turning your head or smiling, to confirm you are really in front of the camera." />
             <ConsentPoint text="The comparison is carried out by Amazon Web Services (Amazon Rekognition). It uses your face, which is biometric information, and we use it only for verification." />
             <ConsentPoint text="Your selfie is never shown on your profile or to other members." />
             <ConsentPoint text="Verification is required to use Pakiza. If you would rather not, you can sign out and delete your account." />
@@ -159,9 +197,15 @@ export default function FaceVerify() {
 
       <View style={[styles.overlay, { paddingTop: insets.top + spacing.xxl, paddingBottom: insets.bottom + spacing.xl }]}>
         <View>
-          <Text variant="title" tone="onDark" center>Face verification</Text>
+          <Text variant="title" tone="onDark" center>
+            {pose ? pose.prompt : 'Face verification'}
+          </Text>
           <Text variant="callout" tone="onDarkMuted" center style={{ marginTop: spacing.xs }}>
-            Centre your face in the frame — we’re checking it matches your photos.
+            {pose
+              ? `Photo ${pose.index} of ${pose.total}. Hold still, we take it for you.`
+              : liveness
+                ? 'Centre your face in the frame. We’ll ask you for three quick poses to confirm you’re really here.'
+                : 'Centre your face in the frame — we’re checking it matches your photos.'}
           </Text>
         </View>
 
@@ -221,6 +265,8 @@ export default function FaceVerify() {
           ) : null}
           {phase === 'success' ? (
             <Text variant="callout" tone="onDark" center>Taking you back...</Text>
+          ) : phase === 'posing' ? (
+            <Text variant="callout" tone="onDark" center>Follow the instruction above</Text>
           ) : (
             <Button label={phase === 'error' ? 'Try again' : 'Scan my face'} onPress={capture} loading={phase === 'analyzing'} />
           )}

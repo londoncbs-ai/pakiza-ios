@@ -33,11 +33,9 @@ const PAGE = 12;
  * ("Not now", "Express interest"), there is no rewind, and nothing is counted
  * out loud as a score of likes.
  *
- * On iOS this is a pushed screen (/introductions), reached from the Journey
- * home, which owns the matchmaker, wali meetings and events. Reviewing
+ * This is a pushed screen (/introductions) on both platforms, reached from the
+ * Journey home, which owns the matchmaker, wali meetings and events. Reviewing
  * introductions is one step of the journey, not the front door.
- *
- * Android keeps its own presentation - see src/app/(app)/discover.tsx.
  */
 export default function DiscoverIntroductions({ onBack }: { onBack?: () => void } = {}) {
   const router = useRouter();
